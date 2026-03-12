@@ -36,6 +36,24 @@ const domainActions = {
 
 const domainRecMap = { Safety:[5], Quality:[], Production:[3,4], Maintenance:[1,2], Planning:[3,4] };
 
+const VALID_AGENTS = [
+  "Asset Health Monitoring Agent","Maintenance Planning & Scheduling Agent","Technician Co-Pilot","Maintenance Strategy Agent",
+  "Scheduling Agent","Planning Agent","Supervisor & Operator Co-Pilot",
+  "Quality Monitoring Agent","Inbound Materials Agent","Final Quality Agent",
+  "Setpoint & Recipe Optimization Agent","Root Cause Analysis Agent",
+  "Safety Agent","Plant Orchestration Agent",
+];
+
+const VALID_APPROVERS = {
+  "Plant Leader":          {name:"Sarah Mitchell",  role:"Plant Leader",          avatar:"PL"},
+  "Maintenance Manager":   {name:"Carlos Rivera",   role:"Maintenance Manager",   avatar:"MM"},
+  "Scheduler":             {name:"Priya Nair",      role:"Scheduler",             avatar:"SC"},
+  "Production Supervisor": {name:"Tom Kowalski",    role:"Production Supervisor", avatar:"PS"},
+  "Quality Manager":       {name:"Quality Manager", role:"Quality Manager",       avatar:"QM"},
+};
+
+const DOMAIN_ICONS = { Safety:"🦺", Quality:"✅", Production:"⚙️", Maintenance:"🔧", Planning:"📋" };
+
 const initialRecommendations = [
   {id:1,lines:["All","Line 3"],priority:"Critical",domain:"Maintenance",icon:"🔧",fromChat:false,title:"Line 3 Sealer — Unplanned Failure Risk Within 48hrs",summary:"Asset Health Monitoring Agent detected vibration index 8.4 (threshold 7.0) and temp variance ±6°C on the Line 3 heat sealer. Unplanned failure likely within 48 hours.",agents:["Asset Health Monitoring Agent","Maintenance Planning & Scheduling Agent","Scheduling Agent"],suggestedAction:"Perform planned maintenance during today's 2–4pm changeover window and expedite spare part procurement.",
     detail:{issue:"Asset Health Monitoring Agent has detected vibration index 8.4 (threshold: 7.0) and temperature variance of ±6°C on the Line 3 heat sealer. Based on historical degradation patterns, unplanned failure is likely within 48 hours.",compounding:"Maintenance Planning & Scheduling Agent confirms the required heating element (Part #SE-441) is out of stock. Emergency procurement from Supplier B can deliver by tomorrow 7am.",risk:"Unplanned failure during production would result in estimated 4–6 hours unplanned downtime, ~8,000 units of lost output, and potential quality escapes on in-process product.",action:"Perform planned maintenance during today's 2:00–4:00pm changeover window. Raise emergency PO for Part #SE-441. Reschedule SKU 3801 to Line 1 Thursday afternoon. Reallocate 1 operator to support.",
@@ -95,49 +113,6 @@ const disruptionAlert = {
   notifyList:["Plant Leader","Production Supervisor","Quality Manager","Scheduler","Procurement Lead"],
 };
 
-// ── LINE PERF DATA ────────────────────────────────────────────────────────────
-const generateDays=(n,label)=>Array.from({length:n},(_,i)=>{const d=new Date(2026,1,28);d.setDate(d.getDate()-(n-1-i));return label==="24h"?`${String(i*2).padStart(2,"0")}:00`:`${d.getMonth()+1}/${d.getDate()}`;});
-const seed=(base,variance,n)=>Array.from({length:n},()=>Math.round((base+(Math.random()-0.5)*variance*2)*10)/10);
-const buildLinePerf=(n,label)=>({days:generateDays(n,label),oee:{"Line 1":seed(80,5,n),"Line 2":seed(87,4,n),"Line 3":seed(57,8,n)},availability:{"Line 1":seed(88,4,n),"Line 2":seed(93,3,n),"Line 3":seed(63,9,n)},units:{"Line 1":seed(6800,400,n),"Line 2":seed(7200,300,n),"Line 3":seed(4400,600,n)},quality:{"Line 1":seed(97,1.5,n),"Line 2":seed(99,0.8,n),"Line 3":seed(89,2.5,n)},scrap:{"Line 1":seed(1.4,0.4,n),"Line 2":seed(0.8,0.3,n),"Line 3":seed(6.1,1.2,n)},plannedRatio:{"Line 1":seed(80,6,n),"Line 2":seed(91,4,n),"Line 3":seed(22,8,n)},downtime:{"Line 1":seed(44,15,n),"Line 2":seed(22,8,n),"Line 3":seed(276,40,n)},schedAdherence:{"Line 1":seed(91,5,n),"Line 2":seed(97,3,n),"Line 3":seed(58,10,n)},otif:{"Line 1":seed(93,4,n),"Line 2":seed(98,2,n),"Line 3":seed(71,8,n)}});
-const perfDatasets={"24h":buildLinePerf(12,"24h"),"2w":buildLinePerf(14,"2w"),"1m":buildLinePerf(30,"1m")};
-const LINE_COLORS_PERF={"Line 1":T.primary,"Line 2":T.positive,"Line 3":T.negative};
-
-// ── SCHEDULE DATA ─────────────────────────────────────────────────────────────
-// ── SCHEDULE DATA ─────────────────────────────────────────────────────────────
-const INIT_ORDERS = [
-  {id:"RUN-1021",line:"Line 1",sku:"SKU 3802",desc:"Original Chips",    units:4200,target:4500,start:"Feb 28 06:00",end:"Feb 28 11:30",dueDate:"Feb 28",dc:"DC-East"},
-  {id:"RUN-1022",line:"Line 1",sku:"SKU 4412",desc:"Seasoned Chips",    units:4200,target:4500,start:"Feb 28 12:00",end:"Feb 28 17:30",dueDate:"Feb 28",dc:"DC-West",riskReason:"Inbound materials out of spec"},
-  {id:"RUN-1023",line:"Line 1",sku:"SKU 2204",desc:"Crimped Seal Chips",units:3800,target:4000,start:"Mar 1 06:00", end:"Mar 1 11:00", dueDate:"Mar 3", dc:"DC-South"},
-  {id:"RUN-1024",line:"Line 1",sku:"SKU 3801",desc:"Premium Chips",     units:6200,target:6200,start:"Mar 1 13:00", end:"Mar 1 18:00", dueDate:"Mar 7", dc:"DC-East",riskReason:"Moved from Line 3 per orchestration rec"},
-  {id:"RUN-1025",line:"Line 1",sku:"SKU 3804",desc:"BBQ Chips",         units:5000,target:5000,start:"Mar 2 06:00", end:"Mar 2 12:30", dueDate:"Mar 5", dc:"DC-West"},
-  {id:"RUN-1026",line:"Line 2",sku:"SKU 3802",desc:"Original Chips",    units:7000,target:7000,start:"Feb 28 06:00",end:"Feb 28 14:00",dueDate:"Feb 28",dc:"DC-North"},
-  {id:"RUN-1027",line:"Line 2",sku:"SKU 2204",desc:"Crimped Seal Chips",units:6500,target:6500,start:"Mar 1 06:00", end:"Mar 1 13:00", dueDate:"Mar 4", dc:"DC-East"},
-  {id:"RUN-1028",line:"Line 2",sku:"SKU 3804",desc:"BBQ Chips",         units:7000,target:7000,start:"Mar 2 06:00", end:"Mar 2 14:00", dueDate:"Mar 6", dc:"DC-South"},
-  {id:"RUN-1029",line:"Line 2",sku:"SKU 3801",desc:"Premium Chips",     units:3500,target:3500,start:"Mar 3 08:00", end:"Mar 3 12:30", dueDate:"Mar 7", dc:"DC-West"},
-  {id:"RUN-1030",line:"Line 3",sku:"SKU 2204",desc:"Crimped Seal Chips",units:2800,target:4500,start:"Feb 28 10:00",end:"Feb 28 14:00",dueDate:"Mar 1", dc:"DC-North",riskReason:"Sealer downtime constraining output"},
-  {id:"RUN-1031",line:"Line 3",sku:"SKU 2204",desc:"Crimped Seal Chips",units:4000,target:4000,start:"Mar 1 06:00", end:"Mar 1 14:00", dueDate:"Mar 3", dc:"DC-East"},
-  {id:"RUN-1032",line:"Line 3",sku:"SKU 3804",desc:"BBQ Chips",         units:5500,target:5500,start:"Mar 2 08:00", end:"Mar 2 16:00", dueDate:"Mar 5", dc:"DC-South",riskReason:"Dependent on sealer repair"},
-];
-const schedAgentRecs=[
-  {id:"sa1",priority:"High",  title:"Sequence Optimisation — Line 1 Thursday",  impact:"Save 45 min changeover",   action:"Resequence RUN-1023 → RUN-1025 on Line 1 Thursday",  detail:"Grouping RUN-1023 (SKU 2204) and RUN-1025 (SKU 3804) back-to-back on Line 1 Thursday saves an estimated 45 min of changeover time. Same materials family, minimal line reset required."},
-  {id:"sa2",priority:"Medium",title:"Idle Capacity — Line 2 Friday Afternoon",  impact:"~1,800 units buffer stock", action:"Add SKU 2204 buffer run to Line 2, Mar 6 1–3:30pm", detail:"Line 2 has 2.5 hours of unallocated capacity Friday afternoon. Suggest filling with SKU 2204 buffer run (~1,800 units) to build DC-East buffer stock ahead of next week's demand."},
-  {id:"sa3",priority:"Medium",title:"Changeover Reduction — Line 3 Next Week",  impact:"Save ~1.5 hrs changeover",  action:"Regroup Line 3 schedule Mar 2–3 by SKU family",     detail:"Current Line 3 schedule alternates between incompatible SKU families, creating 3 extended changeovers. Grouping same-family SKUs reduces total changeover time by ~1.5 hrs and recovers ~900 units of lost capacity."},
-];
-const orchSchedulingRecs=[
-  {id:3, priority:"High",    title:"SKU 3801 Rescheduled to Line 1 — Thursday Afternoon",status:"Partially Executed",detail:"SKU 3801 (RUN-1024) moved from Line 3 to Line 1, Thursday 1–5pm due to Line 3 sealer risk. Volume target of 6,200 units maintained. Labor reallocation still pending approval."},
-  {id:1, priority:"Critical",title:"Line 3 Maintenance Window — Today 2–4pm",           status:"Action Required",   detail:"Planned maintenance window approved on Line 3 today 2–4pm. RUN-1030 volume shortfall of ~1,700 units vs DC-North target. Confirm whether shortfall can be recovered on next shift or whether DC-North needs to be notified."},
-];
-
-const scheduleLineStats = {
-  "Line 1":{ planStatus:-0.7, schedAdherence:91, unitsToday:6800, unitsTodayTarget:7000, unitsWeek:32400, unitsWeekTarget:35000, otif:93, capacityUsed:82 },
-  "Line 2":{ planStatus:0.6,  schedAdherence:97, unitsToday:7200, unitsTodayTarget:7000, unitsWeek:34800, unitsWeekTarget:35000, otif:98, capacityUsed:91 },
-  "Line 3":{ planStatus:-5.2, schedAdherence:58, unitsToday:4400, unitsTodayTarget:7000, unitsWeek:18200, unitsWeekTarget:35000, otif:71, capacityUsed:54 },
-};
-const GANTT_SKUS={"SKU 3802":T.primary,"SKU 4412":T.negative,"SKU 2204":T.positive,"SKU 3801":"#673AB7","SKU 3804":T.warning};
-const GANTT_DAYS=["Feb 28","Mar 1","Mar 2","Mar 3"];
-const GANTT_HOURS=[6,8,10,12,14,16,18];
-const DAY_START=6; const DAY_END=18;
-
 const DISRUPTION_RECS = {
   A: {
     title:"SKU 4412 → SKU 3802 Swap Executed — Line 1",
@@ -150,10 +125,10 @@ const DISRUPTION_RECS = {
       issue:"Inbound seasoning blend Lot #SB-2291 for SKU 4412 was rejected at intake — sodium content 14% above spec. Line 1 Day shift switched to SKU 3802 to maintain output.",
       action:"Monitor changeover progress, confirm quality sign-off on SKU 3802 first run, and notify DC-West of SKU 4412 volume shortfall.",
       steps:[
-        {agent:"Inbound Materials Agent",domain:"Quality",action:"Quarantine Lot #SB-2291 and raise supplier deviation report. Initiate replacement batch procurement.",status:"complete"},
-        {agent:"Scheduling Agent",domain:"Planning",action:"Update Line 1 production schedule — replace SKU 4412 run with SKU 3802. Confirm materials availability.",status:"complete"},
-        {agent:"Quality Monitoring Agent",domain:"Quality",action:"Monitor first-pass yield on SKU 3802 run. Flag any deviations before full rate is approved.",status:"pending"},
-        {agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Guide Line 1 operator through SKU 3802 changeover SOP. Confirm startup checklist complete.",status:"pending"},
+        {agent:"Inbound Materials Agent",domain:"Quality",action:"Quarantine Lot #SB-2291 and raise supplier deviation report.",status:"complete"},
+        {agent:"Scheduling Agent",domain:"Planning",action:"Update Line 1 production schedule — replace SKU 4412 run with SKU 3802.",status:"complete"},
+        {agent:"Quality Monitoring Agent",domain:"Quality",action:"Monitor first-pass yield on SKU 3802 run.",status:"pending"},
+        {agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Guide Line 1 operator through SKU 3802 changeover SOP.",status:"pending"},
         {agent:"Planning Agent",domain:"Planning",action:"Notify DC-West of SKU 4412 shortfall and revised delivery timeline.",status:"pending"},
       ],
       approvers:[
@@ -169,15 +144,15 @@ const DISRUPTION_RECS = {
     lines:["All","Line 1"],
     agents:["Inbound Materials Agent","Planning Agent","Scheduling Agent","Supervisor & Operator Co-Pilot"],
     suggestedAction:"Track emergency batch delivery ETA, hold Line 1, and prepare contingency switch to SKU 3802 if delivery is delayed past 11am.",
-    summary:"Emergency replacement batch for SKU 4412 has been ordered from approved supplier. Line 1 is on hold pending delivery. If batch does not arrive by 11am, contingency switch to SKU 3802 will be activated automatically.",
+    summary:"Emergency replacement batch for SKU 4412 has been ordered. Line 1 is on hold pending delivery. If batch does not arrive by 11am, contingency switch to SKU 3802 will be activated.",
     detail:{
-      issue:"SKU 4412 inbound materials rejected. Emergency same-day batch ordered from approved supplier — 60% confidence on timing. Line 1 currently idle.",
-      action:"Monitor delivery ETA. If batch arrives by 11am, proceed with SKU 4412 run. If delayed, activate SKU 3802 contingency plan.",
+      issue:"SKU 4412 inbound materials rejected. Emergency same-day batch ordered — 60% confidence on timing. Line 1 currently idle.",
+      action:"Monitor delivery ETA. If batch arrives by 11am, proceed with SKU 4412. If delayed, activate SKU 3802 contingency.",
       steps:[
-        {agent:"Inbound Materials Agent",domain:"Quality",action:"Raise emergency PO with approved seasoning supplier. Confirm ETA and track delivery status.",status:"complete"},
-        {agent:"Planning Agent",domain:"Planning",action:"Place Line 1 on hold. Prepare SKU 3802 contingency plan in parallel.",status:"complete"},
+        {agent:"Inbound Materials Agent",domain:"Quality",action:"Raise emergency PO with approved seasoning supplier. Confirm ETA.",status:"complete"},
+        {agent:"Planning Agent",domain:"Planning",action:"Place Line 1 on hold. Prepare SKU 3802 contingency plan.",status:"complete"},
         {agent:"Scheduling Agent",domain:"Planning",action:"Set 11am decision gate — auto-trigger SKU 3802 switch if batch not received.",status:"pending"},
-        {agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Keep Line 1 crew on standby. Brief on both SKU 4412 and contingency SKU 3802 startup procedures.",status:"pending"},
+        {agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Keep Line 1 crew on standby. Brief on both SKU procedures.",status:"pending"},
       ],
       approvers:[
         {name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},
@@ -190,16 +165,16 @@ const DISRUPTION_RECS = {
     priority:"High", domain:"Planning", icon:"📋",
     lines:["All","Line 1"],
     agents:["Planning Agent","Scheduling Agent","Supervisor & Operator Co-Pilot"],
-    suggestedAction:"Confirm Line 1 hold, reschedule SKU 4412 to tomorrow's Day shift, and initiate DC-West communication regarding shipment delay.",
-    summary:"Line 1 Day shift held due to out-of-spec inbound materials for SKU 4412. SKU 4412 volume rescheduled to tomorrow pending fresh batch arrival. DC-West notified of delay.",
+    suggestedAction:"Confirm Line 1 hold, reschedule SKU 4412 to tomorrow's Day shift, and notify DC-West of delay.",
+    summary:"Line 1 Day shift held due to out-of-spec inbound materials for SKU 4412. Rescheduled to tomorrow pending fresh batch. DC-West notified of delay.",
     detail:{
-      issue:"SKU 4412 cannot run today due to rejected inbound materials. Full Day shift volume on Line 1 lost. DC-West shipment will be delayed by one day.",
-      action:"Reschedule SKU 4412 to tomorrow's Day shift. Notify DC-West. Use Line 1 downtime for planned cleaning and maintenance tasks.",
+      issue:"SKU 4412 cannot run today. Full Day shift volume on Line 1 lost. DC-West shipment delayed by one day.",
+      action:"Reschedule SKU 4412 to tomorrow's Day shift. Notify DC-West. Use Line 1 downtime for planned cleaning.",
       steps:[
-        {agent:"Scheduling Agent",domain:"Planning",action:"Reschedule SKU 4412 Line 1 run to tomorrow Day shift. Confirm materials will be available.",status:"complete"},
-        {agent:"Planning Agent",domain:"Planning",action:"Notify DC-West of one-day delay on SKU 4412 shipment volume. Assess downstream impact.",status:"pending"},
-        {agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Redirect Line 1 crew to planned cleaning and minor maintenance tasks during hold.",status:"pending"},
-        {agent:"Maintenance Planning & Scheduling Agent",domain:"Maintenance",action:"Identify any opportunistic PM tasks that can be completed during unplanned Line 1 downtime.",status:"pending"},
+        {agent:"Scheduling Agent",domain:"Planning",action:"Reschedule SKU 4412 Line 1 run to tomorrow Day shift.",status:"complete"},
+        {agent:"Planning Agent",domain:"Planning",action:"Notify DC-West of one-day delay on SKU 4412 shipment.",status:"pending"},
+        {agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Redirect Line 1 crew to planned cleaning and minor maintenance.",status:"pending"},
+        {agent:"Maintenance Planning & Scheduling Agent",domain:"Maintenance",action:"Identify opportunistic PM tasks during unplanned Line 1 downtime.",status:"pending"},
       ],
       approvers:[
         {name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},
@@ -209,6 +184,44 @@ const DISRUPTION_RECS = {
     },
   },
 };
+
+const generateDays=(n,label)=>Array.from({length:n},(_,i)=>{const d=new Date(2026,1,28);d.setDate(d.getDate()-(n-1-i));return label==="24h"?`${String(i*2).padStart(2,"0")}:00`:`${d.getMonth()+1}/${d.getDate()}`;});
+const seed=(base,variance,n)=>Array.from({length:n},()=>Math.round((base+(Math.random()-0.5)*variance*2)*10)/10);
+const buildLinePerf=(n,label)=>({days:generateDays(n,label),oee:{"Line 1":seed(80,5,n),"Line 2":seed(87,4,n),"Line 3":seed(57,8,n)},availability:{"Line 1":seed(88,4,n),"Line 2":seed(93,3,n),"Line 3":seed(63,9,n)},units:{"Line 1":seed(6800,400,n),"Line 2":seed(7200,300,n),"Line 3":seed(4400,600,n)},quality:{"Line 1":seed(97,1.5,n),"Line 2":seed(99,0.8,n),"Line 3":seed(89,2.5,n)},scrap:{"Line 1":seed(1.4,0.4,n),"Line 2":seed(0.8,0.3,n),"Line 3":seed(6.1,1.2,n)},plannedRatio:{"Line 1":seed(80,6,n),"Line 2":seed(91,4,n),"Line 3":seed(22,8,n)},downtime:{"Line 1":seed(44,15,n),"Line 2":seed(22,8,n),"Line 3":seed(276,40,n)},schedAdherence:{"Line 1":seed(91,5,n),"Line 2":seed(97,3,n),"Line 3":seed(58,10,n)},otif:{"Line 1":seed(93,4,n),"Line 2":seed(98,2,n),"Line 3":seed(71,8,n)}});
+const perfDatasets={"24h":buildLinePerf(12,"24h"),"2w":buildLinePerf(14,"2w"),"1m":buildLinePerf(30,"1m")};
+const LINE_COLORS_PERF={"Line 1":T.primary,"Line 2":T.positive,"Line 3":T.negative};
+
+const INIT_ORDERS = [
+  {id:"RUN-1021",line:"Line 1",sku:"SKU 3802",desc:"Original Chips",units:4200,target:4500,start:"Feb 28 06:00",end:"Feb 28 11:30",dueDate:"Feb 28",dc:"DC-East"},
+  {id:"RUN-1022",line:"Line 1",sku:"SKU 4412",desc:"Seasoned Chips",units:4200,target:4500,start:"Feb 28 12:00",end:"Feb 28 17:30",dueDate:"Feb 28",dc:"DC-West",riskReason:"Inbound materials out of spec"},
+  {id:"RUN-1023",line:"Line 1",sku:"SKU 2204",desc:"Crimped Seal Chips",units:3800,target:4000,start:"Mar 1 06:00",end:"Mar 1 11:00",dueDate:"Mar 3",dc:"DC-South"},
+  {id:"RUN-1024",line:"Line 1",sku:"SKU 3801",desc:"Premium Chips",units:6200,target:6200,start:"Mar 1 13:00",end:"Mar 1 18:00",dueDate:"Mar 7",dc:"DC-East",riskReason:"Moved from Line 3 per orchestration rec"},
+  {id:"RUN-1025",line:"Line 1",sku:"SKU 3804",desc:"BBQ Chips",units:5000,target:5000,start:"Mar 2 06:00",end:"Mar 2 12:30",dueDate:"Mar 5",dc:"DC-West"},
+  {id:"RUN-1026",line:"Line 2",sku:"SKU 3802",desc:"Original Chips",units:7000,target:7000,start:"Feb 28 06:00",end:"Feb 28 14:00",dueDate:"Feb 28",dc:"DC-North"},
+  {id:"RUN-1027",line:"Line 2",sku:"SKU 2204",desc:"Crimped Seal Chips",units:6500,target:6500,start:"Mar 1 06:00",end:"Mar 1 13:00",dueDate:"Mar 4",dc:"DC-East"},
+  {id:"RUN-1028",line:"Line 2",sku:"SKU 3804",desc:"BBQ Chips",units:7000,target:7000,start:"Mar 2 06:00",end:"Mar 2 14:00",dueDate:"Mar 6",dc:"DC-South"},
+  {id:"RUN-1029",line:"Line 2",sku:"SKU 3801",desc:"Premium Chips",units:3500,target:3500,start:"Mar 3 08:00",end:"Mar 3 12:30",dueDate:"Mar 7",dc:"DC-West"},
+  {id:"RUN-1030",line:"Line 3",sku:"SKU 2204",desc:"Crimped Seal Chips",units:2800,target:4500,start:"Feb 28 10:00",end:"Feb 28 14:00",dueDate:"Mar 1",dc:"DC-North",riskReason:"Sealer downtime constraining output"},
+  {id:"RUN-1031",line:"Line 3",sku:"SKU 2204",desc:"Crimped Seal Chips",units:4000,target:4000,start:"Mar 1 06:00",end:"Mar 1 14:00",dueDate:"Mar 3",dc:"DC-East"},
+  {id:"RUN-1032",line:"Line 3",sku:"SKU 3804",desc:"BBQ Chips",units:5500,target:5500,start:"Mar 2 08:00",end:"Mar 2 16:00",dueDate:"Mar 5",dc:"DC-South",riskReason:"Dependent on sealer repair"},
+];
+
+const schedAgentRecs=[
+  {id:"sa1",priority:"High",title:"Sequence Optimisation — Line 1 Thursday",impact:"Save 45 min changeover",action:"Resequence RUN-1023 → RUN-1025 on Line 1 Thursday",detail:"Grouping RUN-1023 (SKU 2204) and RUN-1025 (SKU 3804) back-to-back on Line 1 Thursday saves an estimated 45 min of changeover time."},
+  {id:"sa2",priority:"Medium",title:"Idle Capacity — Line 2 Friday Afternoon",impact:"~1,800 units buffer stock",action:"Add SKU 2204 buffer run to Line 2, Mar 6 1–3:30pm",detail:"Line 2 has 2.5 hours of unallocated capacity Friday afternoon. Suggest filling with SKU 2204 buffer run (~1,800 units)."},
+  {id:"sa3",priority:"Medium",title:"Changeover Reduction — Line 3 Next Week",impact:"Save ~1.5 hrs changeover",action:"Regroup Line 3 schedule Mar 2–3 by SKU family",detail:"Current Line 3 schedule alternates between incompatible SKU families, creating 3 extended changeovers. Grouping same-family SKUs reduces total changeover time by ~1.5 hrs."},
+];
+
+const orchSchedulingRecs=[
+  {id:3,priority:"High",title:"SKU 3801 Rescheduled to Line 1 — Thursday Afternoon",status:"Partially Executed",detail:"SKU 3801 (RUN-1024) moved from Line 3 to Line 1, Thursday 1–5pm due to Line 3 sealer risk. Volume target of 6,200 units maintained. Labor reallocation still pending approval."},
+  {id:1,priority:"Critical",title:"Line 3 Maintenance Window — Today 2–4pm",status:"Action Required",detail:"Planned maintenance window approved on Line 3 today 2–4pm. RUN-1030 volume shortfall of ~1,700 units vs DC-North target. Confirm whether shortfall can be recovered on next shift or whether DC-North needs to be notified."},
+];
+
+const GANTT_SKUS={"SKU 3802":T.primary,"SKU 4412":T.negative,"SKU 2204":T.positive,"SKU 3801":"#673AB7","SKU 3804":T.warning};
+const GANTT_DAYS=["Feb 28","Mar 1","Mar 2","Mar 3"];
+const GANTT_HOURS=[6,8,10,12,14,16,18];
+const DAY_START=6; const DAY_END=18;
+
 function timeToFrac(str) {
   if(!str) return null;
   const parts = str.trim().split(" ");
@@ -223,9 +236,35 @@ function timeToFrac(str) {
   return dayIdx + (h - DAY_START + m/60) / (DAY_END - DAY_START);
 }
 
+const PERSONA_DOMAINS = {
+  plant_leader:["Safety","Quality","Production","Maintenance","Planning"],
+  maint_manager:["Maintenance","Safety"],
+  scheduler:["Planning"],
+  quality_manager:["Quality"],
+  safety_lead:["Safety"],
+};
+const PERSONA_ROLES = {
+  plant_leader:["Plant Leader","Plant Manager"],
+  maint_manager:["Maintenance Manager"],
+  scheduler:["Scheduler","Scheduling Manager"],
+  quality_manager:["Quality Manager"],
+  safety_lead:["Safety Lead"],
+};
+
+function recVisibleToPersona(rec, persona) {
+  if (persona === "plant_leader") return true;
+  const roles = PERSONA_ROLES[persona] || [];
+  const domains = PERSONA_DOMAINS[persona] || [];
+  const isApprover = (rec.detail?.approvers||[]).some(a => roles.includes(a.role));
+  const domainMatch = domains.includes(rec.domain);
+  const stepMatch = (rec.detail?.steps||[]).some(s => domains.includes(s.domain));
+  const agentMatch = (rec.agents||[]).some(a => domains.some(d => a.toLowerCase().includes(d.toLowerCase())));
+  return isApprover || domainMatch || stepMatch || agentMatch;
+}
+
 const VALID_AGENTS_LIST = "Asset Health Monitoring Agent, Maintenance Planning & Scheduling Agent, Technician Co-Pilot, Maintenance Strategy Agent, Scheduling Agent, Planning Agent, Supervisor & Operator Co-Pilot, Quality Monitoring Agent, Inbound Materials Agent, Final Quality Agent, Setpoint & Recipe Optimization Agent, Root Cause Analysis Agent, Safety Agent, Plant Orchestration Agent";
 
-const SYSTEM_PROMPT_BASE=`You are the Plant Orchestration Agent for Austin Plant, a snack food manufacturing facility with 3 production lines. You have full visibility across Safety, Quality, Production, Maintenance, and Planning & Scheduling.
+const SYSTEM_PROMPT_BASE = `You are the Plant Orchestration Agent for Austin Plant, a snack food manufacturing facility with 3 production lines. You have full visibility across Safety, Quality, Production, Maintenance, and Planning & Scheduling.
 PLANT DATA: ${JSON.stringify(lineData)}
 DISRUPTION: ${JSON.stringify(disruptionAlert)}
 SKUs: SKU 3801 requires heat sealer. SKU 2204 uses crimped seal (no sealer needed), materials in stock. SKU 3802 standard chips, in stock. SKU 4412 needs seasoning blend Lot #SB-2291 (out of spec).
@@ -255,63 +294,8 @@ SUMMARY: [2-3 sentences]
 [{"role":"Role Name"},...]
 ---ENDAPPROVERS---
 
-Only output these blocks when you have a clear actionable recommendation. Use only agents and approver roles from the lists above.`;
+Only output these blocks when you have a clear actionable recommendation.`;
 
-// Persona → which domains they care about for actions + which rec approver roles they hold
-const PERSONA_DOMAINS = {
-  plant_leader:    ["Safety","Quality","Production","Maintenance","Planning"],
-  maint_manager:   ["Maintenance","Safety"],
-  scheduler:       ["Planning"],
-  quality_manager: ["Quality"],
-  safety_lead:     ["Safety"],
-};
-const PERSONA_ROLES = {
-  plant_leader:    ["Plant Leader","Plant Manager"],
-  maint_manager:   ["Maintenance Manager"],
-  scheduler:       ["Scheduler","Scheduling Manager"],
-  quality_manager: ["Quality Manager"],
-  safety_lead:     ["Safety Lead"],
-};
-
-function recVisibleToPersona(rec, persona) {
-  if (persona === "plant_leader") return true;
-  const roles = PERSONA_ROLES[persona] || [];
-  const domains = PERSONA_DOMAINS[persona] || [];
-  // visible if persona is an approver
-  const isApprover = (rec.detail?.approvers||[]).some(a => roles.includes(a.role));
-  // visible if persona's domain is in the rec's domain or steps
-  const domainMatch = domains.includes(rec.domain);
-  const stepMatch = (rec.detail?.steps||[]).some(s => domains.includes(s.domain));
-  // visible if one of the rec's agents is relevant to persona domain
-  const agentMatch = (rec.agents||[]).some(a =>
-    domains.some(d => a.toLowerCase().includes(d.toLowerCase()))
-  );
-  return isApprover || domainMatch || stepMatch || agentMatch;
-}
-
-const VALID_AGENTS = [
-  "Asset Health Monitoring Agent","Maintenance Planning & Scheduling Agent","Technician Co-Pilot","Maintenance Strategy Agent",
-  "Scheduling Agent","Planning Agent","Supervisor & Operator Co-Pilot",
-  "Quality Monitoring Agent","Inbound Materials Agent","Final Quality Agent",
-  "Setpoint & Recipe Optimization Agent","Root Cause Analysis Agent",
-  "Safety Agent","Plant Orchestration Agent",
-];
-
-const VALID_APPROVERS = {
-  "Plant Leader":          {name:"Sarah Mitchell",  role:"Plant Leader",          avatar:"PL"},
-  "Maintenance Manager":   {name:"Carlos Rivera",   role:"Maintenance Manager",   avatar:"MM"},
-  "Scheduler":             {name:"Priya Nair",       role:"Scheduler",             avatar:"SC"},
-  "Production Supervisor": {name:"Tom Kowalski",    role:"Production Supervisor", avatar:"PS"},
-  "Quality Manager":       {name:"Quality Manager", role:"Quality Manager",       avatar:"QM"},
-};
-
-const DOMAIN_DEFAULT_APPROVERS = {
-  Safety:     ["Plant Leader","Production Supervisor"],
-  Quality:    ["Plant Leader","Quality Manager"],
-  Production: ["Plant Leader","Production Supervisor"],
-  Maintenance:["Plant Leader","Maintenance Manager"],
-  Planning:   ["Plant Leader","Scheduler"],
-};
 const Badge=({label,color})=>(<span style={{background:color+"18",color,border:`1px solid ${color}40`,borderRadius:3,padding:"2px 8px",fontSize:11,fontWeight:700,whiteSpace:"nowrap"}}>{label}</span>);
 const PriorityColor=p=>p==="Critical"?T.negative:p==="High"?T.warning:p==="Medium"?T.info:T.neutral;
 const statusColor=s=>s==="Complete"?T.positive:s==="In Progress"?T.info:s==="Action Required"?T.negative:T.warning;
@@ -320,11 +304,11 @@ const Metric=({label,value,target,unit="",good,bad})=>{
   return(<div style={{display:"flex",flexDirection:"column",gap:2}}><div style={{fontSize:10,color:T.gray900,fontWeight:600,whiteSpace:"nowrap"}}>{label}</div><div style={{fontSize:16,fontWeight:800,color,lineHeight:1}}>{value}{unit}</div>{target!=null&&<div style={{fontSize:10,color:T.gray400}}>Target: {target}{unit}</div>}</div>);
 };
 
-// ── SHARED COMPONENTS ─────────────────────────────────────────────────────────
 function DetailPage({rec,onBack}){
   const d=rec.detail||{};
   const [approverState,setApproverState]=useState((d.approvers||[]).map(a=>({...a,status:"pending"})));
-  const [executed,setExecuted]=useState(false);const [executing,setExecuting]=useState(false);
+  const [executed,setExecuted]=useState(false);
+  const [executing,setExecuting]=useState(false);
   const allApproved=approverState.length>0&&approverState.every(a=>a.status==="approved");
   const approve=i=>{const u=[...approverState];u[i].status="approved";setApproverState(u);};
   const execute=()=>{setExecuting(true);setTimeout(()=>{setExecuting(false);setExecuted(true);},2000);};
@@ -357,7 +341,7 @@ function DetailPage({rec,onBack}){
       {approverState.length>0&&<div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
         <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>✍️ Approval Required Before Execution</div></div>
         <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:8}}>
-          {approverState.map((a,i)=>(<div key={a.name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:T.gray100,borderRadius:4,gap:8,flexWrap:"wrap"}}>
+          {approverState.map((a,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:T.gray100,borderRadius:4,gap:8,flexWrap:"wrap"}}>
             <div style={{display:"flex",alignItems:"center",gap:10}}><div style={{width:32,height:32,borderRadius:"50%",background:T.primary,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:T.white,fontWeight:800}}>{a.avatar}</div><div><div style={{fontSize:13,fontWeight:700,color:T.black}}>{a.name}</div><div style={{fontSize:11,color:T.gray900}}>{a.role}</div></div></div>
             {a.status==="approved"||executed?<Badge label="✓ Approved" color={T.positive}/>:<button onClick={()=>approve(i)} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Approve</button>}
           </div>))}
@@ -368,7 +352,6 @@ function DetailPage({rec,onBack}){
   </div>);
 }
 
-// ── DOMAIN COLUMN ─────────────────────────────────────────────────────────────
 function DomainColumn({domain,icon,metrics,actions,recCount,onScrollToRecs}){
   const [expanded,setExpanded]=useState(false);
   const actionRequired=actions.filter(a=>a.status==="Action Required").length;
@@ -386,37 +369,26 @@ function DomainColumn({domain,icon,metrics,actions,recCount,onScrollToRecs}){
   </div>);
 }
 
-// ── DASHBOARD ─────────────────────────────────────────────────────────────────
 function Dashboard({recs,onSelectRec,onShowDisruption,disruptionActive,persona}){
   const [lineFilter,setLineFilter]=useState("All");
   const recsRef=useRef();
   const d=lineData[lineFilter]; const actions=domainActions[lineFilter]||domainActions["All"];
   const pct=(v,t)=>v>=t; const inv=(v,t)=>v<=t;
-
-  // Filter recs by persona visibility
-  const personaDomains = PERSONA_DOMAINS[persona]||PERSONA_DOMAINS.plant_leader;
-  const filteredRecs = recs
-    .filter(r=>r.lines.includes(lineFilter))
-    .filter(r=>recVisibleToPersona(r, persona));
+  const personaDomains=PERSONA_DOMAINS[persona]||PERSONA_DOMAINS.plant_leader;
+  const filteredRecs=recs.filter(r=>r.lines.includes(lineFilter)).filter(r=>recVisibleToPersona(r,persona));
   const chatRecs=filteredRecs.filter(r=>r.fromChat);
-  const standardRecs=filteredRecs.filter(r=>!r.fromChat);
-
-  const recsForDomain=domain=>filteredRecs.filter(r=>!r.fromChat&&(r.domain===domain||(domainRecMap[domain]||[]).includes(r.id))).length;
+  const disruptionRecs=filteredRecs.filter(r=>r.fromDisruption);
+  const standardRecs=filteredRecs.filter(r=>!r.fromChat&&!r.fromDisruption);
+  const recsForDomain=domain=>filteredRecs.filter(r=>!r.fromChat&&!r.fromDisruption&&(r.domain===domain||([]==[]))).length;
   const scrollToRecs=()=>recsRef.current?.scrollIntoView({behavior:"smooth",block:"start"});
-
-  const allDomainColumns = [
+  const allDomainColumns=[
     {domain:"Safety",icon:"🦺",metrics:[{label:"Safety Incidents",value:d.safetyIncidents,target:0,unit:"",good:d.safetyIncidents===0,bad:d.safetyIncidents>0},{label:"Near Misses",value:d.nearMisses,target:0,unit:"",good:d.nearMisses===0,bad:d.nearMisses>1}],actions:actions.Safety||[]},
     {domain:"Quality",icon:"✅",metrics:[{label:"Quality Rate",value:d.qualityRate,target:d.qualityTarget,unit:"%",good:pct(d.qualityRate,d.qualityTarget),bad:!pct(d.qualityRate,d.qualityTarget)},{label:"First Pass Yield",value:d.firstPassYield,target:95,unit:"%",good:pct(d.firstPassYield,95),bad:!pct(d.firstPassYield,95)}],actions:actions.Quality||[]},
     {domain:"Production",icon:"⚙️",metrics:[{label:"Units Produced",value:d.unitsProduced.toLocaleString(),target:d.unitsTarget.toLocaleString(),unit:"",good:pct(d.unitsProduced,d.unitsTarget),bad:!pct(d.unitsProduced,d.unitsTarget)},{label:"OEE",value:d.oee,target:d.oeeTarget,unit:"%",good:pct(d.oee,d.oeeTarget),bad:!pct(d.oee,d.oeeTarget)},{label:"Availability",value:d.availability,target:85,unit:"%",good:pct(d.availability,85),bad:!pct(d.availability,85)},{label:"Downtime",value:d.downtimeMins,target:d.downtimeTarget,unit:" min",good:inv(d.downtimeMins,d.downtimeTarget),bad:!inv(d.downtimeMins,d.downtimeTarget)},{label:"Scrap / Waste",value:d.scrap,target:d.scrapTarget,unit:"%",good:inv(d.scrap,d.scrapTarget),bad:!inv(d.scrap,d.scrapTarget)}],actions:actions.Production||[]},
     {domain:"Maintenance",icon:"🔧",metrics:[{label:"Planned/Unplanned",value:`${d.plannedUnplannedRatio}% / ${100-d.plannedUnplannedRatio}%`,target:null,unit:"",good:d.plannedUnplannedRatio>=80,bad:d.plannedUnplannedRatio<60},{label:"Open Work Orders",value:d.openWorkOrders,target:null,unit:"",good:d.openWorkOrders<=2,bad:d.openWorkOrders>4},{label:"Overdue WOs",value:d.overdueWorkOrders,target:0,unit:"",good:d.overdueWorkOrders===0,bad:d.overdueWorkOrders>0}],actions:actions.Maintenance||[]},
     {domain:"Planning",icon:"📋",metrics:[{label:"Plan Status",value:d.planStatus>0?`${d.planStatus} hrs ahead`:`${Math.abs(d.planStatus)} hrs behind`,target:null,unit:"",good:d.planStatus>=0,bad:d.planStatus<-2},{label:"Sched. Adherence",value:d.scheduleAdherence,target:d.scheduleTarget,unit:"%",good:pct(d.scheduleAdherence,d.scheduleTarget),bad:!pct(d.scheduleAdherence,d.scheduleTarget)},{label:"OTIF",value:d.otif,target:d.otifTarget,unit:"%",good:pct(d.otif,d.otifTarget),bad:!pct(d.otif,d.otifTarget)}],actions:actions.Planning||[]},
   ];
-
-  // Actions within each column filtered by persona domain
-  const visibleDomainColumns = allDomainColumns.map(col => ({
-    ...col,
-    actions: personaDomains.includes(col.domain) ? col.actions : [],
-  }));
+  const visibleDomainColumns=allDomainColumns.map(col=>({...col,actions:personaDomains.includes(col.domain)?col.actions:[]}));
   return(<div>
     <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
       <div><div style={{fontSize:18,fontWeight:800,color:T.black}}>Good morning, Austin Plant 👋</div><div style={{fontSize:12,color:T.gray900,marginTop:2}}>Daily Direction Setting · Friday Feb 28, 2026 · 7:00am · Prior 24 hours</div></div>
@@ -432,7 +404,7 @@ function Dashboard({recs,onSelectRec,onShowDisruption,disruptionActive,persona})
           <div><div style={{fontSize:13,fontWeight:800,color:T.black}}>Performance Scorecard — {lineFilter==="All"?"All Lines":lineFilter}</div><div style={{fontSize:11,color:T.gray900,marginTop:2}}>Prior 24 hours · 3 shifts</div></div>
           {lineFilter!=="All"&&d.alerts.length>0&&<div style={{display:"flex",flexDirection:"column",gap:4}}>{d.alerts.map((a,i)=><div key={i} style={{fontSize:11,color:T.negative,fontWeight:600}}>⚠ {a}</div>)}</div>}
         </div>
-        <div style={{padding:"16px 20px",overflowX:"auto"}}><div style={{display:"flex",gap:12,minWidth:500}}>{visibleDomainColumns.map(col=>(<DomainColumn key={col.domain} {...col} recCount={recsForDomain(col.domain)} onScrollToRecs={scrollToRecs}/>))}</div></div>
+        <div style={{padding:"16px 20px",overflowX:"auto"}}><div style={{display:"flex",gap:12,minWidth:500}}>{visibleDomainColumns.map(col=>(<DomainColumn key={col.domain} {...col} recCount={0} onScrollToRecs={scrollToRecs}/>))}</div></div>
         <div style={{borderTop:`1px solid ${T.border}`,padding:"14px 20px"}}>
           <div style={{fontSize:12,fontWeight:700,color:T.gray900,marginBottom:10}}>Shift Breakdown</div>
           <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
@@ -450,54 +422,24 @@ function Dashboard({recs,onSelectRec,onShowDisruption,disruptionActive,persona})
         </div>
       </div>
       <div ref={recsRef}>
-        {chatRecs.length>0&&<div style={{marginBottom:16}}>
-          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>✦ New Recommendations — From Scenario Simulation</div><Badge label={`${chatRecs.length} new`} color={T.info}/></div>
-          <div style={{display:"flex",flexDirection:"column",gap:8}}>{chatRecs.map(r=>(<div key={r.id} onClick={()=>onSelectRec(r)} style={{background:T.white,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,boxShadow:`0 0 0 2px ${T.info}22`,padding:"14px 18px",cursor:"pointer"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}><div style={{flex:1}}><div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label={r.domain} color={T.primary}/><Badge label="✦ From Chat" color={T.info}/>{r.agents.slice(0,2).map(a=><Badge key={a} label={a} color={T.neutral}/>)}</div><div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:4}}>{r.icon} {r.title}</div><div style={{fontSize:12,color:T.gray900}}>{r.summary}</div><div style={{fontSize:12,color:T.primary,fontWeight:600,marginTop:6}}>💡 {r.suggestedAction}</div></div><div style={{fontSize:12,color:T.primary,fontWeight:700}}>View Detail →</div></div>
+        {disruptionRecs.length>0&&<div style={{marginBottom:16}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>🚨 From Disruption Response</div><Badge label={`${disruptionRecs.length} active`} color={T.negative}/></div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>{disruptionRecs.map(r=>(<div key={r.id} onClick={()=>onSelectRec(r)} style={{background:T.white,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,boxShadow:`0 0 0 2px ${T.negative}22`,padding:"14px 18px",cursor:"pointer"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}><div style={{flex:1}}><div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label={r.domain} color={T.primary}/><Badge label="🚨 Disruption" color={T.negative}/></div><div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:4}}>{r.icon} {r.title}</div><div style={{fontSize:12,color:T.gray900}}>{r.summary}</div><div style={{fontSize:12,color:T.primary,fontWeight:600,marginTop:6}}>💡 {r.suggestedAction}</div></div><div style={{fontSize:12,color:T.primary,fontWeight:700}}>View Detail →</div></div>
           </div>))}</div>
         </div>}
-
-        {/* Disruption response recs */}
-        {filteredRecs.filter(r=>r.fromDisruption).length>0&&<div style={{marginBottom:16}}>
-          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
-            <div style={{fontSize:13,fontWeight:800,color:T.black}}>🚨 From Disruption Response</div>
-            <Badge label={`${filteredRecs.filter(r=>r.fromDisruption).length} active`} color={T.negative}/>
-          </div>
-          <div style={{display:"flex",flexDirection:"column",gap:8}}>
-            {filteredRecs.filter(r=>r.fromDisruption).map(r=>(
-              <div key={r.id} onClick={()=>onSelectRec(r)} style={{background:T.white,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,boxShadow:`0 0 0 2px ${T.negative}22`,padding:"14px 18px",cursor:"pointer"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
-                  <div style={{flex:1}}>
-                    <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}>
-                      <Badge label={r.priority} color={PriorityColor(r.priority)}/>
-                      <Badge label={r.domain} color={T.primary}/>
-                      <Badge label="🚨 From Disruption Response" color={T.negative}/>
-                      {r.agents.slice(0,2).map(a=><Badge key={a} label={a} color={T.neutral}/>)}
-                    </div>
-                    <div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:4}}>{r.icon} {r.title}</div>
-                    <div style={{fontSize:12,color:T.gray900}}>{r.summary}</div>
-                    <div style={{fontSize:12,color:T.primary,fontWeight:600,marginTop:6}}>💡 {r.suggestedAction}</div>
-                  </div>
-                  <div style={{fontSize:12,color:T.primary,fontWeight:700}}>View Detail →</div>
-                </div>
-              </div>
-            ))}
-          </div>
+        {chatRecs.length>0&&<div style={{marginBottom:16}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>✦ From Scenario Simulation</div><Badge label={`${chatRecs.length} new`} color={T.info}/></div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>{chatRecs.map(r=>(<div key={r.id} onClick={()=>onSelectRec(r)} style={{background:T.white,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,boxShadow:`0 0 0 2px ${T.info}22`,padding:"14px 18px",cursor:"pointer"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}><div style={{flex:1}}><div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label={r.domain} color={T.primary}/><Badge label="✦ From Chat" color={T.info}/></div><div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:4}}>{r.icon} {r.title}</div><div style={{fontSize:12,color:T.gray900}}>{r.summary}</div><div style={{fontSize:12,color:T.primary,fontWeight:600,marginTop:6}}>💡 {r.suggestedAction}</div></div><div style={{fontSize:12,color:T.primary,fontWeight:700}}>View Detail →</div></div>
+          </div>))}</div>
         </div>}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4,flexWrap:"wrap",gap:8}}>
           <div style={{fontSize:13,fontWeight:800,color:T.black}}>🧠 Orchestration Agent — Recommendations</div>
           {persona!=="plant_leader"&&<Badge label={`Filtered for your role · ${standardRecs.length} relevant`} color={T.primary}/>}
         </div>
-        <div style={{fontSize:11,color:T.gray900,marginBottom:12}}>
-          {persona==="plant_leader"
-            ? "Synthesized across all domain agents · Ranked by urgency and cross-domain impact"
-            : `Showing recommendations where you are tagged as an approver or your domain is impacted`}
-        </div>
-        {standardRecs.length===0&&(
-          <div style={{background:T.white,borderRadius:4,padding:"20px",textAlign:"center",color:T.gray400,fontSize:13,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-            No recommendations currently require your attention.
-          </div>
-        )}
+        <div style={{fontSize:11,color:T.gray900,marginBottom:12}}>{persona==="plant_leader"?"Synthesized across all domain agents · Ranked by urgency and cross-domain impact":"Showing recommendations where you are tagged as an approver or your domain is impacted"}</div>
+        {standardRecs.length===0&&<div style={{background:T.white,borderRadius:4,padding:"20px",textAlign:"center",color:T.gray400,fontSize:13,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>No recommendations currently require your attention.</div>}
         <div style={{display:"flex",flexDirection:"column",gap:10}}>{standardRecs.map(r=>(<div key={r.id} onClick={()=>onSelectRec(r)} style={{background:T.white,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",padding:"14px 18px",cursor:"pointer"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}><div style={{flex:1}}><div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label={r.domain} color={T.primary}/>{r.agents.slice(0,2).map(a=><Badge key={a} label={a} color={T.neutral}/>)}{r.agents.length>2&&<Badge label={`+${r.agents.length-2} more`} color={T.neutral}/>}</div><div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:4}}>{r.icon} {r.title}</div><div style={{fontSize:12,color:T.gray900}}>{r.summary}</div><div style={{fontSize:12,color:T.primary,fontWeight:600,marginTop:6}}>💡 {r.suggestedAction}</div></div><div style={{fontSize:12,color:T.primary,fontWeight:700}}>View Detail →</div></div>
         </div>))}</div>
@@ -506,7 +448,6 @@ function Dashboard({recs,onSelectRec,onShowDisruption,disruptionActive,persona})
   </div>);
 }
 
-// ── ACTION LOG ────────────────────────────────────────────────────────────────
 function ActionLog(){
   const [filterDomain,setFilterDomain]=useState("All");const [filterSource,setFilterSource]=useState("All");const [filterStatus,setFilterStatus]=useState("Open & In Progress");const [filterLine,setFilterLine]=useState("All");
   const [localActions,setLocalActions]=useState(actionLog);
@@ -544,54 +485,28 @@ function ActionLog(){
   </div>);
 }
 
-// ── LINE PERFORMANCE ──────────────────────────────────────────────────────────
 function MiniLineChart({data,lines,yMin=0,yMax=100,height=80,target}){
   const w=320,h=height,pad=4;
-  const targetY = target!=null ? h-pad-((target-yMin)/(yMax-yMin))*(h-pad*2) : null;
+  const targetY=target!=null?h-pad-((target-yMin)/(yMax-yMin))*(h-pad*2):null;
   return(<svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height,display:"block"}}>
-    {targetY!=null && <line key="tgt" x1={pad} y1={targetY} x2={w-pad} y2={targetY} stroke={T.gray400} strokeWidth={1} strokeDasharray="4,3"/>}
-    {lines.map(line=>{
-      const vals=data[line]||[]; const n=vals.length; const color=LINE_COLORS_PERF[line]||T.neutral;
-      const d=vals.map((v,i)=>{const x=pad+(i/(n-1||1))*(w-pad*2);const y=h-pad-((v-yMin)/(yMax-yMin))*(h-pad*2);return`${i===0?"M":"L"}${x.toFixed(1)},${y.toFixed(1)}`;}).join(" ");
-      const lx=n>0?pad+((n-1)/(n-1||1))*(w-pad*2):0;
-      const ly=n>0?h-pad-((vals[n-1]-yMin)/(yMax-yMin))*(h-pad*2):0;
-      return(<g key={line}><path d={d} stroke={color} strokeWidth={2} fill="none" strokeLinejoin="round" strokeLinecap="round"/>{n>0&&<circle cx={lx} cy={ly} r={3} fill={color}/>}</g>);
-    })}
+    {targetY!=null&&<line x1={pad} y1={targetY} x2={w-pad} y2={targetY} stroke={T.gray400} strokeWidth={1} strokeDasharray="4,3"/>}
+    {lines.map(line=>{const vals=data[line]||[];const n=vals.length;const color=LINE_COLORS_PERF[line]||T.neutral;const d=vals.map((v,i)=>{const x=pad+(i/(n-1||1))*(w-pad*2);const y=h-pad-((v-yMin)/(yMax-yMin))*(h-pad*2);return`${i===0?"M":"L"}${x.toFixed(1)},${y.toFixed(1)}`;}).join(" ");const lx=n>0?pad+((n-1)/(n-1||1))*(w-pad*2):0;const ly=n>0?h-pad-((vals[n-1]-yMin)/(yMax-yMin))*(h-pad*2):0;return(<g key={line}><path d={d} stroke={color} strokeWidth={2} fill="none" strokeLinejoin="round" strokeLinecap="round"/>{n>0&&<circle cx={lx} cy={ly} r={3} fill={color}/>}</g>);})}
   </svg>);
 }
 
 function MiniBarChart({data,lines,yMax=100,height=80,target}){
-  const w=320,h=height,pad=4;
-  const n=data[lines[0]]?.length||1;
-  const barW=Math.max(2,(w-pad*2)/n/lines.length-1);
-  const groupW=(w-pad*2)/n;
-  const targetY = target!=null ? h-pad-(target/yMax)*(h-pad*2) : null;
-  const rects=[];
-  if(targetY!=null) rects.push(<line key="tgt" x1={pad} y1={targetY} x2={w-pad} y2={targetY} stroke={T.gray400} strokeWidth={1} strokeDasharray="4,3"/>);
-  lines.forEach((line,li)=>{
-    const vals=data[line]||[]; const color=LINE_COLORS_PERF[line]||T.neutral;
-    vals.forEach((v,i)=>{const bh=Math.max(1,(v/yMax)*(h-pad*2));const x=pad+i*groupW+li*(barW+1);rects.push(<rect key={`${line}-${i}`} x={x} y={h-pad-bh} width={barW} height={bh} fill={color} opacity={0.85} rx={1}/>);});
-  });
+  const w=320,h=height,pad=4;const n=data[lines[0]]?.length||1;const barW=Math.max(2,(w-pad*2)/n/lines.length-1);const groupW=(w-pad*2)/n;const targetY=target!=null?h-pad-(target/yMax)*(h-pad*2):null;const rects=[];
+  if(targetY!=null)rects.push(<line key="tgt" x1={pad} y1={targetY} x2={w-pad} y2={targetY} stroke={T.gray400} strokeWidth={1} strokeDasharray="4,3"/>);
+  lines.forEach((line,li)=>{const vals=data[line]||[];const color=LINE_COLORS_PERF[line]||T.neutral;vals.forEach((v,i)=>{const bh=Math.max(1,(v/yMax)*(h-pad*2));const x=pad+i*groupW+li*(barW+1);rects.push(<rect key={`${line}-${i}`} x={x} y={h-pad-bh} width={barW} height={bh} fill={color} opacity={0.85} rx={1}/>);});});
   return(<svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height,display:"block"}}>{rects}</svg>);
 }
 
 function MiniStackedBar({data,height=80}){
-  const w=320,h=height,pad=4;
-  const lines=["Line 1","Line 2","Line 3"];
-  const n=data[lines[0]]?.length||1;
-  const barW=Math.max(2,(w-pad*2)/n/lines.length-1);
-  const groupW=(w-pad*2)/n;
-  const rects=[];
-  lines.forEach((line,li)=>{
-    const vals=data[line]||[];
-    vals.forEach((v,i)=>{
-      const planned=v/100*(h-pad*2);const x=pad+i*groupW+li*(barW+1);
-      rects.push(<rect key={`p-${line}-${i}`} x={x} y={h-pad-planned} width={barW} height={Math.max(1,planned)} fill={LINE_COLORS_PERF[line]} opacity={0.85} rx={1}/>);
-      rects.push(<rect key={`u-${line}-${i}`} x={x} y={pad} width={barW} height={Math.max(1,(h-pad*2)-planned)} fill={LINE_COLORS_PERF[line]} opacity={0.25} rx={1}/>);
-    });
-  });
+  const w=320,h=height,pad=4;const lines=["Line 1","Line 2","Line 3"];const n=data[lines[0]]?.length||1;const barW=Math.max(2,(w-pad*2)/n/lines.length-1);const groupW=(w-pad*2)/n;const rects=[];
+  lines.forEach((line,li)=>{const vals=data[line]||[];vals.forEach((v,i)=>{const planned=v/100*(h-pad*2);const x=pad+i*groupW+li*(barW+1);rects.push(<rect key={`p-${line}-${i}`} x={x} y={h-pad-planned} width={barW} height={Math.max(1,planned)} fill={LINE_COLORS_PERF[line]} opacity={0.85} rx={1}/>);rects.push(<rect key={`u-${line}-${i}`} x={x} y={pad} width={barW} height={Math.max(1,(h-pad*2)-planned)} fill={LINE_COLORS_PERF[line]} opacity={0.25} rx={1}/>);});});
   return(<svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height,display:"block"}}>{rects}</svg>);
 }
+
 function ChartCard({title,subtitle,children,legend,lines}){
   return(<div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",padding:"14px 16px",display:"flex",flexDirection:"column",gap:8}}>
     <div><div style={{fontSize:12,fontWeight:800,color:T.black}}>{title}</div>{subtitle&&<div style={{fontSize:10,color:T.gray900,marginTop:1}}>{subtitle}</div>}</div>
@@ -599,6 +514,7 @@ function ChartCard({title,subtitle,children,legend,lines}){
     {legend&&<div style={{display:"flex",gap:12,flexWrap:"wrap"}}>{lines.map(l=>(<div key={l} style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:T.gray900}}><span style={{width:16,height:3,background:LINE_COLORS_PERF[l],display:"inline-block",borderRadius:2}}/>{l}</div>))}</div>}
   </div>);
 }
+
 function LinePerformanceView(){
   const [timeframe,setTimeframe]=useState("2w");const [selLines,setSelLines]=useState(["Line 1","Line 2","Line 3"]);const [startDate,setStartDate]=useState("2026-02-14");const [endDate,setEndDate]=useState("2026-02-28");const [useCustom,setUseCustom]=useState(false);
   const allLines=["Line 1","Line 2","Line 3"];
@@ -634,348 +550,144 @@ function LinePerformanceView(){
         </div>
       </div>))}</div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
-        <ChartCard title="OEE Trend" subtitle="Overall Equipment Effectiveness %" legend="line" lines={selLines}><MiniLineChart data={perf.oee} lines={selLines} yMin={40} yMax={100} target={85}/></ChartCard>
-        <ChartCard title="Availability Trend" subtitle="% scheduled time running" legend="line" lines={selLines}><MiniLineChart data={perf.availability} lines={selLines} yMin={40} yMax={100} target={90}/></ChartCard>
-        <ChartCard title="Units Produced vs Target" subtitle="Daily units produced" legend="line" lines={selLines}><MiniBarChart data={perf.units} lines={selLines} yMax={8500} target={7000}/></ChartCard>
-        <ChartCard title="Quality Rate / FPY" subtitle="% product meeting spec" legend="line" lines={selLines}><MiniLineChart data={perf.quality} lines={selLines} yMin={75} yMax={100} target={98}/></ChartCard>
-        <ChartCard title="Scrap & Waste %" subtitle="% of output scrapped" legend="line" lines={selLines}><MiniLineChart data={perf.scrap} lines={selLines} yMin={0} yMax={10} target={1.5}/></ChartCard>
-        <ChartCard title="Downtime Minutes" subtitle="Unplanned downtime per period" legend="line" lines={selLines}><MiniBarChart data={perf.downtime} lines={selLines} yMax={350} target={60}/></ChartCard>
-        <ChartCard title="Planned vs Unplanned Maintenance" subtitle="Solid = planned, faded = unplanned" legend="line" lines={selLines}><MiniStackedBar data={perf.plannedRatio}/></ChartCard>
-        <ChartCard title="Schedule Adherence" subtitle="% of schedule executed as planned" legend="line" lines={selLines}><MiniLineChart data={perf.schedAdherence} lines={selLines} yMin={40} yMax={100} target={95}/></ChartCard>
-        <ChartCard title="OTIF" subtitle="On Time In Full %" legend="line" lines={selLines}><MiniLineChart data={perf.otif} lines={selLines} yMin={50} yMax={100} target={95}/></ChartCard>
+        <ChartCard title="OEE Trend" subtitle="Overall Equipment Effectiveness %" legend lines={selLines}><MiniLineChart data={perf.oee} lines={selLines} yMin={40} yMax={100} target={85}/></ChartCard>
+        <ChartCard title="Availability Trend" subtitle="% scheduled time running" legend lines={selLines}><MiniLineChart data={perf.availability} lines={selLines} yMin={40} yMax={100} target={90}/></ChartCard>
+        <ChartCard title="Units Produced vs Target" subtitle="Daily units produced" legend lines={selLines}><MiniBarChart data={perf.units} lines={selLines} yMax={8500} target={7000}/></ChartCard>
+        <ChartCard title="Quality Rate / FPY" subtitle="% product meeting spec" legend lines={selLines}><MiniLineChart data={perf.quality} lines={selLines} yMin={75} yMax={100} target={98}/></ChartCard>
+        <ChartCard title="Scrap & Waste %" subtitle="% of output scrapped" legend lines={selLines}><MiniLineChart data={perf.scrap} lines={selLines} yMin={0} yMax={10} target={1.5}/></ChartCard>
+        <ChartCard title="Downtime Minutes" subtitle="Unplanned downtime per period" legend lines={selLines}><MiniBarChart data={perf.downtime} lines={selLines} yMax={350} target={60}/></ChartCard>
+        <ChartCard title="Planned vs Unplanned Maintenance" subtitle="Solid = planned, faded = unplanned" legend lines={selLines}><MiniStackedBar data={perf.plannedRatio}/></ChartCard>
+        <ChartCard title="Schedule Adherence" subtitle="% of schedule executed as planned" legend lines={selLines}><MiniLineChart data={perf.schedAdherence} lines={selLines} yMin={40} yMax={100} target={95}/></ChartCard>
+        <ChartCard title="OTIF" subtitle="On Time In Full %" legend lines={selLines}><MiniLineChart data={perf.otif} lines={selLines} yMin={50} yMax={100} target={95}/></ChartCard>
       </div>
     </div>
   </div>);
 }
 
-// ── GANTT CHART ───────────────────────────────────────────────────────────────
-function GanttChart({filterLine, orders}){
-  const lines = filterLine==="All" ? ["Line 1","Line 2","Line 3"] : [filterLine];
-  const totalCols = GANTT_DAYS.length;
-
-  const buildBlocks = (lineOrders) => {
-    const blocks = [];
-    GANTT_DAYS.forEach((day, di) => {
-      const dayOrders = lineOrders
-        .filter(o => o.start.startsWith(day))
-        .sort((a,b) => timeToFrac(a.start) - timeToFrac(b.start));
-      const dayStart = di + 0 / (DAY_END - DAY_START);
-      const dayEnd   = di + 1;
-      let cursor = dayStart;
-      dayOrders.forEach(o => {
-        const s = timeToFrac(o.start);
-        const e = timeToFrac(o.end);
-        if(s === null || e === null) return;
-        if(s > cursor + 0.005) {
-          blocks.push({type:"gap", start:cursor, end:s});
-        }
-        blocks.push({type:"order", order:o, start:s, end:e});
-        cursor = e;
-      });
-      if(cursor < dayEnd - 0.005) {
-        blocks.push({type:"gap", start:cursor, end:dayEnd});
-      }
+function GanttChart({filterLine,orders}){
+  const lines=filterLine==="All"?["Line 1","Line 2","Line 3"]:[filterLine];
+  const totalCols=GANTT_DAYS.length;
+  const buildBlocks=(lineOrders)=>{
+    const blocks=[];
+    GANTT_DAYS.forEach((day,di)=>{
+      const dayOrders=lineOrders.filter(o=>o.start.startsWith(day)).sort((a,b)=>timeToFrac(a.start)-timeToFrac(b.start));
+      const dayEnd=di+1;let cursor=di;
+      dayOrders.forEach(o=>{const s=timeToFrac(o.start);const e=timeToFrac(o.end);if(s===null||e===null)return;if(s>cursor+0.005)blocks.push({type:"gap",start:cursor,end:s});blocks.push({type:"order",order:o,start:s,end:e});cursor=e;});
+      if(cursor<dayEnd-0.005)blocks.push({type:"gap",start:cursor,end:dayEnd});
     });
     return blocks;
   };
-
-  return (
-    <div style={{overflowX:"auto"}}>
-      <div style={{minWidth:700}}>
-        <div style={{display:"flex",marginLeft:80,marginBottom:4}}>
-          {GANTT_DAYS.map(d=>(<div key={d} style={{flex:1,textAlign:"center",fontSize:11,fontWeight:700,color:T.gray900,borderLeft:`1px solid ${T.border}`,paddingLeft:4}}>{d}</div>))}
-        </div>
-        <div style={{display:"flex",marginLeft:80,marginBottom:8}}>
-          {GANTT_DAYS.map(d=>(<div key={d} style={{flex:1,display:"flex",justifyContent:"space-between"}}>{GANTT_HOURS.map(h=><span key={h} style={{fontSize:9,color:T.gray400}}>{h}:00</span>)}</div>))}
-        </div>
-        {lines.map(line => {
-          const lineOrders = orders.filter(o => o.line === line);
-          const blocks = buildBlocks(lineOrders);
-          return (
-            <div key={line} style={{display:"flex",alignItems:"center",marginBottom:8}}>
-              <div style={{width:80,fontSize:11,fontWeight:800,color:T.black,flexShrink:0}}>{line}</div>
-              <div style={{flex:1,height:36,background:T.gray100,borderRadius:4,position:"relative",border:`1px solid ${T.border}`}}>
-                {GANTT_DAYS.map((_,i)=>(<div key={i} style={{position:"absolute",left:`${(i/totalCols)*100}%`,top:0,bottom:0,borderLeft:`1px dashed ${T.border}40`,zIndex:0}}/>))}
-                {/* Maintenance window Line 3 */}
-                {line==="Line 3" && (() => {
-                  const ms=timeToFrac("Feb 28 14:00"); const me=timeToFrac("Feb 28 16:00");
-                  if(ms===null||me===null) return null;
-                  const ml=(ms/totalCols)*100; const mw=((me-ms)/totalCols)*100;
-                  return <div key="maint" style={{position:"absolute",left:`${ml}%`,width:`${mw}%`,top:0,bottom:0,background:"#ef444430",borderLeft:`2px dashed ${T.negative}`,borderRight:`2px dashed ${T.negative}`,zIndex:4,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:8,color:T.negative,fontWeight:800,whiteSpace:"nowrap"}}>MAINT</span></div>;
-                })()}
-                {blocks.map((b,bi) => {
-                  const left = (b.start / totalCols) * 100;
-                  const width = ((b.end - b.start) / totalCols) * 100;
-                  if(b.type === "gap") return (
-                    <div key={bi} title="Changeover / Sanitation" style={{position:"absolute",left:`${left}%`,width:`${width}%`,top:3,bottom:3,background:"#cbd5e1",borderRadius:3,zIndex:1,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
-                      {width > 2 && <span style={{fontSize:8,color:"#64748b",fontWeight:600}}>⟳</span>}
-                    </div>
-                  );
-                  const o = b.order;
-                  const color = GANTT_SKUS[o.sku] || T.neutral;
-                  return (
-                    <div key={bi} title={`${o.id} · ${o.sku} · ${o.units.toLocaleString()} units${o.riskReason ? "\n" + o.riskReason : ""}`}
-                      style={{position:"absolute",left:`${left}%`,width:`${width}%`,top:3,bottom:3,background:color,borderRadius:3,opacity:0.88,zIndex:2,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
-                      <span style={{fontSize:9,color:T.white,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",padding:"0 3px"}}>{o.sku}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-        <div style={{display:"flex",gap:12,marginLeft:80,marginTop:8,flexWrap:"wrap"}}>
-          {Object.entries(GANTT_SKUS).map(([sku,color])=>(<div key={sku} style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:T.gray900}}><span style={{width:12,height:12,borderRadius:2,background:color,display:"inline-block"}}/>{sku}</div>))}
-          <div style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:T.gray900}}><span style={{width:12,height:12,borderRadius:2,background:"#cbd5e1",display:"inline-block"}}/>Changeover / Sanitation</div>
-          <div style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:T.gray900}}><span style={{width:12,height:12,borderRadius:2,background:"#ef444430",border:`1px dashed ${T.negative}`,display:"inline-block"}}/>Maintenance Window</div>
-        </div>
+  return(<div style={{overflowX:"auto"}}><div style={{minWidth:700}}>
+    <div style={{display:"flex",marginLeft:80,marginBottom:4}}>{GANTT_DAYS.map(d=>(<div key={d} style={{flex:1,textAlign:"center",fontSize:11,fontWeight:700,color:T.gray900,borderLeft:`1px solid ${T.border}`,paddingLeft:4}}>{d}</div>))}</div>
+    <div style={{display:"flex",marginLeft:80,marginBottom:8}}>{GANTT_DAYS.map(d=>(<div key={d} style={{flex:1,display:"flex",justifyContent:"space-between"}}>{GANTT_HOURS.map(h=><span key={h} style={{fontSize:9,color:T.gray400}}>{h}:00</span>)}</div>))}</div>
+    {lines.map(line=>{const lineOrders=orders.filter(o=>o.line===line);const blocks=buildBlocks(lineOrders);return(<div key={line} style={{display:"flex",alignItems:"center",marginBottom:8}}>
+      <div style={{width:80,fontSize:11,fontWeight:800,color:T.black,flexShrink:0}}>{line}</div>
+      <div style={{flex:1,height:36,background:T.gray100,borderRadius:4,position:"relative",border:`1px solid ${T.border}`}}>
+        {GANTT_DAYS.map((_,i)=>(<div key={i} style={{position:"absolute",left:`${(i/totalCols)*100}%`,top:0,bottom:0,borderLeft:`1px dashed ${T.border}40`,zIndex:0}}/>))}
+        {line==="Line 3"&&(()=>{const ms=timeToFrac("Feb 28 14:00");const me=timeToFrac("Feb 28 16:00");if(ms===null||me===null)return null;const ml=(ms/totalCols)*100;const mw=((me-ms)/totalCols)*100;return<div key="maint" style={{position:"absolute",left:`${ml}%`,width:`${mw}%`,top:0,bottom:0,background:"#ef444430",borderLeft:`2px dashed ${T.negative}`,borderRight:`2px dashed ${T.negative}`,zIndex:4,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:8,color:T.negative,fontWeight:800,whiteSpace:"nowrap"}}>MAINT</span></div>;})()}
+        {blocks.map((b,bi)=>{const left=(b.start/totalCols)*100;const width=((b.end-b.start)/totalCols)*100;if(b.type==="gap")return(<div key={bi} title="Changeover / Sanitation" style={{position:"absolute",left:`${left}%`,width:`${width}%`,top:3,bottom:3,background:"#cbd5e1",borderRadius:3,zIndex:1,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>{width>2&&<span style={{fontSize:8,color:"#64748b",fontWeight:600}}>⟳</span>}</div>);const o=b.order;const color=GANTT_SKUS[o.sku]||T.neutral;return(<div key={bi} title={`${o.id} · ${o.sku} · ${o.units.toLocaleString()} units${o.riskReason?"\n"+o.riskReason:""}`} style={{position:"absolute",left:`${left}%`,width:`${width}%`,top:3,bottom:3,background:color,borderRadius:3,opacity:0.88,zIndex:2,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}><span style={{fontSize:9,color:T.white,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",padding:"0 3px"}}>{o.sku}</span></div>);})}
       </div>
+    </div>);})}
+    <div style={{display:"flex",gap:12,marginLeft:80,marginTop:8,flexWrap:"wrap"}}>
+      {Object.entries(GANTT_SKUS).map(([sku,color])=>(<div key={sku} style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:T.gray900}}><span style={{width:12,height:12,borderRadius:2,background:color,display:"inline-block"}}/>{sku}</div>))}
+      <div style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:T.gray900}}><span style={{width:12,height:12,borderRadius:2,background:"#cbd5e1",display:"inline-block"}}/>Changeover</div>
+      <div style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:T.gray900}}><span style={{width:12,height:12,borderRadius:2,background:"#ef444430",border:`1px dashed ${T.negative}`,display:"inline-block"}}/>Maintenance Window</div>
     </div>
-  );
+  </div></div>);
 }
 
-// ── PRODUCTION SCHEDULE ───────────────────────────────────────────────────────
 function ProductionScheduleView({onViewDashboardRec}){
-  const [filterLine,setFilterLine]=useState("All");
-  const [expandedOrch,setExpandedOrch]=useState(null);
-  const [expandedSched,setExpandedSched]=useState(null);
-  const [appliedRecs,setAppliedRecs]=useState([]);
-  const [orders,setOrders]=useState(INIT_ORDERS);
-
-  const filteredOrders = filterLine==="All" ? orders : orders.filter(o=>o.line===filterLine);
-  const atRisk = filteredOrders.filter(o=>o.riskReason).length;
-  const onTrack = filteredOrders.filter(o=>!o.riskReason).length;
-
-  const applyRec = (id) => {
-    setAppliedRecs(prev=>[...prev,id]);
-    setExpandedSched(null);
-    if(id==="sa1"){
-      setOrders(prev=>prev.map(o=>{
-        if(o.id==="RUN-1023") return{...o,start:"Mar 1 13:00",end:"Mar 1 18:00",desc:"Crimped Seal Chips (resequenced)"};
-        if(o.id==="RUN-1025") return{...o,start:"Mar 1 06:00",end:"Mar 1 12:00",desc:"BBQ Chips (resequenced)"};
-        return o;
-      }));
-    }
-    if(id==="sa2"){
-      setOrders(prev=>[...prev,{id:"RUN-1033",line:"Line 2",sku:"SKU 2204",desc:"Buffer Run (added)",units:1800,target:1800,start:"Mar 3 13:00",end:"Mar 3 15:30",dueDate:"Mar 10",dc:"DC-East Buffer"}]);
-    }
-    if(id==="sa3"){
-      setOrders(prev=>prev.map(o=>{
-        if(o.id==="RUN-1032") return{...o,start:"Mar 3 06:00",end:"Mar 3 14:00",desc:"BBQ Chips (regrouped)"};
-        return o;
-      }));
-    }
-  };
-
+  const [filterLine,setFilterLine]=useState("All");const [expandedOrch,setExpandedOrch]=useState(null);const [expandedSched,setExpandedSched]=useState(null);const [appliedRecs,setAppliedRecs]=useState([]);const [orders,setOrders]=useState(INIT_ORDERS);
+  const filteredOrders=filterLine==="All"?orders:orders.filter(o=>o.line===filterLine);
+  const applyRec=(id)=>{setAppliedRecs(prev=>[...prev,id]);setExpandedSched(null);if(id==="sa1"){setOrders(prev=>prev.map(o=>{if(o.id==="RUN-1023")return{...o,start:"Mar 1 13:00",end:"Mar 1 18:00",desc:"Crimped Seal Chips (resequenced)"};if(o.id==="RUN-1025")return{...o,start:"Mar 1 06:00",end:"Mar 1 12:00",desc:"BBQ Chips (resequenced)"};return o;}));}if(id==="sa2"){setOrders(prev=>[...prev,{id:"RUN-1033",line:"Line 2",sku:"SKU 2204",desc:"Buffer Run (added)",units:1800,target:1800,start:"Mar 3 13:00",end:"Mar 3 15:30",dueDate:"Mar 10",dc:"DC-East Buffer"}]);}if(id==="sa3"){setOrders(prev=>prev.map(o=>{if(o.id==="RUN-1032")return{...o,start:"Mar 3 06:00",end:"Mar 3 14:00",desc:"BBQ Chips (regrouped)"};return o;}));}};
   return(<div>
     <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
-      <div><div style={{fontSize:18,fontWeight:800,color:T.black}}>Production Schedule</div><div style={{fontSize:12,color:T.gray900,marginTop:2}}>Feb 28 – Mar 3, 2026 · Austin Plant · Finite schedule view</div></div>
+      <div><div style={{fontSize:18,fontWeight:800,color:T.black}}>Production Schedule</div><div style={{fontSize:12,color:T.gray900,marginTop:2}}>Feb 28 – Mar 3, 2026 · Austin Plant</div></div>
       <div style={{display:"flex",gap:6}}>{["All","Line 1","Line 2","Line 3"].map(l=>(<button key={l} onClick={()=>setFilterLine(l)} style={{padding:"6px 14px",borderRadius:4,fontSize:12,fontWeight:700,cursor:"pointer",border:`1px solid ${filterLine===l?T.primary:T.border}`,background:filterLine===l?T.primary:T.white,color:filterLine===l?T.white:T.gray900}}>{l}</button>))}</div>
     </div>
     <div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16,background:T.gray100}}>
-      {/* Plant-wide summary strip */}
-      <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-        {[
-          {label:"Total Units Today",value:`${(18400).toLocaleString()}`,sub:`vs ${(21000).toLocaleString()} target`,good:false},
-          {label:"Total Units This Week",value:`${(85400).toLocaleString()}`,sub:`vs ${(105000).toLocaleString()} target`,good:false},
-          {label:"Total Changeover Today",value:"3 hrs 20 min",sub:"across all lines",good:null},
-          {label:"Overall Schedule Adherence",value:"82%",sub:"vs 95% target",good:false},
-          {label:"Overall OTIF",value:"87%",sub:"vs 95% target",good:false},
-        ].map(k=>(
-          <div key={k.label} style={{flex:1,minWidth:130,background:T.white,borderRadius:4,borderLeft:`4px solid ${k.good===true?T.positive:k.good===false?T.negative:T.warning}`,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",padding:"10px 14px"}}>
-            <div style={{fontSize:10,color:T.gray900,fontWeight:600,marginBottom:4}}>{k.label}</div>
-            <div style={{fontSize:18,fontWeight:800,color:k.good===true?T.positive:k.good===false?T.negative:T.warning}}>{k.value}</div>
-            <div style={{fontSize:10,color:T.gray400,marginTop:2}}>{k.sub}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Line-by-line scorecard */}
-      <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-        <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
-          <div style={{fontSize:13,fontWeight:800,color:T.black}}>Line Scorecard — Today & This Week</div>
-          <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Volume, schedule, and delivery performance by line</div>
-        </div>
-        <div style={{overflowX:"auto"}}>
-          <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-            <thead>
-              <tr style={{background:T.gray100}}>
-                <th style={{padding:"9px 16px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`}}>Metric</th>
-                {["Line 1","Line 2","Line 3"].map(l=>(
-                  <th key={l} style={{padding:"9px 16px",textAlign:"center",fontWeight:800,color:LINE_COLORS_PERF[l],fontSize:12,borderBottom:`1px solid ${T.border}`}}>{l}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                {label:"Plan Status",vals:["0.7 hrs behind","0.6 hrs ahead","5.2 hrs behind"],goods:[false,true,false],target:"On Plan"},
-                {label:"Schedule Adherence",vals:["91%","97%","58%"],goods:[true,true,false],target:"95%"},
-                {label:"Units Today (actual / plan)",vals:["6,800 / 7,000","7,200 / 7,000","4,400 / 7,000"],goods:[false,true,false],target:"7,000"},
-                {label:"Units This Week (actual / plan)",vals:["32,400 / 35,000","34,800 / 35,000","18,200 / 35,000"],goods:[false,true,false],target:"35,000"},
-                {label:"Capacity Used",vals:["82%","91%","54%"],goods:[true,true,false],target:"≥80%"},
-                {label:"OTIF",vals:["93%","98%","71%"],goods:[false,true,false],target:"95%"},
-              ].map((row,ri)=>(
-                <tr key={row.label} style={{borderBottom:`1px solid ${T.border}`,background:ri%2===0?T.white:T.gray100+"88"}}>
-                  <td style={{padding:"10px 16px",fontWeight:600,color:T.black,whiteSpace:"nowrap"}}>{row.label}</td>
-                  {row.vals.map((v,vi)=>(
-                    <td key={vi} style={{padding:"10px 16px",textAlign:"center",fontWeight:700,color:row.goods[vi]?T.positive:T.negative}}>{v}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      {/* Orchestration alerts */}
+      <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>{[{label:"Total Units Today",value:"18,400",sub:"vs 21,000 target",good:false},{label:"Total Units This Week",value:"85,400",sub:"vs 105,000 target",good:false},{label:"Total Changeover Today",value:"3 hrs 20 min",sub:"across all lines",good:null},{label:"Overall Schedule Adherence",value:"82%",sub:"vs 95% target",good:false},{label:"Overall OTIF",value:"87%",sub:"vs 95% target",good:false}].map(k=>(<div key={k.label} style={{flex:1,minWidth:130,background:T.white,borderRadius:4,borderLeft:`4px solid ${k.good===true?T.positive:k.good===false?T.negative:T.warning}`,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",padding:"10px 14px"}}><div style={{fontSize:10,color:T.gray900,fontWeight:600,marginBottom:4}}>{k.label}</div><div style={{fontSize:18,fontWeight:800,color:k.good===true?T.positive:k.good===false?T.negative:T.warning}}>{k.value}</div><div style={{fontSize:10,color:T.gray400,marginTop:2}}>{k.sub}</div></div>))}</div>
       <div style={{display:"flex",flexDirection:"column",gap:8}}>
-        <div style={{fontSize:12,fontWeight:800,color:T.black}}>🌐 From Plant Orchestration Agent — Actions Impacting This Schedule</div>
-        <div style={{fontSize:11,color:T.gray900,marginBottom:4}}>Cross-domain recommendations that require scheduling awareness or action</div>
+        <div style={{fontSize:12,fontWeight:800,color:T.black}}>🌐 From Plant Orchestration Agent</div>
         {orchSchedulingRecs.map(r=>(<div key={r.id} style={{background:T.white,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",overflow:"hidden"}}>
           <div style={{padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap",cursor:"pointer"}} onClick={()=>setExpandedOrch(expandedOrch===r.id?null:r.id)}>
             <div style={{display:"flex",gap:8,alignItems:"center",flex:1,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label="🌐 Orchestration" color={T.info}/><Badge label={r.status} color={r.status==="Action Required"?T.negative:T.warning}/><span style={{fontSize:13,fontWeight:700,color:T.black}}>{r.title}</span></div>
             <span style={{fontSize:11,color:T.gray400}}>{expandedOrch===r.id?"▲":"▼"}</span>
           </div>
-          {expandedOrch===r.id&&<div style={{padding:"12px 16px 14px",borderTop:`1px solid ${T.border}`}}>
-            <div style={{fontSize:12,color:T.black,lineHeight:1.6,marginBottom:10}}>{r.detail}</div>
-            <button onClick={()=>onViewDashboardRec(r.id)} style={{background:T.info,color:T.white,border:"none",borderRadius:4,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>View in Dashboard →</button>
-          </div>}
+          {expandedOrch===r.id&&<div style={{padding:"12px 16px 14px",borderTop:`1px solid ${T.border}`}}><div style={{fontSize:12,color:T.black,lineHeight:1.6,marginBottom:10}}>{r.detail}</div><button onClick={()=>onViewDashboardRec(r.id)} style={{background:T.info,color:T.white,border:"none",borderRadius:4,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>View in Dashboard →</button></div>}
         </div>))}
       </div>
-      {/* Scheduling agent recs */}
       <div style={{display:"flex",flexDirection:"column",gap:8}}>
         <div style={{fontSize:12,fontWeight:800,color:T.black}}>🗓 Scheduling Agent — Optimisation Opportunities</div>
-        <div style={{fontSize:11,color:T.gray900,marginBottom:4}}>Recommendations the scheduler can action directly — no cross-domain approval needed</div>
         {schedAgentRecs.map(r=>(<div key={r.id} style={{background:T.white,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",overflow:"hidden",opacity:appliedRecs.includes(r.id)?0.6:1}}>
           <div style={{padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap",cursor:"pointer"}} onClick={()=>!appliedRecs.includes(r.id)&&setExpandedSched(expandedSched===r.id?null:r.id)}>
             <div style={{display:"flex",gap:8,alignItems:"center",flex:1,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label="🗓 Scheduling Agent" color={T.primary}/><Badge label={r.impact} color={T.positive}/>{appliedRecs.includes(r.id)&&<Badge label="✓ Applied" color={T.positive}/>}<span style={{fontSize:13,fontWeight:700,color:T.black}}>{r.title}</span></div>
             {!appliedRecs.includes(r.id)&&<span style={{fontSize:11,color:T.gray400}}>{expandedSched===r.id?"▲":"▼"}</span>}
           </div>
-          {expandedSched===r.id&&!appliedRecs.includes(r.id)&&<div style={{padding:"12px 16px 14px",borderTop:`1px solid ${T.border}`}}>
-            <div style={{fontSize:12,color:T.black,lineHeight:1.6,marginBottom:6}}>{r.detail}</div>
-            <div style={{background:T.primary+"10",borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"8px 12px",marginBottom:10}}><div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:2}}>RECOMMENDED ACTION</div><div style={{fontSize:12,color:T.black}}>{r.action}</div></div>
-            <div style={{display:"flex",gap:8}}><button onClick={()=>applyRec(r.id)} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>✓ Apply to Schedule</button><button onClick={()=>setExpandedSched(null)} style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"6px 14px",fontSize:12,fontWeight:600,cursor:"pointer",color:T.gray900}}>Dismiss</button></div>
-          </div>}
+          {expandedSched===r.id&&!appliedRecs.includes(r.id)&&<div style={{padding:"12px 16px 14px",borderTop:`1px solid ${T.border}`}}><div style={{fontSize:12,color:T.black,lineHeight:1.6,marginBottom:6}}>{r.detail}</div><div style={{background:T.primary+"10",borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"8px 12px",marginBottom:10}}><div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:2}}>RECOMMENDED ACTION</div><div style={{fontSize:12,color:T.black}}>{r.action}</div></div><div style={{display:"flex",gap:8}}><button onClick={()=>applyRec(r.id)} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>✓ Apply to Schedule</button><button onClick={()=>setExpandedSched(null)} style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"6px 14px",fontSize:12,fontWeight:600,cursor:"pointer",color:T.gray900}}>Dismiss</button></div></div>}
         </div>))}
       </div>
-      {/* Applied confirmation */}
-      {appliedRecs.length>0&&(
-        <div style={{background:"#F0FDF4",border:`2px solid ${T.positive}`,borderRadius:4,padding:"12px 16px",display:"flex",alignItems:"center",gap:10}}>
-          <span style={{fontSize:16}}>✅</span>
-          <div><div style={{fontSize:13,fontWeight:800,color:T.positive}}>Schedule Updated</div><div style={{fontSize:12,color:T.black,marginTop:2}}>{appliedRecs.length} optimisation{appliedRecs.length>1?"s":""} applied — Gantt and order table updated below.</div></div>
-        </div>
-      )}
-      {/* Gantt */}
+      {appliedRecs.length>0&&<div style={{background:"#F0FDF4",border:`2px solid ${T.positive}`,borderRadius:4,padding:"12px 16px",display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:16}}>✅</span><div><div style={{fontSize:13,fontWeight:800,color:T.positive}}>Schedule Updated</div><div style={{fontSize:12,color:T.black,marginTop:2}}>{appliedRecs.length} optimisation{appliedRecs.length>1?"s":""} applied.</div></div></div>}
       <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-        <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>Production Schedule — Gantt View</div><div style={{fontSize:11,color:T.gray900,marginTop:2}}>Feb 28 – Mar 3 · Hover over blocks for order details · Gray = Changeover / Sanitation</div></div>
+        <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>Production Schedule — Gantt View</div></div>
         <div style={{padding:"16px 20px"}}><GanttChart filterLine={filterLine} orders={orders}/></div>
       </div>
-      {/* Schedule runs table */}
       <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-        <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
-          <div style={{fontSize:13,fontWeight:800,color:T.black}}>Production Run Schedule</div>
-          <div style={{fontSize:11,color:T.gray900,marginTop:2}}>{filteredOrders.length} runs scheduled · Volume actuals vs targets</div>
-        </div>
+        <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>Production Run Schedule</div><div style={{fontSize:11,color:T.gray900,marginTop:2}}>{filteredOrders.length} runs scheduled</div></div>
         <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-          <thead><tr style={{background:T.gray100}}>{["Run","Line","SKU","Description","Units","Target","% vs Target","Start","End","DC Destination","Notes"].map(h=>(<th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>))}</tr></thead>
-          <tbody>{filteredOrders.map((o,i)=>{
-            const pct = o.target ? Math.round(o.units/o.target*100) : 100;
-            const volColor = pct>=100?T.positive:pct>=85?T.warning:T.negative;
-            return(<tr key={o.id} style={{borderBottom:`1px solid ${T.border}`,background:o.riskReason?"#FEF2F2":i%2===0?T.white:T.gray100+"88"}}>
-              <td style={{padding:"9px 14px",fontWeight:700,color:T.black}}>{o.id}</td>
-              <td style={{padding:"9px 14px"}}><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{width:8,height:8,borderRadius:"50%",background:LINE_COLORS_PERF[o.line],display:"inline-block"}}/>{o.line}</div></td>
-              <td style={{padding:"9px 14px"}}><span style={{background:(GANTT_SKUS[o.sku]||T.neutral)+"20",color:GANTT_SKUS[o.sku]||T.neutral,border:`1px solid ${(GANTT_SKUS[o.sku]||T.neutral)}40`,borderRadius:3,padding:"2px 7px",fontSize:11,fontWeight:700}}>{o.sku}</span></td>
-              <td style={{padding:"9px 14px",color:T.gray900}}>{o.desc}</td>
-              <td style={{padding:"9px 14px",fontWeight:700,color:T.black}}>{o.units.toLocaleString()}</td>
-              <td style={{padding:"9px 14px",color:T.gray400}}>{o.target?o.target.toLocaleString():"-"}</td>
-              <td style={{padding:"9px 14px",fontWeight:700,color:volColor}}>{pct}%</td>
-              <td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{o.start}</td>
-              <td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{o.end}</td>
-              <td style={{padding:"9px 14px",color:T.gray900}}>{o.dc||"-"}</td>
-              <td style={{padding:"9px 14px"}}>{o.riskReason&&<div style={{fontSize:10,color:T.negative}}>⚠ {o.riskReason}</div>}</td>
-            </tr>);
-          })}</tbody>
+          <thead><tr style={{background:T.gray100}}>{["Run","Line","SKU","Description","Units","Target","% vs Target","Start","End","DC","Notes"].map(h=>(<th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>))}</tr></thead>
+          <tbody>{filteredOrders.map((o,i)=>{const pct=o.target?Math.round(o.units/o.target*100):100;const volColor=pct>=100?T.positive:pct>=85?T.warning:T.negative;return(<tr key={o.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
+            <td style={{padding:"9px 14px",fontWeight:700,color:T.black}}>{o.id}</td>
+            <td style={{padding:"9px 14px"}}><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{width:8,height:8,borderRadius:"50%",background:LINE_COLORS_PERF[o.line],display:"inline-block"}}/>{o.line}</div></td>
+            <td style={{padding:"9px 14px"}}><span style={{background:(GANTT_SKUS[o.sku]||T.neutral)+"20",color:GANTT_SKUS[o.sku]||T.neutral,border:`1px solid ${(GANTT_SKUS[o.sku]||T.neutral)}40`,borderRadius:3,padding:"2px 7px",fontSize:11,fontWeight:700}}>{o.sku}</span></td>
+            <td style={{padding:"9px 14px",color:T.gray900}}>{o.desc}</td>
+            <td style={{padding:"9px 14px",fontWeight:700,color:T.black}}>{o.units.toLocaleString()}</td>
+            <td style={{padding:"9px 14px",color:T.gray400}}>{o.target?o.target.toLocaleString():"-"}</td>
+            <td style={{padding:"9px 14px",fontWeight:700,color:volColor}}>{pct}%</td>
+            <td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{o.start}</td>
+            <td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{o.end}</td>
+            <td style={{padding:"9px 14px",color:T.gray900}}>{o.dc||"-"}</td>
+            <td style={{padding:"9px 14px"}}>{o.riskReason&&<div style={{fontSize:10,color:T.negative}}>⚠ {o.riskReason}</div>}</td>
+          </tr>);})}</tbody>
         </table></div>
       </div>
     </div>
   </div>);
 }
 
-// ── CHAT ──────────────────────────────────────────────────────────────────────
-const SUGGESTIONS=["The Line 3 heat sealer has just failed completely and cannot be repaired until tomorrow morning. SKU 3801 requires the sealer. We have SKU 2204 which uses a crimped seal and doesn't need the heat sealer. Raw materials confirmed in stock. What do I do with Line 3 for the rest of the day and what are the downstream impacts?","If I take Line 3 offline today, what's the impact on Friday's orders?","How should I prioritize the afternoon shift labor shortage?","What's the fastest path to resolving the sealer issue?"];
-const SUGGESTION_LABELS=["🔧 Line 3 sealer failed — swap to SKU 2204?","📋 Take Line 3 offline — Friday order impact?","👷 How to handle afternoon labor shortage?","⚡ Fastest path to fix the sealer?"];
 function parseRec(text){
   if(!text.includes("---RECOMMENDATION---")) return null;
   try {
-    const block = text.split("---RECOMMENDATION---")[1].split("---END---")[0];
-    const get = key => { const m=block.match(new RegExp(`${key}:\\s*(.+)`)); return m?m[1].trim():""; };
-    const ls = get("LINES").split(",").map(l=>l.trim()).filter(Boolean);
-    if(!ls.includes("All")) ls.push("All");
-    const domain = get("DOMAIN")||"Production";
-    const agents = get("AGENTS").split(",").map(a=>a.trim()).filter(a=>VALID_AGENTS.includes(a));
-
-    // Parse steps
-    let steps = [];
-    if(text.includes("---STEPS---")){
-      try {
-        const stepsRaw = text.split("---STEPS---")[1].split("---ENDSTEPS---")[0].trim();
-        const parsed = JSON.parse(stepsRaw);
-        steps = parsed.map(s=>({
-          agent: VALID_AGENTS.includes(s.agent) ? s.agent : (agents[0]||"Supervisor & Operator Co-Pilot"),
-          domain: s.domain||domain,
-          action: s.action||"Review and execute recommended action.",
-          status: "pending",
-        }));
-      } catch(e) { steps = []; }
-    }
-    // Fallback steps from agents list
-    if(steps.length===0 && agents.length>0){
-      steps = agents.map(agent=>({agent, domain, action:`Review recommendation and execute assigned action within ${domain} domain.`, status:"pending"}));
-    }
-
-    // Parse approvers
-    let approvers = [];
-    if(text.includes("---APPROVERS---")){
-      try {
-        const appRaw = text.split("---APPROVERS---")[1].split("---ENDAPPROVERS---")[0].trim();
-        const parsed = JSON.parse(appRaw);
-        approvers = parsed
-          .map(a=>VALID_APPROVERS[a.role])
-          .filter(Boolean);
-      } catch(e) { approvers = []; }
-    }
-    // Fallback approvers by domain
-    if(approvers.length===0){
-      const defaultRoles = {
-        Safety:["Plant Leader","Production Supervisor"], Quality:["Plant Leader","Quality Manager"],
-        Production:["Plant Leader","Production Supervisor"], Maintenance:["Plant Leader","Maintenance Manager"],
-        Planning:["Plant Leader","Scheduler"],
-      };
-      approvers = (defaultRoles[domain]||["Plant Leader"]).map(r=>VALID_APPROVERS[r]).filter(Boolean);
-    }
-
-    return {
-      id:Date.now(), fromChat:true,
-      title:get("TITLE"), priority:get("PRIORITY"),
-      domain, icon:DOMAIN_ICONS[domain]||"🧠",
-      lines:ls, agents,
-      suggestedAction:get("ACTION"),
-      summary:get("SUMMARY"),
-      detail:{ issue:get("SUMMARY"), action:get("ACTION"), steps, approvers },
-    };
-  } catch { return null; }
+    const block=text.split("---RECOMMENDATION---")[1].split("---END---")[0];
+    const get=key=>{const m=block.match(new RegExp(`${key}:\\s*(.+)`));return m?m[1].trim():"";};
+    const ls=get("LINES").split(",").map(l=>l.trim()).filter(Boolean);
+    if(!ls.includes("All"))ls.push("All");
+    const domain=get("DOMAIN")||"Production";
+    const agents=get("AGENTS").split(",").map(a=>a.trim()).filter(a=>VALID_AGENTS.includes(a));
+    let steps=[];
+    if(text.includes("---STEPS---")){try{const stepsRaw=text.split("---STEPS---")[1].split("---ENDSTEPS---")[0].trim();const parsed=JSON.parse(stepsRaw);steps=parsed.map(s=>({agent:VALID_AGENTS.includes(s.agent)?s.agent:(agents[0]||"Supervisor & Operator Co-Pilot"),domain:s.domain||domain,action:s.action||"Review and execute recommended action.",status:"pending"}));}catch(e){steps=[];}}
+    if(steps.length===0&&agents.length>0){steps=agents.map(agent=>({agent,domain,action:`Review recommendation and execute assigned action within ${domain} domain.`,status:"pending"}));}
+    let approvers=[];
+    if(text.includes("---APPROVERS---")){try{const appRaw=text.split("---APPROVERS---")[1].split("---ENDAPPROVERS---")[0].trim();const parsed=JSON.parse(appRaw);approvers=parsed.map(a=>VALID_APPROVERS[a.role]).filter(Boolean);}catch(e){approvers=[];}}
+    if(approvers.length===0){const defaultRoles={Safety:["Plant Leader","Production Supervisor"],Quality:["Plant Leader","Quality Manager"],Production:["Plant Leader","Production Supervisor"],Maintenance:["Plant Leader","Maintenance Manager"],Planning:["Plant Leader","Scheduler"]};approvers=(defaultRoles[domain]||["Plant Leader"]).map(r=>VALID_APPROVERS[r]).filter(Boolean);}
+    return{id:Date.now(),fromChat:true,title:get("TITLE"),priority:get("PRIORITY"),domain,icon:DOMAIN_ICONS[domain]||"🧠",lines:ls,agents,suggestedAction:get("ACTION"),summary:get("SUMMARY"),detail:{issue:get("SUMMARY"),action:get("ACTION"),steps,approvers}};
+  }catch{return null;}
 }
 
-const stripRec = text => text
-  .replace(/---RECOMMENDATION---[\s\S]*?---END---/,"")
-  .replace(/---STEPS---[\s\S]*?---ENDSTEPS---/,"")
-  .replace(/---APPROVERS---[\s\S]*?---ENDAPPROVERS---/,"")
-  .trim();
-function Chat({recs, onAddRec, pendingRec, onSetPendingRec}){
+const stripRec=text=>text.replace(/---RECOMMENDATION---[\s\S]*?---END---/,"").replace(/---STEPS---[\s\S]*?---ENDSTEPS---/,"").replace(/---APPROVERS---[\s\S]*?---ENDAPPROVERS---/,"").trim();
+
+const SUGGESTIONS=["The Line 3 heat sealer has just failed completely and cannot be repaired until tomorrow morning. SKU 3801 requires the sealer. We have SKU 2204 which uses a crimped seal. What do I do with Line 3 for the rest of the day?","If I take Line 3 offline today, what's the impact on Friday's orders?","How should I prioritize the afternoon shift labor shortage?","What's the fastest path to resolving the sealer issue?"];
+const SUGGESTION_LABELS=["🔧 Line 3 sealer failed — swap to SKU 2204?","📋 Take Line 3 offline — Friday order impact?","👷 How to handle afternoon labor shortage?","⚡ Fastest path to fix the sealer?"];
+
+// ── THE FIX: Chat now manages its own pendingRec state internally ─────────────
+function Chat({recs, onAddRec}){
   const [msgs,setMsgs]=useState([{role:"assistant",content:"👋 I'm the Plant Orchestration Agent. I have full visibility across all domains.\n\nAsk me anything — scenario simulations, trade-off analysis, or what to prioritize. When I reach a clear recommendation, I'll ask if you want to add it to the dashboard."}]);
-  const [input,setInput]=useState(""); const [loading,setLoading]=useState(false);
+  const [input,setInput]=useState("");
+  const [loading,setLoading]=useState(false);
+  const [pendingRec,setPendingRec]=useState(null); // ← managed internally, no longer a prop
   const bottomRef=useRef();
   useEffect(()=>bottomRef.current?.scrollIntoView({behavior:"smooth"}),[msgs]);
-  const setPendingRec = onSetPendingRec;
+
   const send=async(text)=>{
     const q=(text||input).trim();if(!q||loading)return;
     const userMsg={role:"user",content:q};setMsgs(prev=>[...prev,userMsg]);setInput("");setLoading(true);setPendingRec(null);
@@ -988,46 +700,13 @@ function Chat({recs, onAddRec, pendingRec, onSetPendingRec}){
       const rec=parseRec(raw);
       const clean=stripRec(raw);
       setMsgs(prev=>[...prev,{role:"assistant",content:clean}]);
-      if(rec){
-        setPendingRec(rec);
-      } else {
-        // Fallback: if response is substantive and action-oriented, offer to add to dashboard
-        const isActionable = clean.length > 200 && (
-          clean.toLowerCase().includes("recommend") ||
-          clean.toLowerCase().includes("suggest") ||
-          clean.toLowerCase().includes("should") ||
-          clean.toLowerCase().includes("action")
-        );
-        if(isActionable){
-          const fallbackRec = {
-            id:Date.now(), fromChat:true,
-            title: q.length > 60 ? q.substring(0,57)+"..." : q,
-            priority:"High", domain:"Production",
-            icon:"🧠", lines:["All"],
-            agents:["Scheduling Agent","Planning Agent","Supervisor & Operator Co-Pilot"],
-            suggestedAction: clean.split("\n").find(l=>l.length>30&&l.length<200) || clean.substring(0,150),
-            summary: clean.substring(0,300),
-            detail:{
-              issue: clean.substring(0,300),
-              action: clean.split("\n").find(l=>l.length>30&&l.length<200) || clean.substring(0,150),
-              steps:[
-                {agent:"Scheduling Agent",domain:"Planning",action:"Review scenario and update production schedule accordingly.",status:"pending"},
-                {agent:"Planning Agent",domain:"Planning",action:"Assess labor and material impacts of proposed change.",status:"pending"},
-                {agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Notify relevant supervisors and operators of changes.",status:"pending"},
-              ],
-              approvers:[
-                {name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},
-                {name:"Priya Nair",role:"Scheduler",avatar:"SC"},
-              ],
-            },
-          };
-          setPendingRec(fallbackRec);
-        }
-      }
-    }catch{setMsgs(prev=>[...prev,{role:"assistant",content:"⚠️ Connection error. Please try again."}]);}
+      if(rec) setPendingRec(rec);
+    }catch(e){setMsgs(prev=>[...prev,{role:"assistant",content:"⚠️ Connection error. Please try again."}]);}
     setLoading(false);
   };
-  const confirmAdd=()=>{if(pendingRec){onAddRec(pendingRec);setPendingRec(null);setMsgs(prev=>[...prev,{role:"assistant",content:"✅ Recommendation added to the dashboard. Switch to the Dashboard tab to view it, assign approvers, and execute the response."}]);}};
+
+  const confirmAdd=()=>{if(pendingRec){onAddRec(pendingRec);setPendingRec(null);setMsgs(prev=>[...prev,{role:"assistant",content:"✅ Recommendation added to the dashboard. Switch to the Dashboard tab to view it."}]);}};
+
   return(<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
     <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px"}}><div style={{fontSize:18,fontWeight:800,color:T.black}}>Scenario Simulation</div><div style={{fontSize:12,color:T.gray900,marginTop:2}}>Ask the Plant Orchestration Agent to model any scenario or trade-off</div></div>
     <div style={{flex:1,padding:"20px 24px",display:"flex",flexDirection:"column",gap:16,background:T.gray100,overflow:"hidden"}}>
@@ -1055,27 +734,9 @@ function Chat({recs, onAddRec, pendingRec, onSetPendingRec}){
   </div>);
 }
 
-// ── DISRUPTION MODAL ──────────────────────────────────────────────────────────
-function DisruptionModal({onClose, onAddRec}){
+function DisruptionModal({onClose,onAddRec}){
   const [selected,setSelected]=useState(null);const [dispatched,setDispatched]=useState(false);const [dispatching,setDispatching]=useState(false);
-  const dispatch=()=>{
-    if(!selected)return;
-    setDispatching(true);
-    setTimeout(()=>{
-      setDispatching(false);
-      setDispatched(true);
-      // Generate dashboard recommendation from chosen option
-      const recTemplate = DISRUPTION_RECS[selected];
-      if(recTemplate && onAddRec){
-        onAddRec({
-          ...recTemplate,
-          id: Date.now(),
-          fromDisruption: true,
-          lines: recTemplate.lines || ["All"],
-        });
-      }
-    },1800);
-  };
+  const dispatch=()=>{if(!selected)return;setDispatching(true);setTimeout(()=>{setDispatching(false);setDispatched(true);const recTemplate=DISRUPTION_RECS[selected];if(recTemplate&&onAddRec){onAddRec({...recTemplate,id:Date.now(),fromDisruption:true,lines:recTemplate.lines||["All"]});}},1800);};
   return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
     <div style={{background:T.white,borderRadius:6,width:"100%",maxWidth:680,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
       <div style={{background:T.negative,padding:"14px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -1083,7 +744,7 @@ function DisruptionModal({onClose, onAddRec}){
         <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:4,padding:"6px 12px",color:T.white,cursor:"pointer",fontWeight:700,fontSize:12}}>✕ Close</button>
       </div>
       <div style={{padding:"20px",display:"flex",flexDirection:"column",gap:16}}>
-        {dispatched&&<div style={{background:"#F0FDF4",border:`2px solid ${T.positive}`,borderRadius:4,padding:"12px 16px"}}><div style={{fontSize:13,fontWeight:800,color:T.positive}}>✅ Response Dispatched</div><div style={{fontSize:12,color:T.black,marginTop:3}}>{disruptionAlert.notifyList.join(", ")} notified.</div></div>}
+        {dispatched&&<div style={{background:"#F0FDF4",border:`2px solid ${T.positive}`,borderRadius:4,padding:"12px 16px"}}><div style={{fontSize:13,fontWeight:800,color:T.positive}}>✅ Response Dispatched</div><div style={{fontSize:12,color:T.black,marginTop:3}}>{disruptionAlert.notifyList.join(", ")} notified. Recommendation added to dashboard.</div></div>}
         <div style={{fontSize:12,color:T.black,lineHeight:1.6}}>{disruptionAlert.description}</div>
         <div style={{background:"#FEF2F2",borderRadius:4,padding:"12px 16px",borderLeft:`3px solid ${T.negative}`}}><div style={{fontSize:11,fontWeight:700,color:T.negative,marginBottom:6}}>IMMEDIATE IMPACTS</div>{disruptionAlert.impacts.map((imp,i)=><div key={i} style={{fontSize:12,color:T.black,marginBottom:3}}>• {imp}</div>)}</div>
         <div><div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:10}}>Select Response Option</div><div style={{display:"flex",flexDirection:"column",gap:8}}>{disruptionAlert.options.map(opt=>(<div key={opt.id} onClick={()=>!dispatched&&setSelected(opt.id)} style={{padding:"12px 16px",borderRadius:4,border:`2px solid ${selected===opt.id?T.primary:T.border}`,background:selected===opt.id?T.primary+"08":T.white,cursor:dispatched?"default":"pointer"}}>
@@ -1091,15 +752,12 @@ function DisruptionModal({onClose, onAddRec}){
           <div style={{fontSize:12,color:T.gray900}}>{opt.description}</div>
         </div>))}</div></div>
         <div style={{background:T.gray100,borderRadius:4,padding:"10px 14px"}}><div style={{fontSize:11,fontWeight:700,color:T.gray900,marginBottom:4}}>WILL NOTIFY</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{disruptionAlert.notifyList.map(n=><Badge key={n} label={n} color={T.primary}/>)}</div></div>
-        <button onClick={dispatch} disabled={!selected||dispatched||dispatching} style={{width:"100%",padding:"12px",background:selected&&!dispatched?T.negative:T.gray400,color:T.white,border:"none",borderRadius:4,fontSize:14,fontWeight:800,cursor:selected&&!dispatched?"pointer":"not-allowed"}}>
-          {dispatching?"⏳ Dispatching response...":dispatched?"✅ Response Dispatched":selected?`🚨 Execute Option ${selected} & Notify Team`:"Select a response option above"}
-        </button>
+        <button onClick={dispatch} disabled={!selected||dispatched||dispatching} style={{width:"100%",padding:"12px",background:selected&&!dispatched?T.negative:T.gray400,color:T.white,border:"none",borderRadius:4,fontSize:14,fontWeight:800,cursor:selected&&!dispatched?"pointer":"not-allowed"}}>{dispatching?"⏳ Dispatching response...":dispatched?"✅ Response Dispatched":selected?`🚨 Execute Option ${selected} & Notify Team`:"Select a response option above"}</button>
       </div>
     </div>
   </div>);
 }
 
-// ── APP ───────────────────────────────────────────────────────────────────────
 export default function App(){
   const [tab,setTab]=useState("dashboard");
   const [selectedRec,setSelectedRec]=useState(null);
@@ -1109,17 +767,9 @@ export default function App(){
   const [persona,setPersona]=useState("plant_leader");
   const [personaOpen,setPersonaOpen]=useState(false);
   const personaRef=useRef(null);
-  useEffect(()=>{
-    const h=(e)=>{if(personaRef.current&&!personaRef.current.contains(e.target))setPersonaOpen(false);};
-    document.addEventListener("mousedown",h);return()=>document.removeEventListener("mousedown",h);
-  },[]);
+  useEffect(()=>{const h=(e)=>{if(personaRef.current&&!personaRef.current.contains(e.target))setPersonaOpen(false);};document.addEventListener("mousedown",h);return()=>document.removeEventListener("mousedown",h);},[]);
   const addRec=rec=>setRecs(prev=>[rec,...prev]);
-
-  const handleViewDashboardRec = (recId) => {
-    const rec = [...recs,...initialRecommendations].find(r=>r.id===recId);
-    if(rec){ setSelectedRec(rec); setTab("dashboard"); }
-  };
-
+  const handleViewDashboardRec=(recId)=>{const rec=[...recs,...initialRecommendations].find(r=>r.id===recId);if(rec){setSelectedRec(rec);setTab("dashboard");}};
   const personas=[{id:"plant_leader",label:"Plant Leader",avatar:"PL"},{id:"maint_manager",label:"Maintenance Manager",avatar:"MM"},{id:"scheduler",label:"Scheduler",avatar:"SC"},{id:"quality_manager",label:"Quality Manager",avatar:"QM"},{id:"safety_lead",label:"Safety Lead",avatar:"SL"}];
   const personaNav={plant_leader:["dashboard","actions","lineperf","quality","maintenance","assethealth","materials","schedule","labor","safety"],maint_manager:["dashboard","actions","lineperf","maintenance","assethealth","schedule"],scheduler:["dashboard","actions","schedule","materials","labor","lineperf"],quality_manager:["dashboard","actions","quality","materials","lineperf"],safety_lead:["dashboard","actions","safety","lineperf"]};
   const allNavItems=[{id:"dashboard",icon:"▦",label:"Summary Dashboard"},{id:"actions",icon:"☑",label:"Action Log"},{id:"lineperf",icon:"↗",label:"Line Performance"},{id:"quality",icon:"◎",label:"Quality Dashboard"},{id:"maintenance",icon:"⚙",label:"Maintenance Dashboard"},{id:"assethealth",icon:"♡",label:"Asset Health"},{id:"materials",icon:"▤",label:"Inbound Materials"},{id:"schedule",icon:"▦",label:"Production Schedule"},{id:"labor",icon:"♟",label:"Labor Scheduling"},{id:"safety",icon:"◬",label:"Safety & EHS"}];
@@ -1152,16 +802,12 @@ export default function App(){
     </div>
     <div style={{display:"flex",flex:1,overflow:"hidden"}}>
       <div style={{width:52,background:T.white,borderRight:`1px solid ${T.border}`,display:"flex",flexDirection:"column",alignItems:"center",paddingTop:8,flexShrink:0}}>
-        {allNavItems.map(item=>{
-          const isActive=tab===item.id; const isEnabled=activeNavIds.includes(item.id); const isBuilt=builtTabs.includes(item.id);
-          return(<div key={item.id} style={{position:"relative",width:"100%"}} title={`${item.label}${!isEnabled?" (not available for your role)":!isBuilt?" (coming soon)":""}`}>
-            <button onClick={()=>{if(isEnabled){setTab(item.id);setSelectedRec(null);}}}
-              style={{width:"100%",height:44,border:"none",cursor:isEnabled?"pointer":"default",background:isActive?T.primary+"18":"transparent",borderLeft:isActive?`3px solid ${T.primary}`:"3px solid transparent",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:600,color:isActive?T.primary:isEnabled?T.gray900:T.gray400,opacity:isEnabled?1:0.3}}>
-              {item.icon}
-              {item.id==="actions"&&isEnabled&&actionLog.filter(a=>a.status==="Open"||a.status==="In Progress").length>0&&<span style={{position:"absolute",top:6,right:6,width:7,height:7,borderRadius:"50%",background:T.negative,display:"block"}}/>}
-            </button>
-          </div>);
-        })}
+        {allNavItems.map(item=>{const isActive=tab===item.id;const isEnabled=activeNavIds.includes(item.id);return(<div key={item.id} style={{position:"relative",width:"100%"}} title={`${item.label}${!isEnabled?" (not available for your role)":""}`}>
+          <button onClick={()=>{if(isEnabled){setTab(item.id);setSelectedRec(null);}}} style={{width:"100%",height:44,border:"none",cursor:isEnabled?"pointer":"default",background:isActive?T.primary+"18":"transparent",borderLeft:isActive?`3px solid ${T.primary}`:"3px solid transparent",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:600,color:isActive?T.primary:isEnabled?T.gray900:T.gray400,opacity:isEnabled?1:0.3}}>
+            {item.icon}
+            {item.id==="actions"&&isEnabled&&actionLog.filter(a=>a.status==="Open"||a.status==="In Progress").length>0&&<span style={{position:"absolute",top:6,right:6,width:7,height:7,borderRadius:"50%",background:T.negative,display:"block"}}/>}
+          </button>
+        </div>);})}
         <div style={{marginTop:"auto",paddingBottom:12,display:"flex",flexDirection:"column",alignItems:"center",gap:5}}>
           <div style={{width:24,height:1,background:T.border,marginBottom:4}}/>
           {[{c:T.warning,l:"L1"},{c:T.positive,l:"L2"},{c:T.negative,l:"L3"}].map(l=>(<div key={l.l} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}><span style={{width:7,height:7,borderRadius:"50%",background:l.c,display:"inline-block"}}/><span style={{fontSize:8,color:T.gray400,fontWeight:700}}>{l.l}</span></div>))}
@@ -1173,17 +819,15 @@ export default function App(){
         {tab==="actions"&&<ActionLog/>}
         {tab==="lineperf"&&<LinePerformanceView/>}
         {tab==="schedule"&&<ProductionScheduleView onViewDashboardRec={handleViewDashboardRec}/>}
-        {tab==="chat"&&<Chat key="chat-stable" recs={recs} onAddRec={addRec} pendingRec={pendingChatRec} onSetPendingRec={setPendingChatRec}/>}
-        {!builtTabs.includes(tab)&&tab!=="chat"&&(
-          <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"60vh",gap:12}}>
-            <div style={{fontSize:40}}>{allNavItems.find(n=>n.id===tab)?.icon}</div>
-            <div style={{fontSize:16,fontWeight:800,color:T.black}}>{allNavItems.find(n=>n.id===tab)?.label}</div>
-            <div style={{fontSize:13,color:T.gray900}}>This view is part of the full vision — coming in a future build.</div>
-            <div style={{background:T.primary+"12",border:`1px solid ${T.primary}30`,borderRadius:4,padding:"10px 20px",fontSize:12,color:T.primary,fontWeight:600}}>💬 Use Scenario Simulation to ask questions about this domain</div>
-          </div>
-        )}
+        {tab==="chat"&&<Chat recs={recs} onAddRec={addRec}/>}
+        {!builtTabs.includes(tab)&&tab!=="chat"&&(<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"60vh",gap:12}}>
+          <div style={{fontSize:40}}>{allNavItems.find(n=>n.id===tab)?.icon}</div>
+          <div style={{fontSize:16,fontWeight:800,color:T.black}}>{allNavItems.find(n=>n.id===tab)?.label}</div>
+          <div style={{fontSize:13,color:T.gray900}}>This view is part of the full vision — coming in a future build.</div>
+          <div style={{background:T.primary+"12",border:`1px solid ${T.primary}30`,borderRadius:4,padding:"10px 20px",fontSize:12,color:T.primary,fontWeight:600}}>💬 Use Scenario Simulation to ask questions about this domain</div>
+        </div>)}
       </div>
     </div>
-            {showDisruption&&<DisruptionModal onClose={()=>{setShowDisruption(false);setDisruptionActive(false);}} onAddRec={addRec}/>}
+    {showDisruption&&<DisruptionModal onClose={()=>{setShowDisruption(false);setDisruptionActive(false);}} onAddRec={addRec}/>}
   </div>);
 }
