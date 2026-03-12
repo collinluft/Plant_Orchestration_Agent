@@ -265,8 +265,8 @@ function recVisibleToPersona(rec, persona) {
 const VALID_AGENTS_LIST = "Asset Health Monitoring Agent, Maintenance Planning & Scheduling Agent, Technician Co-Pilot, Maintenance Strategy Agent, Scheduling Agent, Planning Agent, Supervisor & Operator Co-Pilot, Quality Monitoring Agent, Inbound Materials Agent, Final Quality Agent, Setpoint & Recipe Optimization Agent, Root Cause Analysis Agent, Safety Agent, Plant Orchestration Agent";
 
 const SYSTEM_PROMPT_BASE = `You are the Plant Orchestration Agent for Austin Plant, a snack food manufacturing facility with 3 production lines. You have full visibility across Safety, Quality, Production, Maintenance, and Planning & Scheduling.
-PLANT DATA: ${JSON.stringify(lineData)}
-DISRUPTION: ${JSON.stringify(disruptionAlert)}
+PLANT DATA: ${JSON.stringify(lineData).substring(0,3000)}
+DISRUPTION: ${JSON.stringify(disruptionAlert).substring(0,1000)}
 SKUs: SKU 3801 requires heat sealer. SKU 2204 uses crimped seal (no sealer needed), materials in stock. SKU 3802 standard chips, in stock. SKU 4412 needs seasoning blend Lot #SB-2291 (out of spec).
 TODAY: Friday Feb 28, 2026 — 7:00am DDS
 Be direct, concise, use lean manufacturing language.
