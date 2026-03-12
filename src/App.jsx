@@ -694,7 +694,7 @@ function Chat({recs, onAddRec}){
     try{
       const history=[...msgs.slice(1),userMsg].map(m=>({role:m.role,content:m.content}));
       const sys=SYSTEM_PROMPT_BASE+`\nACTIVE RECOMMENDATIONS: ${JSON.stringify(recs.map(r=>({id:r.id,title:r.title,priority:r.priority,summary:r.summary})))}`;
-      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":import.meta.env.VITE_ANTHROPIC_API_KEY,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1500,system:sys,messages:history})});
+      const res=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1500,system:sys,messages:history})});
       const data=await res.json();
       const raw=data.content?.[0]?.text||"No response.";
       const rec=parseRec(raw);
