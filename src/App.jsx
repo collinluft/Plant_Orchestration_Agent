@@ -173,8 +173,28 @@ function Section({title,subtitle,icon,count,countColor,defaultOpen=true,children
   );
 }
 
+// ── PROMETHEUS INTEGRATION BANNER ────────────────────────────────────────────
+function PrometheusBanner({entity="data"}){
+  return(
+    <div style={{background:"#EEF2FF",border:`1px solid #C7D2FE`,borderRadius:4,padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+      <div style={{display:"flex",alignItems:"center",gap:10}}>
+        <div style={{width:8,height:8,borderRadius:"50%",background:"#4F46E5",boxShadow:"0 0 0 2px #C7D2FE"}}/>
+        <div>
+          <span style={{fontSize:12,fontWeight:700,color:"#3730A3"}}>🔗 Live from Prometheus CMMS</span>
+          <span style={{fontSize:11,color:"#6366F1",marginLeft:8}}>Last synced 7:02am · {entity} pulled directly from your system of record</span>
+        </div>
+      </div>
+      <div style={{display:"flex",alignItems:"center",gap:8}}>
+        <span style={{fontSize:11,color:"#6366F1"}}>Agents read from Prometheus — recommendations surface here</span>
+        <button style={{background:"#4F46E5",color:"#FFFFFF",border:"none",borderRadius:4,padding:"4px 12px",fontSize:11,fontWeight:700,cursor:"pointer"}}>Open Prometheus →</button>
+      </div>
+    </div>
+  );
+}
+
 // ── MAINTENANCE DASHBOARD ─────────────────────────────────────────────────────
 function MaintenanceDashboard({onSelectRec}){
+  const [activeTab,setActiveTab]=useState("overview");
   const [appliedWOs,setAppliedWOs]=useState({});
   const [appliedPOs,setAppliedPOs]=useState({});
   const [pmFilter,setPmFilter]=useState("Action Required");
@@ -193,322 +213,403 @@ function MaintenanceDashboard({onSelectRec}){
   const alertAssets=maintAssets.filter(a=>a.healthScore<80||a.failureRisk==="Critical"||a.failureRisk==="High"||a.trend==="Degrading"||a.trend==="Unknown");
   const displayPMs=pmFilter==="Action Required"?pmSchedule.filter(p=>p.status==="Overdue"||p.status==="No Program"||p.status==="Upcoming"):pmSchedule;
 
-  return(<div>
+  const TABS=[
+    {id:"overview",label:"Overview",icon:"▦",alert:crossDomainMaintRecs.length+maintOnlyRecs.length},
+    {id:"workorders",label:"Work Orders",icon:"📋",alert:attentionWOs.length},
+    {id:"technicians",label:"Technicians",icon:"👷",alert:maintTechnicians.filter(t=>t.utilization<30).length},
+    {id:"assets",label:"Asset Health",icon:"📡",alert:alertAssets.length},
+    {id:"parts",label:"Spare Parts",icon:"📦",alert:stockIssues.filter(p=>p.status==="Stock-Out").length},
+    {id:"pm",label:"PM Schedule",icon:"🗓",alert:pmSchedule.filter(p=>p.status==="Overdue"||p.status==="No Program").length},
+    {id:"strategy",label:"Strategy",icon:"⚙️",alert:changeAssets.length},
+    {id:"performance",label:"Performance",icon:"📊",alert:techPerformance.filter(t=>t.coachingSuggestions.length>0).length},
+  ];
+
+  const Tab=({tab})=>{
+    const isActive=activeTab===tab.id;
+    const alertColor=tab.alert>0?(tab.id==="overview"?T.negative:tab.id==="technicians"?T.warning:T.negative):null;
+    return(
+      <button onClick={()=>setActiveTab(tab.id)} style={{display:"flex",alignItems:"center",gap:6,padding:"12px 16px",border:"none",borderBottom:isActive?`2px solid ${T.primary}`:"2px solid transparent",background:"transparent",cursor:"pointer",fontWeight:isActive?800:500,fontSize:12,color:isActive?T.primary:T.gray900,whiteSpace:"nowrap",position:"relative"}}>
+        <span>{tab.icon}</span>
+        <span>{tab.label}</span>
+        {tab.alert>0&&<span style={{background:alertColor||T.negative,color:T.white,borderRadius:10,padding:"1px 6px",fontSize:10,fontWeight:800,minWidth:16,textAlign:"center"}}>{tab.alert}</span>}
+      </button>
+    );
+  };
+
+  return(<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
     {/* Header */}
-    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px"}}>
-      <div style={{fontSize:18,fontWeight:800,color:T.black}}>Maintenance Dashboard</div>
-      <div style={{fontSize:12,color:T.gray900,marginTop:2}}>Austin Plant · Feb 28, 2026 · Good morning, Carlos 👋</div>
+    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px 0",flexShrink:0}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+        <div>
+          <div style={{fontSize:18,fontWeight:800,color:T.black}}>Maintenance Dashboard</div>
+          <div style={{fontSize:12,color:T.gray900,marginTop:2}}>Austin Plant · Feb 28, 2026 · Good morning, Carlos 👋</div>
+        </div>
+      </div>
+      {/* Tab bar */}
+      <div style={{display:"flex",gap:0,overflowX:"auto"}}>
+        {TABS.map(t=><Tab key={t.id} tab={t}/>)}
+      </div>
     </div>
 
-    <div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16,background:T.gray100}}>
+    {/* Tab content */}
+    <div style={{flex:1,overflowY:"auto",background:T.gray100}}>
 
-      {/* ── KPI STRIP ── */}
-      <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-        {[
-          {label:"Open Work Orders",value:6,sub:"2 unassigned",color:T.negative},
-          {label:"Overdue PMs",value:2,sub:"Line 3 sealer, Line 2 tunnel filters",color:T.negative},
-          {label:"Planned vs Unplanned",value:"58%",sub:"planned · target 80%",color:T.negative},
-          {label:"Avg Technician Utilization",value:"27%",sub:"across 4 technicians",color:T.negative},
-          {label:"Assets at Risk",value:3,sub:"Critical or High failure risk",color:T.negative},
-          {label:"Parts Stock-Outs",value:3,sub:"2 blocking active WOs",color:T.negative},
-        ].map(k=>(<div key={k.label} style={{flex:1,minWidth:120,background:T.white,borderRadius:4,borderLeft:`4px solid ${k.color}`,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",padding:"10px 14px"}}>
-          <div style={{fontSize:10,color:T.gray900,fontWeight:600,marginBottom:4}}>{k.label}</div>
-          <div style={{fontSize:20,fontWeight:800,color:k.color}}>{k.value}</div>
-          <div style={{fontSize:10,color:T.gray400,marginTop:2}}>{k.sub}</div>
-        </div>))}
-      </div>
-
-      {/* ── ORCHESTRATOR RECOMMENDATIONS ── */}
-      <Section title="Maintenance Orchestrator — Prioritised Recommendations" subtitle="Cross-domain and maintenance-specific actions requiring attention today" icon="🌐" count={crossDomainMaintRecs.length+maintOnlyRecs.length} countColor={T.negative}>
-        <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:12}}>
-          {/* Cross-domain */}
-          <div style={{fontSize:11,fontWeight:800,color:T.primary,textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:2}}>🌐 From Plant Orchestration Agent — Cross-Domain</div>
-          {crossDomainMaintRecs.map(r=>(<div key={r.id} onClick={()=>onSelectRec(r)} style={{background:T.gray100,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,padding:"12px 16px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
-            <div style={{flex:1}}>
-              <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label="Cross-Domain" color={T.primary}/>{r.agents.slice(0,2).map(a=><Badge key={a} label={a} color={T.neutral}/>)}</div>
-              <div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:3}}>{r.title}</div>
-              <div style={{fontSize:12,color:T.gray900}}>{r.summary}</div>
-              <div style={{fontSize:12,color:T.primary,fontWeight:600,marginTop:4}}>💡 {r.suggestedAction}</div>
-            </div>
-            <div style={{fontSize:12,color:T.primary,fontWeight:700,whiteSpace:"nowrap"}}>View Detail →</div>
-          </div>))}
-          {/* Maintenance-only */}
-          <div style={{fontSize:11,fontWeight:800,color:"#673AB7",textTransform:"uppercase",letterSpacing:"0.05em",marginTop:4,marginBottom:2}}>⚙️ Maintenance Orchestrator</div>
-          {maintOnlyRecs.map(r=>(<div key={r.id} onClick={()=>onSelectRec(r)} style={{background:T.gray100,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,padding:"12px 16px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
-            <div style={{flex:1}}>
-              <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label="Maintenance" color="#673AB7"/>{r.agents.map(a=><Badge key={a} label={a} color={T.neutral}/>)}</div>
-              <div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:3}}>{r.icon} {r.title}</div>
-              <div style={{fontSize:12,color:T.gray900}}>{r.summary}</div>
-              <div style={{fontSize:12,color:"#673AB7",fontWeight:600,marginTop:4}}>💡 {r.suggestedAction}</div>
-            </div>
-            <div style={{fontSize:12,color:"#673AB7",fontWeight:700,whiteSpace:"nowrap"}}>View Detail →</div>
+      {/* ── OVERVIEW TAB ── */}
+      {activeTab==="overview"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+        {/* KPI strip */}
+        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+          {[
+            {label:"Open Work Orders",value:6,sub:"2 unassigned",color:T.negative,tab:"workorders"},
+            {label:"Overdue PMs",value:2,sub:"Line 3 sealer, Line 2 tunnel",color:T.negative,tab:"pm"},
+            {label:"Planned vs Unplanned",value:"58%",sub:"planned · target 80%",color:T.negative,tab:"workorders"},
+            {label:"Avg Technician Utilization",value:"27%",sub:"across 4 technicians",color:T.negative,tab:"technicians"},
+            {label:"Assets at Risk",value:3,sub:"Critical or High failure risk",color:T.negative,tab:"assets"},
+            {label:"Parts Stock-Outs",value:3,sub:"2 blocking active WOs",color:T.negative,tab:"parts"},
+          ].map(k=>(<div key={k.label} onClick={()=>setActiveTab(k.tab)} style={{flex:1,minWidth:120,background:T.white,borderRadius:4,borderLeft:`4px solid ${k.color}`,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",padding:"10px 14px",cursor:"pointer"}}>
+            <div style={{fontSize:10,color:T.gray900,fontWeight:600,marginBottom:4}}>{k.label}</div>
+            <div style={{fontSize:20,fontWeight:800,color:k.color}}>{k.value}</div>
+            <div style={{fontSize:10,color:T.gray400,marginTop:2}}>{k.sub}</div>
+            <div style={{fontSize:10,color:T.primary,marginTop:4,fontWeight:600}}>View details →</div>
           </div>))}
         </div>
-        <ViewAllBtn label="View All Recommendations →" total={crossDomainMaintRecs.length+maintOnlyRecs.length}/>
-      </Section>
-
-      {/* ── SECTION 1: WORK ORDERS ── */}
-      <Section title="Open Work Orders" subtitle="Showing work orders needing attention — unassigned, overdue, or agent-flagged" icon="📋" count={attentionWOs.length} countColor={T.negative}>
-        <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:10}}>
-          {attentionWOs.map(wo=>(
-            <div key={wo.id} style={{background:T.gray100,borderRadius:4,borderLeft:`4px solid ${wo.priority==="Critical"?T.negative:wo.priority==="High"?T.warning:wo.priority==="Medium"?T.info:T.neutral}`,padding:"12px 16px"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
-                <div style={{flex:1}}>
-                  <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
-                    <span style={{fontSize:12,fontWeight:800,color:T.black}}>{wo.id}</span>
-                    <Badge label={wo.priority} color={wo.priority==="Critical"?T.negative:wo.priority==="High"?T.warning:wo.priority==="Medium"?T.info:T.neutral}/>
-                    <Badge label={wo.type} color={wo.type==="Corrective"?T.negative:T.primary}/>
-                    <Badge label={wo.status} color={statusColor(wo.status)}/>
-                  </div>
-                  <div style={{fontSize:12,fontWeight:700,color:T.black,marginBottom:2}}>{wo.asset} — {wo.line}</div>
-                  <div style={{fontSize:11,color:T.gray900,marginBottom:4}}>{wo.description}</div>
-                  <div style={{display:"flex",gap:12,fontSize:11,color:T.gray900,flexWrap:"wrap"}}>
-                    <span>👤 {wo.assignedTo?wo.assignedTo:<span style={{color:T.negative,fontWeight:700}}>⚠ Unassigned</span>}</span>
-                    <span>⏱ Est: {wo.estimatedHrs}h{wo.actualHrs>0?` · Actual: ${wo.actualHrs}h`:""}</span>
-                    <span>📅 Due: {wo.dueDate}</span>
-                  </div>
-                </div>
+        {/* Cross-domain recs */}
+        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+          <div style={{background:T.primary,padding:"12px 20px",borderRadius:"4px 4px 0 0",display:"flex",alignItems:"center",gap:10}}>
+            <span style={{fontSize:14}}>🌐</span>
+            <div>
+              <div style={{fontSize:13,fontWeight:800,color:T.white}}>Plant Orchestration Agent — Cross-Domain Recommendations</div>
+              <div style={{fontSize:11,color:"#ffffff99",marginTop:1}}>Issues where maintenance intersects with production, quality, or safety</div>
+            </div>
+          </div>
+          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:10}}>
+            {crossDomainMaintRecs.map(r=>(<div key={r.id} onClick={()=>onSelectRec(r)} style={{background:T.gray100,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,padding:"12px 16px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+              <div style={{flex:1}}>
+                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label="Cross-Domain" color={T.primary}/>{r.agents.slice(0,2).map(a=><Badge key={a} label={a} color={T.neutral}/>)}</div>
+                <div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:3}}>{r.title}</div>
+                <div style={{fontSize:12,color:T.gray900}}>{r.summary}</div>
+                <div style={{fontSize:12,color:T.primary,fontWeight:600,marginTop:4}}>💡 {r.suggestedAction}</div>
               </div>
-              {wo.agentSuggestion&&!appliedWOs[wo.id]&&(
-                <div style={{marginTop:10,background:T.white,border:`1px solid ${T.primary}40`,borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"8px 12px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
+              <div style={{fontSize:12,color:T.primary,fontWeight:700,whiteSpace:"nowrap"}}>View Detail →</div>
+            </div>))}
+          </div>
+          <ViewAllBtn label="View All Recommendations →" total={crossDomainMaintRecs.length+maintOnlyRecs.length}/>
+        </div>
+        {/* Maintenance-only recs */}
+        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+          <div style={{background:"#673AB7",padding:"12px 20px",borderRadius:"4px 4px 0 0",display:"flex",alignItems:"center",gap:10}}>
+            <span style={{fontSize:14}}>⚙️</span>
+            <div>
+              <div style={{fontSize:13,fontWeight:800,color:T.white}}>Maintenance Orchestrator — Maintenance Recommendations</div>
+              <div style={{fontSize:11,color:"#ffffff99",marginTop:1}}>Synthesised from Strategy Agent, Asset Health Agent, and Planning & Scheduling Agent</div>
+            </div>
+          </div>
+          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:10}}>
+            {maintOnlyRecs.map(r=>(<div key={r.id} onClick={()=>onSelectRec(r)} style={{background:T.gray100,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,padding:"12px 16px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+              <div style={{flex:1}}>
+                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label="Maintenance" color="#673AB7"/>{r.agents.map(a=><Badge key={a} label={a} color={T.neutral}/>)}</div>
+                <div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:3}}>{r.icon} {r.title}</div>
+                <div style={{fontSize:12,color:T.gray900}}>{r.summary}</div>
+                <div style={{fontSize:12,color:"#673AB7",fontWeight:600,marginTop:4}}>💡 {r.suggestedAction}</div>
+              </div>
+              <div style={{fontSize:12,color:"#673AB7",fontWeight:700,whiteSpace:"nowrap"}}>View Detail →</div>
+            </div>))}
+          </div>
+          <ViewAllBtn label="View All Recommendations →" total={crossDomainMaintRecs.length+maintOnlyRecs.length}/>
+        </div>
+      </div>}
+
+      {/* ── WORK ORDERS TAB ── */}
+      {activeTab==="workorders"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div>
+              <div style={{fontSize:13,fontWeight:800,color:T.black}}>📋 Work Orders — Requiring Attention</div>
+              <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Unassigned, overdue, or agent-flagged · {attentionWOs.length} of {maintWorkOrders.length} total</div>
+            </div>
+          </div>
+          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:10}}>
+            {attentionWOs.map(wo=>(
+              <div key={wo.id} style={{background:T.gray100,borderRadius:4,borderLeft:`4px solid ${wo.priority==="Critical"?T.negative:wo.priority==="High"?T.warning:wo.priority==="Medium"?T.info:T.neutral}`,padding:"12px 16px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
                   <div style={{flex:1}}>
-                    <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:2}}>🧠 Maintenance Planning & Scheduling Agent</div>
-                    <div style={{fontSize:11,color:T.black}}>{wo.agentSuggestion}</div>
-                  </div>
-                  <button onClick={()=>assignWO(wo.id)} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"5px 12px",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>Apply</button>
-                </div>
-              )}
-              {appliedWOs[wo.id]&&<div style={{marginTop:8,background:"#F0FDF4",border:`1px solid ${T.positive}`,borderRadius:4,padding:"6px 12px"}}><span style={{fontSize:11,fontWeight:700,color:T.positive}}>✅ Assignment applied — technician notified via Co-Pilot</span></div>}
-            </div>
-          ))}
-        </div>
-        <ViewAllBtn label="View All Work Orders →" total={maintWorkOrders.length}/>
-      </Section>
-
-      {/* ── SECTION 2: TECHNICIAN LOAD ── */}
-      <Section title="Technician Load & Assignments" subtitle="Today's capacity, current jobs, and agent-recommended reallocation" icon="👷" count={maintTechnicians.filter(t=>t.utilization<30).length} countColor={T.warning}>
-        <div style={{padding:"16px 20px",display:"flex",gap:12,flexWrap:"wrap"}}>
-          {maintTechnicians.map(t=>{
-            const utilColor=t.utilization>=70?T.positive:t.utilization>=40?T.warning:T.negative;
-            const hasAgentFlag=t.utilization<30;
-            return(<div key={t.name} style={{flex:"1 1 200px",background:T.gray100,borderRadius:4,borderLeft:`4px solid ${utilColor}`,padding:"12px 14px"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                <div>
-                  <div style={{fontSize:12,fontWeight:800,color:T.black}}>{t.name}</div>
-                  <div style={{fontSize:10,color:T.gray900}}>{t.role}</div>
-                </div>
-                <Badge label={t.status} color={t.status==="On Job"?T.info:t.status==="Available"?T.positive:T.negative}/>
-              </div>
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-                <span style={{fontSize:11,color:T.gray900}}>Utilization</span>
-                <span style={{fontSize:13,fontWeight:800,color:utilColor}}>{t.utilization}%</span>
-              </div>
-              <div style={{height:6,background:T.border,borderRadius:3,marginBottom:8}}>
-                <div style={{height:6,width:`${t.utilization}%`,background:utilColor,borderRadius:3}}/>
-              </div>
-              <div style={{fontSize:11,color:T.gray900,marginBottom:4}}>{t.allocatedHrs}h allocated · <strong>{t.availableHrs}h free</strong> today</div>
-              <div style={{fontSize:10,color:T.gray400,marginBottom:6}}>Certified: {t.certifications.join(", ")}</div>
-              {t.currentWOs.length>0&&<div style={{fontSize:11,color:T.gray900,marginBottom:4}}>Active: {t.currentWOs.join(", ")}</div>}
-              {hasAgentFlag&&<div style={{background:T.warning+"18",border:`1px solid ${T.warning}40`,borderRadius:3,padding:"4px 8px",fontSize:10,fontWeight:700,color:T.warning}}>⚠ Under-utilised — agent has reallocation suggestion above</div>}
-            </div>);
-          })}
-        </div>
-        <ViewAllBtn label="View Full Technician Schedule →" total={maintTechnicians.length}/>
-      </Section>
-
-      {/* ── SECTION 3: ASSET HEALTH ── */}
-      <Section title="Critical Assets & Health Alerts" subtitle="Assets with active degradation signals or high failure risk" icon="📡" count={alertAssets.length} countColor={T.negative}>
-        <div style={{padding:"16px 20px",display:"flex",gap:12,flexWrap:"wrap"}}>
-          {alertAssets.map(a=>(
-            <div key={a.id} style={{flex:"1 1 200px",background:T.gray100,borderRadius:4,borderTop:`4px solid ${healthColor(a.healthScore)}`,padding:"12px 14px"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
-                <div style={{fontSize:12,fontWeight:800,color:T.black,flex:1,paddingRight:8}}>{a.name}</div>
-                <div style={{textAlign:"right"}}>
-                  <div style={{fontSize:22,fontWeight:900,color:healthColor(a.healthScore),lineHeight:1}}>{a.healthScore}</div>
-                  <div style={{fontSize:9,color:T.gray400}}>Health Score</div>
-                </div>
-              </div>
-              <div style={{height:4,background:T.border,borderRadius:2,marginBottom:8}}>
-                <div style={{height:4,width:`${a.healthScore}%`,background:healthColor(a.healthScore),borderRadius:2}}/>
-              </div>
-              <div style={{display:"flex",flexDirection:"column",gap:4}}>
-                <div style={{display:"flex",justifyContent:"space-between",fontSize:11}}><span style={{color:T.gray900}}>Vibration</span><span style={{fontWeight:700,color:a.vibration>=7?T.negative:a.vibration>=5?T.warning:T.positive}}>{a.vibration}<span style={{color:T.gray400,fontWeight:400}}>/7.0</span></span></div>
-                <div style={{display:"flex",justifyContent:"space-between",fontSize:11}}><span style={{color:T.gray900}}>Temp Variance</span><span style={{fontWeight:700,color:a.tempVariance>=5?T.negative:a.tempVariance>=3?T.warning:T.positive}}>±{a.tempVariance}°C</span></div>
-                <div style={{display:"flex",justifyContent:"space-between",fontSize:11}}><span style={{color:T.gray900}}>Next PM</span><span style={{fontWeight:700,color:a.nextPM==="Overdue"||a.nextPM==="Not scheduled"||a.nextPM==="Never"?T.negative:T.gray900}}>{a.nextPM}</span></div>
-              </div>
-              <div style={{marginTop:8,display:"flex",gap:4,flexWrap:"wrap"}}>
-                <Badge label={a.trend} color={a.trend==="Degrading"?T.negative:a.trend==="Unknown"?T.warning:T.positive}/>
-                <Badge label={`${a.failureRisk} Risk`} color={a.failureRisk==="Critical"?T.negative:a.failureRisk==="High"?T.warning:T.positive}/>
-              </div>
-            </div>
-          ))}
-        </div>
-        <ViewAllBtn label="View All Assets →" total={maintAssets.length}/>
-      </Section>
-
-      {/* ── SECTION 4: SPARE PARTS ── */}
-      <Section title="Spare Parts — Stock-Outs & Low Stock" subtitle="Parts at zero or below minimum — showing blocked work orders and agent PO recommendations" icon="📦" count={stockIssues.filter(p=>p.status==="Stock-Out").length} countColor={T.negative}>
-        <div style={{overflowX:"auto"}}>
-          <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-            <thead><tr style={{background:T.gray100}}>
-              {["Part","Part No.","Asset / Line","Stock","Status","Blocking WOs","Supplier","Lead Time","Agent Recommendation","Action"].map(h=>(<th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>))}
-            </tr></thead>
-            <tbody>{stockIssues.map((p,i)=>(<tr key={p.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
-              <td style={{padding:"10px 14px",fontWeight:700,color:T.black}}>{p.name}</td>
-              <td style={{padding:"10px 14px",color:T.gray400,fontFamily:"monospace",fontSize:11}}>{p.partNo}</td>
-              <td style={{padding:"10px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{p.asset}<br/><span style={{fontSize:10,color:T.gray400}}>{p.line}</span></td>
-              <td style={{padding:"10px 14px",fontWeight:800,color:p.stock===0?T.negative:T.warning}}>{p.stock} units</td>
-              <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}><Badge label={p.status} color={p.status==="Stock-Out"?T.negative:p.status==="Low Stock"?T.warning:T.info}/></td>
-              <td style={{padding:"10px 14px"}}>
-                {p.blockedWOs.length>0?p.blockedWOs.map(wo=><div key={wo} style={{fontSize:11,color:T.negative,fontWeight:700}}>⚠ {wo}</div>):<span style={{fontSize:11,color:T.gray400}}>None</span>}
-              </td>
-              <td style={{padding:"10px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{p.supplier}</td>
-              <td style={{padding:"10px 14px",color:T.gray900,whiteSpace:"nowrap"}}>
-                <div style={{fontSize:11}}>Standard: {p.leadTimeDays}d</div>
-                {p.emergencyLeadTimeDays&&<div style={{fontSize:11,color:T.warning}}>Emergency: {p.emergencyLeadTimeDays}d (${p.emergencyUnitCost}/unit)</div>}
-              </td>
-              <td style={{padding:"10px 14px",fontSize:11,color:T.gray900,maxWidth:200}}>{p.agentRec}</td>
-              <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}>
-                {p.poRaised?<Badge label="✓ PO Raised" color={T.positive}/>:
-                appliedPOs[p.id]?<Badge label="✓ PO Raised" color={T.positive}/>:
-                p.emergencyLeadTimeDays?<button onClick={()=>raisePO(p.id)} style={{background:T.negative,color:T.white,border:"none",borderRadius:4,padding:"5px 10px",fontSize:11,fontWeight:700,cursor:"pointer"}}>Raise Emergency PO</button>:
-                <button onClick={()=>raisePO(p.id)} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"5px 10px",fontSize:11,fontWeight:700,cursor:"pointer"}}>Raise PO</button>}
-              </td>
-            </tr>))}</tbody>
-          </table>
-        </div>
-        <ViewAllBtn label="View Full Parts Catalog →" total={spareParts.length}/>
-      </Section>
-
-      {/* ── SECTION 5: PM SCHEDULE ── */}
-      <Section title="Preventive Maintenance Schedule" subtitle="Upcoming, overdue, and program-less assets needing attention" icon="🗓" count={pmSchedule.filter(p=>p.status==="Overdue"||p.status==="No Program").length} countColor={T.negative}>
-        <div style={{padding:"14px 20px 0",display:"flex",justifyContent:"flex-end",gap:4}}>
-          {["Action Required","All PMs"].map(f=>(<button key={f} onClick={()=>setPmFilter(f)} style={{padding:"4px 10px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",border:`1px solid ${pmFilter===f?T.primary:T.border}`,background:pmFilter===f?T.primary:T.white,color:pmFilter===f?T.white:T.gray900}}>{f}</button>))}
-        </div>
-        <div style={{overflowX:"auto"}}>
-          <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-            <thead><tr style={{background:T.gray100}}>
-              {["Asset","Line","PM Interval","Last PM","Next PM","Status","WO Coverage","Agent Note"].map(h=>(<th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>))}
-            </tr></thead>
-            <tbody>{displayPMs.map((p,i)=>(<tr key={p.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
-              <td style={{padding:"9px 14px",fontWeight:700,color:T.black,whiteSpace:"nowrap"}}>{p.asset}</td>
-              <td style={{padding:"9px 14px",color:T.gray900}}>{p.line}</td>
-              <td style={{padding:"9px 14px",color:T.gray900}}>{p.interval}</td>
-              <td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{p.lastPM}</td>
-              <td style={{padding:"9px 14px",fontWeight:700,color:p.status==="Overdue"||p.status==="No Program"?T.negative:T.gray900,whiteSpace:"nowrap"}}>{p.nextPM}{p.daysOverdue&&<span style={{color:T.negative,fontSize:10,marginLeft:4}}>({p.daysOverdue}d overdue)</span>}</td>
-              <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}><Badge label={p.status} color={pmStatusColor(p.status)}/></td>
-              <td style={{padding:"9px 14px",fontSize:11,color:p.woCoverage?T.primary:T.gray400}}>{p.woCoverage||"No WO raised"}</td>
-              <td style={{padding:"9px 14px",fontSize:11,color:T.gray900,maxWidth:200}}>{p.notes}</td>
-            </tr>))}</tbody>
-          </table>
-        </div>
-        <ViewAllBtn label="View Full PM Schedule →" total={pmSchedule.length}/>
-      </Section>
-
-      {/* ── SECTION 6: STRATEGY ── */}
-      <Section title="Maintenance Strategy — Assets Requiring Strategy Change" subtitle="Only showing assets where agent recommends a change — toggle to see all" icon="⚙️" count={changeAssets.length} countColor={T.warning}>
-        <div style={{overflowX:"auto"}}>
-          <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-            <thead><tr style={{background:T.gray100}}>
-              {["Asset","Line","Criticality","Failure Impact","Current Strategy","Recommended Change","Reason"].map(h=>(<th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>))}
-            </tr></thead>
-            <tbody>{changeAssets.map((a,i)=>(<tr key={a.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
-              <td style={{padding:"10px 14px",fontWeight:700,color:T.black,whiteSpace:"nowrap"}}>{a.name}</td>
-              <td style={{padding:"10px 14px",color:T.gray900}}>{a.line}</td>
-              <td style={{padding:"10px 14px"}}><Badge label={a.criticality} color={critColor(a.criticality)}/></td>
-              <td style={{padding:"10px 14px",fontSize:11,color:T.gray900,lineHeight:1.6}}>
-                <span style={{color:a.safetyImpact!=="Low"?T.warning:T.gray400}}>Safety: {a.safetyImpact}</span>{" · "}
-                <span style={{color:a.qualityImpact==="High"?T.negative:T.gray900}}>Quality: {a.qualityImpact}</span>{" · "}
-                <span style={{color:a.productionImpact==="High"?T.negative:T.gray900}}>Prod: {a.productionImpact}</span>
-                <div style={{color:T.gray400}}>Failure cost: <strong style={{color:a.failureCost>10000?T.negative:T.gray900}}>${a.failureCost.toLocaleString()}</strong></div>
-              </td>
-              <td style={{padding:"10px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{a.currentStrategy}</td>
-              <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}><Badge label={a.agentRec} color={recColor(a.agentRec)}/></td>
-              <td style={{padding:"10px 14px",maxWidth:240,fontSize:11,color:T.gray900,lineHeight:1.5}}>{a.recReason}</td>
-            </tr>))}</tbody>
-          </table>
-        </div>
-        <ViewAllBtn label="View All Assets →" total={maintAssets.length}/>
-      </Section>
-
-      {/* ── SECTION 7: TECHNICIAN PERFORMANCE ── */}
-      <Section title="Technician Performance & Coaching" subtitle="On-time completion rate, efficiency vs. estimate, and Co-Pilot coaching suggestions" icon="📊" count={techPerformance.filter(t=>t.coachingSuggestions.length>0).length} countColor={T.warning}>
-        <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:16}}>
-          {techPerformance.map(t=>(
-            <div key={t.name} style={{background:T.gray100,borderRadius:4,padding:"14px 16px"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap",marginBottom:12}}>
-                {/* Technician header */}
-                <div style={{display:"flex",alignItems:"center",gap:10}}>
-                  <div style={{width:36,height:36,borderRadius:"50%",background:T.primary,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,color:T.white,flexShrink:0}}>{t.avatar}</div>
-                  <div>
-                    <div style={{fontSize:13,fontWeight:800,color:T.black}}>{t.name}</div>
-                    <div style={{fontSize:11,color:T.gray900}}>{t.role}</div>
-                  </div>
-                </div>
-                {/* KPI row */}
-                <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
-                  <div style={{textAlign:"center"}}>
-                    <div style={{fontSize:10,color:T.gray900,marginBottom:2}}>WOs Completed</div>
-                    <div style={{fontSize:16,fontWeight:800,color:t.thisWeek.completed>=t.thisWeek.target?T.positive:T.warning}}>{t.thisWeek.completed}<span style={{fontSize:11,color:T.gray400,fontWeight:400}}>/{t.thisWeek.target}</span></div>
-                  </div>
-                  <div style={{textAlign:"center"}}>
-                    <div style={{fontSize:10,color:T.gray900,marginBottom:2}}>On-Time Rate</div>
-                    <div style={{fontSize:16,fontWeight:800,color:t.thisWeek.onTime/Math.max(t.thisWeek.completed,1)>=0.8?T.positive:T.warning}}>{Math.round(t.thisWeek.onTime/Math.max(t.thisWeek.completed,1)*100)}%</div>
-                  </div>
-                  <div style={{textAlign:"center"}}>
-                    <div style={{fontSize:10,color:T.gray900,marginBottom:2}}>Avg Efficiency</div>
-                    <div style={{fontSize:16,fontWeight:800,color:effColor(t.efficiency.avgActualVsEstimate)}}>{t.efficiency.avgActualVsEstimate}x</div>
-                    <div style={{fontSize:9,color:T.gray400}}>actual vs. est.</div>
-                  </div>
-                  <div style={{textAlign:"center"}}>
-                    <div style={{fontSize:10,color:T.gray900,marginBottom:2}}>Trend</div>
-                    <div style={{fontSize:12,fontWeight:700,color:t.efficiency.trend==="Improving"?T.positive:t.efficiency.trend==="Stable"?T.info:T.negative}}>{t.efficiency.trend==="Improving"?"↑ Improving":t.efficiency.trend==="Stable"?"→ Stable":t.efficiency.trend==="Declining"?"↓ Declining":"⚠ Needs Support"}</div>
-                  </div>
-                </div>
-              </div>
-              {/* Recent WOs mini table */}
-              <div style={{marginBottom:t.coachingSuggestions.length>0?12:0}}>
-                <div style={{fontSize:11,fontWeight:700,color:T.gray900,marginBottom:6}}>This Week's Work Orders</div>
-                <div style={{display:"flex",flexDirection:"column",gap:3}}>
-                  {t.wosThisWeek.map(wo=>(
-                    <div key={wo.id} style={{display:"flex",gap:8,alignItems:"center",fontSize:11,background:T.white,borderRadius:3,padding:"5px 10px"}}>
-                      <span style={{fontWeight:700,color:T.black,minWidth:70}}>{wo.id}</span>
-                      <span style={{flex:1,color:T.gray900}}>{wo.asset}</span>
-                      <span style={{color:T.gray900,minWidth:80}}>Est: {wo.estHrs}h</span>
-                      <span style={{fontWeight:700,color:wo.actualHrs===0?T.gray400:effColor(wo.actualHrs/wo.estHrs),minWidth:80}}>{wo.actualHrs>0?`Actual: ${wo.actualHrs}h`:"In progress"}</span>
-                      <span>{wo.onTime===null?<Badge label="In Progress" color={T.info}/>:wo.onTime?<Badge label="On Time" color={T.positive}/>:<Badge label="Late" color={T.negative}/>}</span>
+                    <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
+                      <span style={{fontSize:12,fontWeight:800,color:T.black}}>{wo.id}</span>
+                      <Badge label={wo.priority} color={wo.priority==="Critical"?T.negative:wo.priority==="High"?T.warning:wo.priority==="Medium"?T.info:T.neutral}/>
+                      <Badge label={wo.type} color={wo.type==="Corrective"?T.negative:T.primary}/>
+                      <Badge label={wo.status} color={statusColor(wo.status)}/>
                     </div>
-                  ))}
+                    <div style={{fontSize:12,fontWeight:700,color:T.black,marginBottom:2}}>{wo.asset} — {wo.line}</div>
+                    <div style={{fontSize:11,color:T.gray900,marginBottom:4}}>{wo.description}</div>
+                    <div style={{display:"flex",gap:12,fontSize:11,color:T.gray900,flexWrap:"wrap",alignItems:"center"}}>
+                      <span>👤 {wo.assignedTo?wo.assignedTo:<span style={{color:T.negative,fontWeight:700}}>⚠ Unassigned</span>}</span>
+                      <span>⏱ Est: {wo.estimatedHrs}h{wo.actualHrs>0?` · Actual: ${wo.actualHrs}h`:""}</span>
+                      <span>📅 Due: {wo.dueDate}</span>
+                      <button style={{background:"none",border:`1px solid #C7D2FE`,borderRadius:3,padding:"2px 8px",fontSize:10,fontWeight:700,color:"#4F46E5",cursor:"pointer"}}>Open in Prometheus →</button>
+                    </div>
+                  </div>
+                </div>
+                {wo.agentSuggestion&&!appliedWOs[wo.id]&&(
+                  <div style={{marginTop:10,background:T.white,border:`1px solid ${T.primary}40`,borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"8px 12px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:2}}>🧠 Maintenance Planning & Scheduling Agent</div>
+                      <div style={{fontSize:11,color:T.black}}>{wo.agentSuggestion}</div>
+                    </div>
+                    <button onClick={()=>assignWO(wo.id)} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"5px 12px",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>Apply</button>
+                  </div>
+                )}
+                {appliedWOs[wo.id]&&<div style={{marginTop:8,background:"#F0FDF4",border:`1px solid ${T.positive}`,borderRadius:4,padding:"6px 12px"}}><span style={{fontSize:11,fontWeight:700,color:T.positive}}>✅ Assignment applied — synced to Prometheus · technician notified via Co-Pilot</span></div>}
+              </div>
+            ))}
+          </div>
+          <ViewAllBtn label="View All Work Orders in Prometheus →" total={maintWorkOrders.length}/>
+        </div>
+      </div>}
+
+      {/* ── TECHNICIANS TAB ── */}
+      {activeTab==="technicians"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
+            <div style={{fontSize:13,fontWeight:800,color:T.black}}>👷 Technician Load & Assignments</div>
+            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Today's capacity, current jobs, and agent-recommended reallocation · {maintTechnicians.length} technicians on shift</div>
+          </div>
+          <div style={{padding:"16px 20px",display:"flex",gap:12,flexWrap:"wrap"}}>
+            {maintTechnicians.map(t=>{
+              const utilColor=t.utilization>=70?T.positive:t.utilization>=40?T.warning:T.negative;
+              const hasAgentFlag=t.utilization<30;
+              return(<div key={t.name} style={{flex:"1 1 200px",background:T.gray100,borderRadius:4,borderLeft:`4px solid ${utilColor}`,padding:"12px 14px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                  <div><div style={{fontSize:12,fontWeight:800,color:T.black}}>{t.name}</div><div style={{fontSize:10,color:T.gray900}}>{t.role}</div></div>
+                  <Badge label={t.status} color={t.status==="On Job"?T.info:t.status==="Available"?T.positive:T.negative}/>
+                </div>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:11,color:T.gray900}}>Utilization</span><span style={{fontSize:13,fontWeight:800,color:utilColor}}>{t.utilization}%</span></div>
+                <div style={{height:6,background:T.border,borderRadius:3,marginBottom:8}}><div style={{height:6,width:`${t.utilization}%`,background:utilColor,borderRadius:3}}/></div>
+                <div style={{fontSize:11,color:T.gray900,marginBottom:4}}>{t.allocatedHrs}h allocated · <strong>{t.availableHrs}h free</strong> today</div>
+                <div style={{fontSize:10,color:T.gray400,marginBottom:6}}>Certified: {t.certifications.join(", ")}</div>
+                {t.currentWOs.length>0&&<div style={{fontSize:11,color:T.gray900,marginBottom:4}}>Active: {t.currentWOs.join(", ")}</div>}
+                {hasAgentFlag&&<div style={{background:T.warning+"18",border:`1px solid ${T.warning}40`,borderRadius:3,padding:"4px 8px",fontSize:10,fontWeight:700,color:T.warning}}>⚠ Under-utilised — agent has reallocation suggestion in Overview</div>}
+              </div>);
+            })}
+          </div>
+          <ViewAllBtn label="View Full Technician Schedule in Prometheus →" total={maintTechnicians.length}/>
+        </div>
+      </div>}
+
+      {/* ── ASSET HEALTH TAB ── */}
+      {activeTab==="assets"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
+            <div style={{fontSize:13,fontWeight:800,color:T.black}}>📡 Asset Health Monitoring Agent — Live Degradation Signals</div>
+            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Showing {alertAssets.length} assets with active alerts or degradation signals · Real-time sensor data</div>
+          </div>
+          <div style={{padding:"16px 20px",display:"flex",gap:12,flexWrap:"wrap"}}>
+            {alertAssets.map(a=>(
+              <div key={a.id} style={{flex:"1 1 200px",background:T.gray100,borderRadius:4,borderTop:`4px solid ${healthColor(a.healthScore)}`,padding:"12px 14px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+                  <div style={{fontSize:12,fontWeight:800,color:T.black,flex:1,paddingRight:8}}>{a.name}</div>
+                  <div style={{textAlign:"right"}}>
+                    <div style={{fontSize:22,fontWeight:900,color:healthColor(a.healthScore),lineHeight:1}}>{a.healthScore}</div>
+                    <div style={{fontSize:9,color:T.gray400}}>Health Score</div>
+                  </div>
+                </div>
+                <div style={{height:4,background:T.border,borderRadius:2,marginBottom:8}}><div style={{height:4,width:`${a.healthScore}%`,background:healthColor(a.healthScore),borderRadius:2}}/></div>
+                <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:11}}><span style={{color:T.gray900}}>Vibration</span><span style={{fontWeight:700,color:a.vibration>=7?T.negative:a.vibration>=5?T.warning:T.positive}}>{a.vibration}<span style={{color:T.gray400,fontWeight:400}}>/7.0</span></span></div>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:11}}><span style={{color:T.gray900}}>Temp Variance</span><span style={{fontWeight:700,color:a.tempVariance>=5?T.negative:a.tempVariance>=3?T.warning:T.positive}}>±{a.tempVariance}°C</span></div>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:11}}><span style={{color:T.gray900}}>Next PM</span><span style={{fontWeight:700,color:a.nextPM==="Overdue"||a.nextPM==="Not scheduled"||a.nextPM==="Never"?T.negative:T.gray900}}>{a.nextPM}</span></div>
+                </div>
+                <div style={{marginTop:8,display:"flex",gap:4,flexWrap:"wrap"}}>
+                  <Badge label={a.trend} color={a.trend==="Degrading"?T.negative:a.trend==="Unknown"?T.warning:T.positive}/>
+                  <Badge label={`${a.failureRisk} Risk`} color={a.failureRisk==="Critical"?T.negative:a.failureRisk==="High"?T.warning:T.positive}/>
                 </div>
               </div>
-              {/* Coaching suggestions */}
-              {t.coachingSuggestions.length>0&&(
-                <div style={{background:T.white,borderRadius:4,border:`1px solid ${"#673AB7"}40`,borderLeft:`3px solid ${"#673AB7"}`,padding:"10px 14px"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                    <div style={{fontSize:11,fontWeight:700,color:"#673AB7"}}>🤖 Co-Pilot Coaching Suggestions</div>
-                  </div>
-                  {t.coachingSuggestions.map((c,i)=>(
-                    <div key={i} style={{display:"flex",gap:8,alignItems:"flex-start",marginBottom:i<t.coachingSuggestions.length-1?6:0}}>
-                      <Badge label={c.type} color={c.type==="SOP"?T.primary:c.type==="Training"?T.info:c.type==="Pairing"?T.warning:"#673AB7"}/>
-                      <span style={{fontSize:11,color:T.gray900,flex:1}}>{c.note}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {t.strengths.length>0&&(
-                <div style={{marginTop:8,display:"flex",gap:6,flexWrap:"wrap"}}>
-                  {t.strengths.map(s=><span key={s} style={{fontSize:10,color:T.positive,background:T.positive+"12",border:`1px solid ${T.positive}30`,borderRadius:3,padding:"2px 8px"}}>✓ {s}</span>)}
-                </div>
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
+          <ViewAllBtn label="View All Assets →" total={maintAssets.length}/>
         </div>
-        <ViewAllBtn label="View Full Performance History →" total={techPerformance.length}/>
-      </Section>
+      </div>}
+
+      {/* ── SPARE PARTS TAB ── */}
+      {activeTab==="parts"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
+            <div style={{fontSize:13,fontWeight:800,color:T.black}}>📦 Spare Parts — Stock-Outs & Low Stock</div>
+            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Parts at zero or below minimum · Blocked work orders · Agent PO recommendations</div>
+          </div>
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+              <thead><tr style={{background:T.gray100}}>
+                {["Part","Part No.","Asset / Line","Stock","Status","Blocking WOs","Supplier","Lead Time","Agent Recommendation","Action"].map(h=>(<th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>))}
+              </tr></thead>
+              <tbody>{stockIssues.map((p,i)=>(<tr key={p.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
+                <td style={{padding:"10px 14px",fontWeight:700,color:T.black}}>{p.name}</td>
+                <td style={{padding:"10px 14px",color:T.gray400,fontFamily:"monospace",fontSize:11}}>{p.partNo}</td>
+                <td style={{padding:"10px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{p.asset}<br/><span style={{fontSize:10,color:T.gray400}}>{p.line}</span></td>
+                <td style={{padding:"10px 14px",fontWeight:800,color:p.stock===0?T.negative:T.warning}}>{p.stock} units</td>
+                <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}><Badge label={p.status} color={p.status==="Stock-Out"?T.negative:p.status==="Low Stock"?T.warning:T.info}/></td>
+                <td style={{padding:"10px 14px"}}>{p.blockedWOs.length>0?p.blockedWOs.map(wo=><div key={wo} style={{fontSize:11,color:T.negative,fontWeight:700}}>⚠ {wo}</div>):<span style={{fontSize:11,color:T.gray400}}>None</span>}</td>
+                <td style={{padding:"10px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{p.supplier}</td>
+                <td style={{padding:"10px 14px",color:T.gray900,whiteSpace:"nowrap"}}>
+                  <div style={{fontSize:11}}>Standard: {p.leadTimeDays}d</div>
+                  {p.emergencyLeadTimeDays&&<div style={{fontSize:11,color:T.warning}}>Emergency: {p.emergencyLeadTimeDays}d (${p.emergencyUnitCost}/unit)</div>}
+                </td>
+                <td style={{padding:"10px 14px",fontSize:11,color:T.gray900,maxWidth:200}}>{p.agentRec}</td>
+                <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}>
+                  {p.poRaised||appliedPOs[p.id]?<Badge label="✓ PO Raised" color={T.positive}/>:
+                  p.emergencyLeadTimeDays?<button onClick={()=>raisePO(p.id)} style={{background:T.negative,color:T.white,border:"none",borderRadius:4,padding:"5px 10px",fontSize:11,fontWeight:700,cursor:"pointer"}}>Raise Emergency PO</button>:
+                  <button onClick={()=>raisePO(p.id)} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"5px 10px",fontSize:11,fontWeight:700,cursor:"pointer"}}>Raise PO</button>}
+                </td>
+              </tr>))}</tbody>
+            </table>
+          </div>
+          <ViewAllBtn label="View Full Parts Catalog in Prometheus →" total={spareParts.length}/>
+        </div>
+      </div>}
+
+      {/* ── PM SCHEDULE TAB ── */}
+      {activeTab==="pm"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+            <div>
+              <div style={{fontSize:13,fontWeight:800,color:T.black}}>🗓 Preventive Maintenance Schedule</div>
+              <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Upcoming, overdue, and program-less assets needing attention</div>
+            </div>
+            <div style={{display:"flex",gap:4}}>
+              {["Action Required","All PMs"].map(f=>(<button key={f} onClick={()=>setPmFilter(f)} style={{padding:"4px 10px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",border:`1px solid ${pmFilter===f?T.primary:T.border}`,background:pmFilter===f?T.primary:T.white,color:pmFilter===f?T.white:T.gray900}}>{f}</button>))}
+            </div>
+          </div>
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+              <thead><tr style={{background:T.gray100}}>
+                {["Asset","Line","PM Interval","Last PM","Next PM","Status","WO Coverage","Agent Note",""].map(h=>(<th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>))}
+              </tr></thead>
+              <tbody>{displayPMs.map((p,i)=>(<tr key={p.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
+                <td style={{padding:"9px 14px",fontWeight:700,color:T.black,whiteSpace:"nowrap"}}>{p.asset}</td>
+                <td style={{padding:"9px 14px",color:T.gray900}}>{p.line}</td>
+                <td style={{padding:"9px 14px",color:T.gray900}}>{p.interval}</td>
+                <td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{p.lastPM}</td>
+                <td style={{padding:"9px 14px",fontWeight:700,color:p.status==="Overdue"||p.status==="No Program"?T.negative:T.gray900,whiteSpace:"nowrap"}}>{p.nextPM}{p.daysOverdue&&<span style={{color:T.negative,fontSize:10,marginLeft:4}}>({p.daysOverdue}d overdue)</span>}</td>
+                <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}><Badge label={p.status} color={pmStatusColor(p.status)}/></td>
+                <td style={{padding:"9px 14px",fontSize:11,color:p.woCoverage?T.primary:T.gray400}}>{p.woCoverage||"No WO raised"}</td>
+                <td style={{padding:"9px 14px",fontSize:11,color:T.gray900,maxWidth:200}}>{p.notes}</td>
+                <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}><button style={{background:"none",border:`1px solid #C7D2FE`,borderRadius:3,padding:"3px 8px",fontSize:10,fontWeight:700,color:"#4F46E5",cursor:"pointer"}}>Open in Prometheus →</button></td>
+              </tr>))}</tbody>
+            </table>
+          </div>
+          <ViewAllBtn label="View Full PM Schedule in Prometheus →" total={pmSchedule.length}/>
+        </div>
+      </div>}
+
+      {/* ── STRATEGY TAB ── */}
+      {activeTab==="strategy"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+            <div>
+              <div style={{fontSize:13,fontWeight:800,color:T.black}}>⚙️ Maintenance Strategy Agent — Assets Requiring Strategy Change</div>
+              <div style={{fontSize:11,color:T.gray900,marginTop:2}}>{changeAssets.length} assets where agent recommends a strategy change · Driven by criticality and consequence of failure</div>
+            </div>
+          </div>
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+              <thead><tr style={{background:T.gray100}}>
+                {["Asset","Line","Criticality","Failure Impact","Current Strategy","Recommended Change","Reason"].map(h=>(<th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>))}
+              </tr></thead>
+              <tbody>{changeAssets.map((a,i)=>(<tr key={a.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
+                <td style={{padding:"10px 14px",fontWeight:700,color:T.black,whiteSpace:"nowrap"}}>{a.name}</td>
+                <td style={{padding:"10px 14px",color:T.gray900}}>{a.line}</td>
+                <td style={{padding:"10px 14px"}}><Badge label={a.criticality} color={critColor(a.criticality)}/></td>
+                <td style={{padding:"10px 14px",fontSize:11,color:T.gray900,lineHeight:1.6}}>
+                  <span style={{color:a.safetyImpact!=="Low"?T.warning:T.gray400}}>Safety: {a.safetyImpact}</span>{" · "}
+                  <span style={{color:a.qualityImpact==="High"?T.negative:T.gray900}}>Quality: {a.qualityImpact}</span>{" · "}
+                  <span style={{color:a.productionImpact==="High"?T.negative:T.gray900}}>Prod: {a.productionImpact}</span>
+                  <div style={{color:T.gray400}}>Failure cost: <strong style={{color:a.failureCost>10000?T.negative:T.gray900}}>${a.failureCost.toLocaleString()}</strong></div>
+                </td>
+                <td style={{padding:"10px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{a.currentStrategy}</td>
+                <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}><Badge label={a.agentRec} color={recColor(a.agentRec)}/></td>
+                <td style={{padding:"10px 14px",maxWidth:240,fontSize:11,color:T.gray900,lineHeight:1.5}}>{a.recReason}</td>
+              </tr>))}</tbody>
+            </table>
+          </div>
+          <ViewAllBtn label="View All Assets →" total={maintAssets.length}/>
+        </div>
+      </div>}
+
+      {/* ── PERFORMANCE TAB ── */}
+      {activeTab==="performance"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
+            <div style={{fontSize:13,fontWeight:800,color:T.black}}>📊 Technician Performance & Coaching</div>
+            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>On-time completion rate, efficiency vs. estimate, and Co-Pilot coaching suggestions</div>
+          </div>
+          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:16}}>
+            {techPerformance.map(t=>(
+              <div key={t.name} style={{background:T.gray100,borderRadius:4,padding:"14px 16px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap",marginBottom:12}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <div style={{width:36,height:36,borderRadius:"50%",background:T.primary,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,color:T.white,flexShrink:0}}>{t.avatar}</div>
+                    <div><div style={{fontSize:13,fontWeight:800,color:T.black}}>{t.name}</div><div style={{fontSize:11,color:T.gray900}}>{t.role}</div></div>
+                  </div>
+                  <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
+                    <div style={{textAlign:"center"}}>
+                      <div style={{fontSize:10,color:T.gray900,marginBottom:2}}>WOs Completed</div>
+                      <div style={{fontSize:16,fontWeight:800,color:t.thisWeek.completed>=t.thisWeek.target?T.positive:T.warning}}>{t.thisWeek.completed}<span style={{fontSize:11,color:T.gray400,fontWeight:400}}>/{t.thisWeek.target}</span></div>
+                    </div>
+                    <div style={{textAlign:"center"}}>
+                      <div style={{fontSize:10,color:T.gray900,marginBottom:2}}>On-Time Rate</div>
+                      <div style={{fontSize:16,fontWeight:800,color:t.thisWeek.onTime/Math.max(t.thisWeek.completed,1)>=0.8?T.positive:T.warning}}>{Math.round(t.thisWeek.onTime/Math.max(t.thisWeek.completed,1)*100)}%</div>
+                    </div>
+                    <div style={{textAlign:"center"}}>
+                      <div style={{fontSize:10,color:T.gray900,marginBottom:2}}>Avg Efficiency</div>
+                      <div style={{fontSize:16,fontWeight:800,color:effColor(t.efficiency.avgActualVsEstimate)}}>{t.efficiency.avgActualVsEstimate}x</div>
+                      <div style={{fontSize:9,color:T.gray400}}>actual vs. est.</div>
+                    </div>
+                    <div style={{textAlign:"center"}}>
+                      <div style={{fontSize:10,color:T.gray900,marginBottom:2}}>Trend</div>
+                      <div style={{fontSize:12,fontWeight:700,color:t.efficiency.trend==="Improving"?T.positive:t.efficiency.trend==="Stable"?T.info:T.negative}}>{t.efficiency.trend==="Improving"?"↑ Improving":t.efficiency.trend==="Stable"?"→ Stable":t.efficiency.trend==="Declining"?"↓ Declining":"⚠ Needs Support"}</div>
+                    </div>
+                  </div>
+                </div>
+                <div style={{marginBottom:t.coachingSuggestions.length>0?12:0}}>
+                  <div style={{fontSize:11,fontWeight:700,color:T.gray900,marginBottom:6}}>This Week's Work Orders</div>
+                  <div style={{display:"flex",flexDirection:"column",gap:3}}>
+                    {t.wosThisWeek.map(wo=>(
+                      <div key={wo.id} style={{display:"flex",gap:8,alignItems:"center",fontSize:11,background:T.white,borderRadius:3,padding:"5px 10px"}}>
+                        <span style={{fontWeight:700,color:T.black,minWidth:70}}>{wo.id}</span>
+                        <span style={{flex:1,color:T.gray900}}>{wo.asset}</span>
+                        <span style={{color:T.gray900,minWidth:80}}>Est: {wo.estHrs}h</span>
+                        <span style={{fontWeight:700,color:wo.actualHrs===0?T.gray400:effColor(wo.actualHrs/wo.estHrs),minWidth:80}}>{wo.actualHrs>0?`Actual: ${wo.actualHrs}h`:"In progress"}</span>
+                        <span>{wo.onTime===null?<Badge label="In Progress" color={T.info}/>:wo.onTime?<Badge label="On Time" color={T.positive}/>:<Badge label="Late" color={T.negative}/>}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {t.coachingSuggestions.length>0&&(
+                  <div style={{background:T.white,borderRadius:4,border:`1px solid ${"#673AB7"}40`,borderLeft:`3px solid ${"#673AB7"}`,padding:"10px 14px"}}>
+                    <div style={{fontSize:11,fontWeight:700,color:"#673AB7",marginBottom:6}}>🤖 Co-Pilot Coaching Suggestions</div>
+                    {t.coachingSuggestions.map((c,i)=>(
+                      <div key={i} style={{display:"flex",gap:8,alignItems:"flex-start",marginBottom:i<t.coachingSuggestions.length-1?6:0}}>
+                        <Badge label={c.type} color={c.type==="SOP"?T.primary:c.type==="Training"?T.info:c.type==="Pairing"?T.warning:"#673AB7"}/>
+                        <span style={{fontSize:11,color:T.gray900,flex:1}}>{c.note}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {t.strengths.length>0&&(
+                  <div style={{marginTop:8,display:"flex",gap:6,flexWrap:"wrap"}}>
+                    {t.strengths.map(s=><span key={s} style={{fontSize:10,color:T.positive,background:T.positive+"12",border:`1px solid ${T.positive}30`,borderRadius:3,padding:"2px 8px"}}>✓ {s}</span>)}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <ViewAllBtn label="View Full Performance History →" total={techPerformance.length}/>
+        </div>
+      </div>}
 
     </div>
   </div>);
 }
+
+
 
 const COPILOT_SYSTEM_PROMPT = `You are the Technician Co-Pilot for Austin Plant. You help maintenance technicians, operators, and supervisors with on-the-job tasks. You are practical, direct, and safety-first. You do NOT do strategic analysis — that's the Scenario Simulation's job. Your job is to help the person in front of you get their work done safely and correctly right now.
 
