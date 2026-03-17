@@ -221,7 +221,7 @@ function MaintenanceDashboard({onSelectRec}){
     {id:"parts",label:"Spare Parts",icon:"📦",alert:stockIssues.filter(p=>p.status==="Stock-Out").length},
     {id:"pm",label:"PM Schedule",icon:"🗓",alert:pmSchedule.filter(p=>p.status==="Overdue"||p.status==="No Program").length},
     {id:"strategy",label:"Strategy",icon:"⚙️",alert:changeAssets.length},
-    {id:"performance",label:"Performance",icon:"📊",alert:techPerformance.filter(t=>t.coachingSuggestions.length>0).length},
+    {id:"performance",label:"My Team",icon:"📊",alert:techPerformance.filter(t=>t.coachingSuggestions.length>0).length},
   ];
 
   const Tab=({tab})=>{
@@ -533,11 +533,13 @@ function MaintenanceDashboard({onSelectRec}){
         </div>
       </div>}
 
-      {/* ── PERFORMANCE TAB ── */}
-      {activeTab==="performance"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+      {/* ── MY TEAM TAB ── */}
+      {activeTab==="performance"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:20}}>
+
+        {/* ── SECTION 1: PERFORMANCE & COACHING ── */}
         <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
           <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
-            <div style={{fontSize:13,fontWeight:800,color:T.black}}>📊 Technician Performance & Coaching</div>
+            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Performance & Coaching</div>
             <div style={{fontSize:11,color:T.gray900,marginTop:2}}>On-time completion rate, efficiency vs. estimate, and Co-Pilot coaching suggestions</div>
           </div>
           <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:16}}>
@@ -603,6 +605,86 @@ function MaintenanceDashboard({onSelectRec}){
           </div>
           <ViewAllBtn label="View Full Performance History →" total={techPerformance.length}/>
         </div>
+
+        {/* ── SECTION 2: SKILLS MATRIX ── */}
+        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
+            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Skills Matrix — Certified Competency by Asset Type</div>
+            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Certification status per technician · Agent flags gaps and single points of failure</div>
+          </div>
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+              <thead>
+                <tr style={{background:T.gray100}}>
+                  <th style={{padding:"10px 16px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,minWidth:160}}>Technician</th>
+                  {["Heat Sealer","Heat Tunnel","Filler / Calibration","Conveyor / Belt","Packaging","Electrical","General Mechanical"].map(skill=>(
+                    <th key={skill} style={{padding:"10px 12px",textAlign:"center",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,minWidth:100,whiteSpace:"nowrap"}}>{skill}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  {name:"Carlos Rivera",role:"Senior Technician",avatar:"CR",skills:{"Heat Sealer":"certified","Heat Tunnel":"in-progress","Filler / Calibration":"certified","Conveyor / Belt":"certified","Packaging":"certified","Electrical":"certified","General Mechanical":"certified"}},
+                  {name:"Marcus Webb",role:"Technician",avatar:"MW",skills:{"Heat Sealer":"none","Heat Tunnel":"certified","Filler / Calibration":"none","Conveyor / Belt":"certified","Packaging":"certified","Electrical":"none","General Mechanical":"certified"}},
+                  {name:"Priya Singh",role:"Technician",avatar:"PS",skills:{"Heat Sealer":"none","Heat Tunnel":"none","Filler / Calibration":"certified","Conveyor / Belt":"in-progress","Packaging":"none","Electrical":"none","General Mechanical":"certified"}},
+                  {name:"James Okafor",role:"Junior Technician",avatar:"JO",skills:{"Heat Sealer":"none","Heat Tunnel":"none","Filler / Calibration":"none","Conveyor / Belt":"certified","Packaging":"none","Electrical":"none","General Mechanical":"certified"}},
+                ].map((tech,i)=>(
+                  <tr key={tech.name} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
+                    <td style={{padding:"10px 16px"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8}}>
+                        <div style={{width:28,height:28,borderRadius:"50%",background:T.primary,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:T.white,flexShrink:0}}>{tech.avatar}</div>
+                        <div>
+                          <div style={{fontSize:12,fontWeight:700,color:T.black}}>{tech.name}</div>
+                          <div style={{fontSize:10,color:T.gray400}}>{tech.role}</div>
+                        </div>
+                      </div>
+                    </td>
+                    {["Heat Sealer","Heat Tunnel","Filler / Calibration","Conveyor / Belt","Packaging","Electrical","General Mechanical"].map(skill=>{
+                      const status=tech.skills[skill];
+                      return(
+                        <td key={skill} style={{padding:"10px 12px",textAlign:"center"}}>
+                          {status==="certified"&&<div style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:28,height:28,borderRadius:"50%",background:T.positive+"18",border:`2px solid ${T.positive}`}}><span style={{fontSize:13,color:T.positive,fontWeight:800}}>✓</span></div>}
+                          {status==="in-progress"&&<div style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:28,height:28,borderRadius:"50%",background:T.warning+"18",border:`2px solid ${T.warning}`}}><span style={{fontSize:10,color:T.warning,fontWeight:800}}>~</span></div>}
+                          {status==="none"&&<div style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:28,height:28,borderRadius:"50%",background:T.gray100,border:`1px solid ${T.border}`}}><span style={{fontSize:13,color:T.gray400}}>—</span></div>}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {/* Legend */}
+          <div style={{padding:"12px 20px",borderTop:`1px solid ${T.border}`,display:"flex",gap:16,flexWrap:"wrap",alignItems:"center"}}>
+            <span style={{fontSize:11,fontWeight:700,color:T.gray900}}>Legend:</span>
+            {[{color:T.positive,label:"Certified",symbol:"✓"},{color:T.warning,label:"In Training",symbol:"~"},{color:T.gray400,label:"Not Certified",symbol:"—"}].map(l=>(
+              <div key={l.label} style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:T.gray900}}>
+                <div style={{width:20,height:20,borderRadius:"50%",background:l.color+"18",border:`2px solid ${l.color}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:l.color,fontWeight:800}}>{l.symbol}</div>
+                {l.label}
+              </div>
+            ))}
+          </div>
+          {/* Agent gap analysis */}
+          <div style={{padding:"0 20px 20px",display:"flex",flexDirection:"column",gap:8}}>
+            <div style={{fontSize:12,fontWeight:800,color:T.black,marginBottom:4}}>🧠 Skills Gap Analysis — Maintenance Strategy Agent</div>
+            {[
+              {priority:"High",flag:"Single point of failure — Heat Sealer",detail:"Only Carlos Rivera is certified on Heat Sealer. If Carlos is unavailable, no other technician can execute sealer work. Recommend cross-training Marcus Webb as backup.",action:"Initiate Heat Sealer certification for Marcus Webb"},
+              {priority:"High",flag:"Single point of failure — Electrical",detail:"Only Carlos Rivera holds Electrical certification. Critical for fault diagnosis across all lines. Recommend cross-training at least one additional technician.",action:"Identify candidate for Electrical certification — recommend Priya Singh"},
+              {priority:"Medium",flag:"Heat Tunnel coverage — only one certified technician",detail:"Only Marcus Webb is certified on Heat Tunnel. With WO-4422 requiring Heat Tunnel PM, if Marcus is unavailable this WO cannot be assigned. Carlos Rivera is currently in training.",action:"Accelerate Carlos Rivera's Heat Tunnel certification (currently in training)"},
+              {priority:"Medium",flag:"James Okafor — limited certification scope",detail:"Only certified in Conveyor and General Mechanical. Current scope limits assignment flexibility significantly. Structured upskilling plan recommended.",action:"Prioritise Filler / Calibration or Packaging certification next — broadens daily assignment range"},
+            ].map((gap,i)=>(
+              <div key={i} style={{background:T.gray100,borderRadius:4,borderLeft:`4px solid ${gap.priority==="High"?T.negative:T.warning}`,padding:"10px 14px"}}>
+                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
+                  <Badge label={gap.priority} color={gap.priority==="High"?T.negative:T.warning}/>
+                  <span style={{fontSize:12,fontWeight:700,color:T.black}}>{gap.flag}</span>
+                </div>
+                <div style={{fontSize:12,color:T.gray900,marginBottom:6}}>{gap.detail}</div>
+                <div style={{fontSize:11,color:T.primary,fontWeight:600}}>💡 {gap.action}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
       </div>}
 
     </div>
@@ -859,7 +941,7 @@ function Dashboard({recs,onSelectRec,onShowDisruption,disruptionActive,persona})
       <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{["All","Line 1","Line 2","Line 3"].map(l=>(<button key={l} onClick={()=>setLineFilter(l)} style={{padding:"6px 14px",borderRadius:4,fontSize:12,fontWeight:700,cursor:"pointer",border:`1px solid ${lineFilter===l?T.primary:T.border}`,background:lineFilter===l?T.primary:T.white,color:lineFilter===l?T.white:T.gray900}}>{l}</button>))}</div>
     </div>
     <div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:20,background:T.gray100}}>
-      {disruptionActive&&<div onClick={onShowDisruption} style={{background:"#FEF2F2",border:`2px solid ${T.negative}`,borderRadius:4,padding:"12px 18px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+      {disruptionActive&&persona==="plant_leader"&&<div onClick={onShowDisruption} style={{background:"#FEF2F2",border:`2px solid ${T.negative}`,borderRadius:4,padding:"12px 18px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:18}}>🚨</span><div><div style={{fontSize:13,fontWeight:800,color:T.negative}}>REAL-TIME DISRUPTION · {disruptionAlert.time}</div><div style={{fontSize:12,color:T.black,marginTop:2}}>{disruptionAlert.title}</div></div></div>
         <Badge label="View & Respond →" color={T.negative}/>
       </div>}
@@ -1131,6 +1213,484 @@ function CoPilotChat({activeTab}){
   </div>);
 }
 
+// ── TECHNICIAN DASHBOARD DATA ─────────────────────────────────────────────────
+const TECH_WOS = [
+  {id:"WO-4421",asset:"Line 3 Heat Sealer",assetId:"A-001",line:"Line 3",location:"Line 3 — Zone B",type:"Corrective",priority:"Critical",status:"In Progress",estimatedHrs:4,actualHrs:1.5,startedAt:"07:15am",dueDate:"Today",description:"Sealer inspection — vibration index 8.4 exceeds threshold (7.0), temp variance ±6°C. Full component check required. Part #SE-441 in transit (arriving tomorrow 7am).",safetyFlags:["LOTO required before any work","PPE: heat-resistant gloves, safety glasses","Burn risk — allow sealer to cool 15 min before touching elements"],partsRequired:[{part:"Sealer Heating Element",partNo:"SE-441",qty:1,status:"In Transit",eta:"Tomorrow 7am"},{part:"Sealer Temperature Probe",partNo:"SE-442",qty:1,status:"Stock-Out",eta:"Emergency PO raised"}],sopSteps:[{step:"Complete LOTO procedure — Line 3 sealer (LOTO SOP v4.0)",done:true},{step:"Allow sealer to cool for minimum 15 minutes",done:true},{step:"Inspect heating element for visible damage or discolouration",done:false},{step:"Check thermocouple connections — fault code E-14 indicates thermocouple fault",done:false},{step:"Measure element resistance — spec: 8–12 Ω",done:false},{step:"Inspect sealing jaw alignment — check for wear marks",done:false},{step:"Test temperature uniformity across sealing bar",done:false},{step:"Re-calibrate temperature controller to ±2°C tolerance",done:false},{step:"Run test seals on scrap material and inspect seal integrity",done:false},{step:"Remove LOTO and restore to service — notify supervisor",done:false}],assetHistory:{lastPM:"Jan 15, 2026",lastFailure:"Nov 3, 2025 — element replacement",openIssues:"Vibration trend increasing since Jan 20",healthScore:34,mtbf:"6.2 months"},agentNote:"Part #SE-441 is in transit — arriving tomorrow 7am. Complete inspection steps 1–6 today to prepare. Do not attempt element replacement until part arrives.",followUpNeeded:false},
+  {id:"WO-4425",asset:"Line 2 Conveyor Belt",assetId:"A-003",line:"Line 2",location:"Line 2 — Zone A",type:"Preventive",priority:"Low",status:"In Progress",estimatedHrs:1,actualHrs:0.5,startedAt:"06:00am",dueDate:"Today",description:"Routine belt inspection — tension check, wear assessment, lubrication.",safetyFlags:["LOTO required before tension adjustment","PPE: safety glasses"],partsRequired:[{part:"Belt Lubricant",partNo:"LUB-012",qty:1,status:"In Stock",eta:null}],sopSteps:[{step:"Complete LOTO procedure if adjusting tension",done:true},{step:"Inspect belt surface for cracks, fraying, or wear",done:true},{step:"Check belt tension — spec: 15–20 N/mm",done:true},{step:"Apply lubricant to rollers per schedule",done:false},{step:"Check roller alignment — all rollers must spin freely",done:false},{step:"Inspect belt tracking — should run centred within 5mm",done:false},{step:"Remove LOTO and run belt at slow speed for 2 minutes to verify",done:false}],assetHistory:{lastPM:"Feb 20, 2026",lastFailure:"None in 12 months",openIssues:"None",healthScore:81,mtbf:"Not applicable — no failures recorded"},agentNote:"Routine inspection — no anomalies flagged. Current PM cycle appropriate. Strategy Agent recommends extending to 10-week cycle at next review.",followUpNeeded:false},
+  {id:"WO-4422",asset:"Line 2 Heat Tunnel",assetId:"A-006",line:"Line 2",location:"Line 2 — Zone C",type:"Preventive",priority:"High",status:"Not Started",estimatedHrs:2,actualHrs:0,startedAt:null,dueDate:"Mar 3",description:"Initiate first PM cycle — inspect heating elements, check safety interlocks, calibrate temp controls.",safetyFlags:["LOTO required","PPE: heat-resistant gloves, safety glasses, face shield","Burn risk — high voltage heating elements"],partsRequired:[{part:"Heat Tunnel Igniter",partNo:"HT-209",qty:1,status:"Low Stock",eta:null}],sopSteps:[{step:"Complete LOTO procedure — Line 2 heat tunnel (LOTO SOP v4.0)",done:false},{step:"Allow tunnel to cool — minimum 20 minutes",done:false},{step:"Inspect heating elements for damage or corrosion",done:false},{step:"Check all safety interlock switches — must trip at 280°C",done:false},{step:"Inspect igniter — check for carbon deposits",done:false},{step:"Calibrate temperature controller — set points: 220°C / 240°C / 220°C",done:false},{step:"Check conveyor belt tracking through tunnel",done:false},{step:"Remove LOTO and run empty at 50% speed for 5 minutes",done:false},{step:"Verify temperature uniformity — max variance ±5°C",done:false}],assetHistory:{lastPM:"Never",lastFailure:"No recorded failures",openIssues:"No PM program previously — this is first inspection",healthScore:67,mtbf:"Unknown"},agentNote:"This is the first PM ever on this asset. Take extra time on steps 3–5 to establish a baseline condition report. Note any anomalies for the PM program record.",followUpNeeded:false},
+];
+
+const TECH_SUB_WOS = [
+  {id:"SUB-201",asset:"Line 3 Cooling System",priority:"High",status:"In Progress",contractor:"Apex Refrigeration Ltd",onSiteDate:"Feb 28, 2026",supervisor:"Carlos Rivera",description:"Annual refrigerant recharge and compressor inspection — specialist contractor required.",permitNo:"PTW-2026-041"},
+  {id:"SUB-202",asset:"Plant HVAC — Roof Units",priority:"Medium",status:"Not Started",contractor:"BuildAir Services",onSiteDate:"Mar 2, 2026",supervisor:"James Okafor",description:"Quarterly filter replacement and duct inspection.",permitNo:"PTW-2026-042"},
+];
+
+const TECH_COPILOT_PROMPTS = {
+  "WO-4421":{
+    suggestions:["Walk me through the LOTO procedure for the Line 3 sealer","What does fault code E-14 mean on the sealer?","How do I measure element resistance correctly?","What do I do if the thermocouple connection looks damaged?"],
+    labels:["🔒 LOTO procedure for Line 3 sealer","⚠️ Fault code E-14 — what is it?","🔧 How to measure element resistance","❓ Damaged thermocouple — what next?"],
+    context:"You are helping a technician with WO-4421 — Line 3 Heat Sealer inspection. The sealer has vibration index 8.4 (threshold 7.0) and fault code E-14 (thermocouple fault). Part #SE-441 is in transit. The technician has completed LOTO and cooling steps.",
+  },
+  "WO-4425":{
+    suggestions:["What's the correct belt tension spec for Line 2?","How do I apply lubricant to the rollers?","What should I look for when checking belt tracking?","How do I know if the belt needs replacing?"],
+    labels:["📏 Belt tension spec for Line 2","🛢️ How to lubricate the rollers","👁️ Checking belt tracking — what to look for","🔄 Does the belt need replacing?"],
+    context:"You are helping a technician with WO-4425 — Line 2 Conveyor Belt routine PM inspection. The belt is in good condition with health score 81. This is a standard preventive inspection.",
+  },
+  "WO-4422":{
+    suggestions:["Walk me through the LOTO procedure for the Line 2 heat tunnel","What are the correct temperature set points for the tunnel?","How do I check the safety interlock switches?","What should I note for the first-ever PM record?"],
+    labels:["🔒 LOTO procedure for Line 2 heat tunnel","🌡️ Correct temperature set points","⚡ How to check safety interlocks","📋 What to record for first PM"],
+    context:"You are helping a technician with WO-4422 — Line 2 Heat Tunnel first-ever PM inspection. There is no PM history on this asset. The technician needs to establish a baseline condition report.",
+  },
+};
+
+// ── TECHNICIAN DASHBOARD ─────────────────────────────────────────────────────
+// Daily schedule data
+const TECH_DAILY_SCHEDULE = [
+  {time:"06:00",label:"Shift Start & Safety Check",type:"routine",desc:"Review overnight alerts, check PPE, sign in"},
+  {time:"06:15",label:"Maintenance Team Huddle",type:"meeting",desc:"15-min standup — review day's WOs, parts status, any safety flags"},
+  {time:"06:30",label:"Join Line 3 Production Huddle",type:"meeting",desc:"Align with Line 3 supervisor on sealer issue and maintenance window"},
+  {time:"07:00",label:"Work Orders Block",type:"work",desc:"Execute assigned WOs — WO-4421 (sealer inspection) priority, then WO-4425 (belt PM)"},
+  {time:"13:00",label:"Lunch & Parts Check",type:"routine",desc:"Confirm Part #SE-441 delivery status for tomorrow's sealer repair"},
+  {time:"13:30",label:"Work Orders Block (cont.)",type:"work",desc:"Continue WOs — WO-4422 (heat tunnel PM) if time permits"},
+  {time:"15:45",label:"WO Documentation & Close-out",type:"routine",desc:"Update SAP PM with WO progress, log findings, raise any follow-ups"},
+  {time:"16:00",label:"Handover to Night Shift Tech",type:"handover",desc:"Brief incoming technician on WO-4421 status, Part #SE-441 ETA, and any open items"},
+];
+
+// All WOs (full history + current)
+const ALL_WOS = [
+  {id:"WO-4421",asset:"Line 3 Heat Sealer",line:"Line 3",type:"Corrective",priority:"Critical",status:"In Progress",assignedTo:"You",dueDate:"Feb 28, 2026",description:"Sealer inspection — vibration and temp variance above threshold."},
+  {id:"WO-4425",asset:"Line 2 Conveyor Belt",line:"Line 2",type:"Preventive",priority:"Low",status:"In Progress",assignedTo:"You",dueDate:"Feb 28, 2026",description:"Routine belt inspection — tension check, wear assessment."},
+  {id:"WO-4422",asset:"Line 2 Heat Tunnel",line:"Line 2",type:"Preventive",priority:"High",status:"Not Started",assignedTo:"You",dueDate:"Mar 3, 2026",description:"Initiate first PM cycle — inspect heating elements."},
+  {id:"WO-4418",asset:"Line 1 Conveyor",line:"Line 1",type:"Preventive",priority:"Low",status:"Complete",assignedTo:"You",dueDate:"Feb 25, 2026",description:"Quarterly conveyor belt inspection and lubrication."},
+  {id:"WO-4419",asset:"Line 2 Filler",line:"Line 2",type:"Preventive",priority:"Medium",status:"Complete",assignedTo:"You",dueDate:"Feb 24, 2026",description:"Filler calibration check — no issues found."},
+  {id:"WO-4420",asset:"Line 3 Crimping Unit",line:"Line 3",type:"Corrective",priority:"Medium",status:"Complete",assignedTo:"You",dueDate:"Feb 22, 2026",description:"Crimping jaw alignment — minor adjustment made."},
+  {id:"WO-4415",asset:"Line 2 Heat Tunnel",line:"Line 2",type:"Preventive",priority:"High",status:"Complete",assignedTo:"You",dueDate:"Feb 18, 2026",description:"Heating element visual inspection."},
+  {id:"WO-4410",asset:"Line 2 Conveyor",line:"Line 2",type:"Preventive",priority:"Low",status:"Complete",assignedTo:"You",dueDate:"Feb 14, 2026",description:"Belt tension and tracking check."},
+];
+
+function TechnicianDashboard(){
+  const [activeTab,setActiveTab]=useState("myday");
+  const [selectedWO,setSelectedWO]=useState(null);
+  const [wos,setWos]=useState(TECH_WOS);
+  const [showFollowUp,setShowFollowUp]=useState(false);
+  const [followUpForm,setFollowUpForm]=useState({asset:"",description:"",priority:"Medium",type:"Corrective"});
+  const [followUpSubmitted,setFollowUpSubmitted]=useState({});
+  const [woFilter,setWoFilter]=useState("All");
+
+  const toggleStep=(woId,stepIdx)=>{
+    setWos(prev=>prev.map(w=>w.id!==woId?w:{...w,sopSteps:w.sopSteps.map((s,i)=>i!==stepIdx?s:{...s,done:!s.done})}));
+    if(selectedWO?.id===woId)setSelectedWO(prev=>({...prev,sopSteps:prev.sopSteps.map((s,i)=>i!==stepIdx?s:{...s,done:!s.done})}));
+  };
+  const markStatus=(woId,status)=>{
+    setWos(prev=>prev.map(w=>w.id!==woId?w:{...w,status}));
+    if(selectedWO?.id===woId)setSelectedWO(prev=>({...prev,status}));
+  };
+  const submitFollowUp=()=>{setFollowUpSubmitted(prev=>({...prev,[selectedWO?.id]:followUpForm}));setShowFollowUp(false);};
+  const openWOPrep=(wo)=>{setSelectedWO(wo);setActiveTab("woprep");};
+
+  const priorityColor=p=>p==="Critical"?T.negative:p==="High"?T.warning:p==="Medium"?T.info:T.neutral;
+  const woStatusColor=s=>s==="Complete"?T.positive:s==="In Progress"?T.info:s==="Not Started"?T.neutral:T.negative;
+  const completedJobs=wos.filter(w=>w.status==="Complete").length;
+  const inProgressJobs=wos.filter(w=>w.status==="In Progress").length;
+  const totalHrsRemaining=wos.filter(w=>w.status!=="Complete").reduce((a,w)=>a+(w.estimatedHrs-(w.actualHrs||0)),0);
+  const blockedParts=wos.filter(w=>w.partsRequired.some(p=>p.status==="Stock-Out")).length;
+
+  const schedTypeColor=t=>t==="meeting"?T.info:t==="work"?T.primary:t==="handover"?"#673AB7":T.gray400;
+  const schedTypeLabel=t=>t==="meeting"?"Meeting":t==="work"?"Work Block":t==="handover"?"Handover":"Routine";
+
+  const filteredAllWOs=woFilter==="All"?ALL_WOS:ALL_WOS.filter(w=>w.status===woFilter);
+
+  const TABS=[
+    {id:"myday",label:"My Day",built:true},
+    {id:"woprep",label:"WO Prep",built:true},
+    {id:"allwos",label:"All Work Orders",built:true},
+    {id:"subcontractor",label:"Subcontractor WOs",built:true},
+    {id:"spareparts",label:"Spare Parts",built:false},
+  ];
+
+  const TechTab=({tab})=>{
+    const isActive=activeTab===tab.id;
+    return(<button onClick={()=>setActiveTab(tab.id)} style={{display:"flex",alignItems:"center",gap:5,padding:"12px 16px",border:"none",borderBottom:isActive?`2px solid ${T.primary}`:"2px solid transparent",background:"transparent",cursor:"pointer",fontWeight:isActive?800:500,fontSize:12,color:isActive?T.primary:tab.built?T.gray900:T.gray400,whiteSpace:"nowrap"}}>
+      {!tab.built&&<span style={{fontSize:10,opacity:0.7}}>🔒</span>}
+      <span>{tab.label}</span>
+    </button>);
+  };
+
+  const ComingSoonPlaceholder=({title,desc,items})=>(
+    <div style={{padding:"40px 24px",display:"flex",flexDirection:"column",alignItems:"center",gap:16,textAlign:"center"}}>
+      <div style={{fontSize:32}}>🔒</div>
+      <div style={{fontSize:16,fontWeight:800,color:T.black}}>{title}</div>
+      <div style={{fontSize:13,color:T.gray900,maxWidth:500,lineHeight:1.6}}>{desc}</div>
+      <div style={{display:"flex",flexDirection:"column",gap:8,width:"100%",maxWidth:500}}>
+        {items.map((item,i)=><div key={i} style={{background:T.white,borderRadius:4,padding:"12px 16px",textAlign:"left",border:`1px solid ${T.border}`}}>
+          <div style={{fontSize:13,fontWeight:700,color:T.black,marginBottom:3}}>{item.title}</div>
+          <div style={{fontSize:12,color:T.gray900}}>{item.desc}</div>
+        </div>)}
+      </div>
+    </div>
+  );
+
+  const WOCard=({wo,showPrep=true})=>(
+    <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",borderLeft:`4px solid ${priorityColor(wo.priority)}`,padding:"14px 18px"}}>
+      <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}>
+        <span style={{fontSize:13,fontWeight:800,color:T.black}}>{wo.id}</span>
+        <Badge label={wo.priority} color={priorityColor(wo.priority)}/>
+        <Badge label={wo.type} color={wo.type==="Corrective"?T.negative:T.primary}/>
+        <Badge label={wo.status} color={woStatusColor(wo.status)}/>
+      </div>
+      <div style={{fontSize:14,fontWeight:700,color:T.black,marginBottom:2}}>{wo.asset}</div>
+      <div style={{fontSize:12,color:T.gray900,marginBottom:6}}>{wo.location||wo.line} · Est: {wo.estimatedHrs}h{wo.actualHrs>0?` · Actual: ${wo.actualHrs}h`:""} · Due: {wo.dueDate}</div>
+      <div style={{fontSize:12,color:T.gray900,marginBottom:wo.safetyFlags?.length>0||wo.agentNote?8:0}}>{wo.description}</div>
+      {wo.safetyFlags?.length>0&&<div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:6}}>
+        {wo.safetyFlags.slice(0,2).map((f,i)=><span key={i} style={{fontSize:10,color:T.warning,background:T.warning+"15",border:`1px solid ${T.warning}30`,borderRadius:3,padding:"2px 8px"}}>⚠ {f}</span>)}
+      </div>}
+      {wo.partsRequired?.some(p=>p.status==="Stock-Out")&&<div style={{background:"#FEF2F2",border:`1px solid ${T.negative}30`,borderRadius:3,padding:"4px 10px",fontSize:11,color:T.negative,fontWeight:700,marginBottom:6}}>⚠ Part stock-out — job may be blocked. Check WO Prep.</div>}
+      {wo.sopSteps?.length>0&&<div style={{marginBottom:8}}>
+        <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:T.gray900,marginBottom:3}}>
+          <span>SOP Progress</span>
+          <span style={{fontWeight:700,color:wo.sopSteps.every(s=>s.done)?T.positive:T.gray900}}>{wo.sopSteps.filter(s=>s.done).length}/{wo.sopSteps.length} steps</span>
+        </div>
+        <div style={{height:5,background:T.border,borderRadius:3}}><div style={{height:5,width:`${(wo.sopSteps.filter(s=>s.done).length/wo.sopSteps.length)*100}%`,background:T.positive,borderRadius:3,transition:"width 0.3s"}}/></div>
+      </div>}
+      {wo.agentNote&&<div style={{background:T.primary+"10",borderLeft:`3px solid ${T.primary}`,borderRadius:3,padding:"6px 10px",fontSize:11,color:T.primary,marginBottom:8}}>🧠 {wo.agentNote}</div>}
+      {showPrep&&<div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:4}}>
+        <button onClick={()=>openWOPrep(wo)} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Open WO Prep →</button>
+        {wo.status==="Not Started"&&<button onClick={()=>markStatus(wo.id,"In Progress")} style={{background:"none",border:`1px solid ${T.primary}`,borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer",color:T.primary}}>Start Job</button>}
+        {wo.status==="In Progress"&&<button onClick={()=>markStatus(wo.id,"Complete")} style={{background:"none",border:`1px solid ${T.positive}`,borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer",color:T.positive}}>Mark Complete</button>}
+        {!followUpSubmitted[wo.id]&&<button onClick={()=>{setSelectedWO(wo);setShowFollowUp(true);}} style={{background:"none",border:`1px dashed ${T.border}`,borderRadius:4,padding:"7px 12px",fontSize:12,cursor:"pointer",color:T.gray900}}>+ Follow-up WO</button>}
+        {followUpSubmitted[wo.id]&&<Badge label="Follow-up WO raised" color={T.positive}/>}
+      </div>}
+      {showFollowUp&&selectedWO?.id===wo.id&&<div style={{marginTop:12,background:T.gray100,borderRadius:4,padding:"14px 16px",border:`1px solid ${T.border}`}}>
+        <div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:10}}>Raise Follow-up Work Order</div>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          <input value={followUpForm.asset} onChange={e=>setFollowUpForm(p=>({...p,asset:e.target.value}))} placeholder="Asset / description of work needed..." style={{border:`1px solid ${T.border}`,borderRadius:4,padding:"8px 10px",fontSize:12}}/>
+          <textarea value={followUpForm.description} onChange={e=>setFollowUpForm(p=>({...p,description:e.target.value}))} placeholder="What was found and what needs to be done..." rows={2} style={{border:`1px solid ${T.border}`,borderRadius:4,padding:"8px 10px",fontSize:12,resize:"vertical"}}/>
+          <div style={{display:"flex",gap:8}}>
+            <select value={followUpForm.priority} onChange={e=>setFollowUpForm(p=>({...p,priority:e.target.value}))} style={{flex:1,border:`1px solid ${T.border}`,borderRadius:4,padding:"7px 10px",fontSize:12}}>
+              {["Critical","High","Medium","Low"].map(p=><option key={p}>{p}</option>)}
+            </select>
+            <select value={followUpForm.type} onChange={e=>setFollowUpForm(p=>({...p,type:e.target.value}))} style={{flex:1,border:`1px solid ${T.border}`,borderRadius:4,padding:"7px 10px",fontSize:12}}>
+              {["Corrective","Preventive","Inspection"].map(t=><option key={t}>{t}</option>)}
+            </select>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={submitFollowUp} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"7px 16px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Submit WO</button>
+            <button onClick={()=>setShowFollowUp(false)} style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"7px 14px",fontSize:12,cursor:"pointer",color:T.gray900}}>Cancel</button>
+          </div>
+        </div>
+      </div>}
+    </div>
+  );
+
+  return(<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
+    {/* Header */}
+    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px 0",flexShrink:0}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12,flexWrap:"wrap",gap:8}}>
+        <div>
+          <div style={{fontSize:18,fontWeight:800,color:T.black}}>Technician Dashboard</div>
+          <div style={{fontSize:12,color:T.gray900,marginTop:2}}>Day Shift · Friday Feb 28, 2026 · Austin Plant</div>
+        </div>
+        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+          {[
+            {label:"WOs Today",value:wos.length,color:T.black},
+            {label:"In Progress",value:inProgressJobs,color:T.info},
+            {label:"Complete",value:completedJobs,color:T.positive},
+            {label:"Hrs Remaining",value:`${Math.max(0,totalHrsRemaining).toFixed(1)}h`,color:T.gray900},
+            {label:"Parts Blocked",value:blockedParts,color:blockedParts>0?T.negative:T.positive},
+          ].map(k=>(
+            <div key={k.label} style={{textAlign:"center",padding:"6px 14px",background:T.gray100,borderRadius:4}}>
+              <div style={{fontSize:16,fontWeight:800,color:k.color}}>{k.value}</div>
+              <div style={{fontSize:10,color:T.gray400}}>{k.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{display:"flex",gap:0,overflowX:"auto"}}>
+        {TABS.map(t=><TechTab key={t.id} tab={t}/>)}
+      </div>
+    </div>
+
+    <div style={{flex:1,overflowY:"auto",background:T.gray100}}>
+
+      {/* ── MY DAY ── */}
+      {activeTab==="myday"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:20}}>
+
+        {/* Daily Schedule */}
+        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
+            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Today's Schedule</div>
+            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Day shift · 06:00 – 16:00 · Feb 28, 2026</div>
+          </div>
+          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:0}}>
+            {TECH_DAILY_SCHEDULE.map((item,i)=>(
+              <div key={i} style={{display:"flex",gap:0,alignItems:"stretch"}}>
+                {/* Time */}
+                <div style={{width:52,flexShrink:0,paddingTop:2}}>
+                  <span style={{fontSize:11,fontWeight:700,color:T.gray400}}>{item.time}</span>
+                </div>
+                {/* Line + dot */}
+                <div style={{width:24,flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center"}}>
+                  <div style={{width:10,height:10,borderRadius:"50%",background:schedTypeColor(item.type),flexShrink:0,marginTop:3}}/>
+                  {i<TECH_DAILY_SCHEDULE.length-1&&<div style={{width:2,flex:1,background:T.border,marginTop:2,marginBottom:0,minHeight:28}}/>}
+                </div>
+                {/* Content */}
+                <div style={{flex:1,paddingBottom:i<TECH_DAILY_SCHEDULE.length-1?16:0,paddingLeft:10}}>
+                  <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:2,flexWrap:"wrap"}}>
+                    <span style={{fontSize:12,fontWeight:700,color:T.black}}>{item.label}</span>
+                    <span style={{background:schedTypeColor(item.type)+"18",color:schedTypeColor(item.type),border:`1px solid ${schedTypeColor(item.type)}40`,borderRadius:3,padding:"1px 7px",fontSize:10,fontWeight:700}}>{schedTypeLabel(item.type)}</span>
+                  </div>
+                  <div style={{fontSize:11,color:T.gray900}}>{item.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* My Work Orders */}
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div style={{fontSize:13,fontWeight:800,color:T.black}}>My Work Orders</div>
+            <button onClick={()=>setActiveTab("allwos")} style={{fontSize:11,color:T.primary,fontWeight:700,background:"none",border:"none",cursor:"pointer"}}>View all WOs →</button>
+          </div>
+          {wos.map(wo=><WOCard key={wo.id} wo={wo}/>)}
+        </div>
+
+      </div>}
+
+      {/* ── WO PREP ── */}
+      {activeTab==="woprep"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+        {/* WO selector */}
+        <div style={{background:T.white,borderRadius:4,padding:"12px 16px",boxShadow:"0 1px 3px rgba(0,0,0,0.07)",display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+          <span style={{fontSize:12,fontWeight:700,color:T.gray900}}>Preparing:</span>
+          {wos.filter(w=>w.status!=="Complete").map(w=>(
+            <button key={w.id} onClick={()=>setSelectedWO(w)} style={{padding:"5px 12px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",border:`1px solid ${selectedWO?.id===w.id?T.primary:T.border}`,background:selectedWO?.id===w.id?T.primary:T.white,color:selectedWO?.id===w.id?T.white:T.gray900}}>{w.id} — {w.asset}</button>
+          ))}
+          {!selectedWO&&<span style={{fontSize:11,color:T.gray400}}>Select a job above or click "Open WO Prep" from My Day</span>}
+        </div>
+
+        {selectedWO&&<>
+          {/* WO Header */}
+          <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",borderLeft:`4px solid ${priorityColor(selectedWO.priority)}`,padding:"16px 20px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap",marginBottom:6}}>
+              <div>
+                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
+                  <span style={{fontSize:14,fontWeight:800,color:T.black}}>{selectedWO.id}</span>
+                  <Badge label={selectedWO.priority} color={priorityColor(selectedWO.priority)}/>
+                  <Badge label={selectedWO.type} color={selectedWO.type==="Corrective"?T.negative:T.primary}/>
+                  <Badge label={selectedWO.status} color={woStatusColor(selectedWO.status)}/>
+                </div>
+                <div style={{fontSize:16,fontWeight:800,color:T.black}}>{selectedWO.asset}</div>
+                <div style={{fontSize:12,color:T.gray900}}>{selectedWO.location} · Est: {selectedWO.estimatedHrs}h · Due: {selectedWO.dueDate}</div>
+              </div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                {selectedWO.status==="Not Started"&&<button onClick={()=>markStatus(selectedWO.id,"In Progress")} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Start Job</button>}
+                {selectedWO.status==="In Progress"&&<button onClick={()=>markStatus(selectedWO.id,"Complete")} style={{background:T.positive,color:T.white,border:"none",borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Mark Complete</button>}
+                <button style={{background:"none",border:`1px solid #C7D2FE`,borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,color:"#4F46E5",cursor:"pointer"}}>Open in SAP PM →</button>
+              </div>
+            </div>
+            <div style={{fontSize:12,color:T.gray900}}>{selectedWO.description}</div>
+          </div>
+
+          {/* Safety */}
+          {selectedWO.safetyFlags.length>0&&<div style={{background:"#FFFBEB",border:`1px solid ${T.warning}`,borderRadius:4,padding:"12px 16px"}}>
+            <div style={{fontSize:12,fontWeight:800,color:T.warning,marginBottom:8}}>⚠️ Safety Requirements — Complete Before Starting</div>
+            {selectedWO.safetyFlags.map((f,i)=><div key={i} style={{fontSize:12,color:T.black,marginBottom:4}}>• {f}</div>)}
+          </div>}
+
+          {/* SOP + Parts + History */}
+          <div style={{display:"flex",gap:16,flexWrap:"wrap",alignItems:"flex-start"}}>
+            <div style={{flex:"2 1 300px",background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+              <div style={{padding:"12px 18px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div style={{fontSize:13,fontWeight:800,color:T.black}}>SOP Checklist</div>
+                <span style={{fontSize:11,color:T.gray900,fontWeight:600}}>{selectedWO.sopSteps.filter(s=>s.done).length}/{selectedWO.sopSteps.length} complete</span>
+              </div>
+              <div style={{padding:"12px 18px",display:"flex",flexDirection:"column",gap:6}}>
+                {selectedWO.sopSteps.map((s,i)=>(
+                  <div key={i} onClick={()=>toggleStep(selectedWO.id,i)} style={{display:"flex",gap:10,alignItems:"flex-start",padding:"8px 10px",borderRadius:4,background:s.done?T.positive+"10":T.gray100,cursor:"pointer",border:`1px solid ${s.done?T.positive+"30":T.border}`}}>
+                    <div style={{width:18,height:18,borderRadius:3,border:`2px solid ${s.done?T.positive:T.gray400}`,background:s.done?T.positive:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>
+                      {s.done&&<span style={{fontSize:10,color:T.white,fontWeight:800}}>✓</span>}
+                    </div>
+                    <span style={{fontSize:12,color:s.done?T.gray400:T.black,textDecoration:s.done?"line-through":"none",lineHeight:1.5}}>{s.step}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{flex:"1 1 220px",display:"flex",flexDirection:"column",gap:12}}>
+              <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+                <div style={{padding:"12px 18px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>Parts Required</div></div>
+                <div style={{padding:"12px 18px",display:"flex",flexDirection:"column",gap:8}}>
+                  {selectedWO.partsRequired.map((p,i)=>(
+                    <div key={i} style={{padding:"8px 10px",background:T.gray100,borderRadius:4,borderLeft:`3px solid ${p.status==="In Stock"?T.positive:p.status==="In Transit"?T.info:T.negative}`}}>
+                      <div style={{fontSize:12,fontWeight:700,color:T.black}}>{p.part}</div>
+                      <div style={{fontSize:10,color:T.gray400,marginBottom:4}}>{p.partNo} · Qty: {p.qty}</div>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                        <Badge label={p.status} color={p.status==="In Stock"?T.positive:p.status==="In Transit"?T.info:T.negative}/>
+                        {p.eta&&<span style={{fontSize:10,color:T.gray900}}>ETA: {p.eta}</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+                <div style={{padding:"12px 18px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>Asset History</div></div>
+                <div style={{padding:"12px 18px",display:"flex",flexDirection:"column",gap:6}}>
+                  {[["Last PM",selectedWO.assetHistory.lastPM],["Last Failure",selectedWO.assetHistory.lastFailure],["Open Issues",selectedWO.assetHistory.openIssues],["Health Score",`${selectedWO.assetHistory.healthScore}/100`],["MTBF",selectedWO.assetHistory.mtbf]].map(([lbl,val])=>(
+                    <div key={lbl} style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",fontSize:11,gap:8}}>
+                      <span style={{color:T.gray400,flexShrink:0}}>{lbl}</span>
+                      <span style={{color:T.black,fontWeight:600,textAlign:"right"}}>{val}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {selectedWO.agentNote&&<div style={{background:T.primary+"10",border:`1px solid ${T.primary}30`,borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"12px 16px"}}>
+            <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>🧠 Maintenance Planning Agent — Pre-Job Note</div>
+            <div style={{fontSize:12,color:T.black}}>{selectedWO.agentNote}</div>
+          </div>}
+
+          {!followUpSubmitted[selectedWO.id]&&!showFollowUp&&<button onClick={()=>setShowFollowUp(true)} style={{background:"none",border:`1px dashed ${T.border}`,borderRadius:4,padding:"10px 16px",fontSize:12,fontWeight:600,color:T.gray900,cursor:"pointer",textAlign:"left"}}>+ Raise Follow-up Work Order</button>}
+          {showFollowUp&&!followUpSubmitted[selectedWO.id]&&<div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",padding:"16px 20px"}}>
+            <div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:12}}>Raise Follow-up Work Order</div>
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              <input value={followUpForm.asset} onChange={e=>setFollowUpForm(p=>({...p,asset:e.target.value}))} placeholder="Asset / description of work needed..." style={{border:`1px solid ${T.border}`,borderRadius:4,padding:"8px 10px",fontSize:12}}/>
+              <textarea value={followUpForm.description} onChange={e=>setFollowUpForm(p=>({...p,description:e.target.value}))} placeholder="What was found and what needs to be done..." rows={3} style={{border:`1px solid ${T.border}`,borderRadius:4,padding:"8px 10px",fontSize:12,resize:"vertical"}}/>
+              <div style={{display:"flex",gap:8}}>
+                <select value={followUpForm.priority} onChange={e=>setFollowUpForm(p=>({...p,priority:e.target.value}))} style={{flex:1,border:`1px solid ${T.border}`,borderRadius:4,padding:"7px 10px",fontSize:12}}>
+                  {["Critical","High","Medium","Low"].map(p=><option key={p}>{p}</option>)}
+                </select>
+                <select value={followUpForm.type} onChange={e=>setFollowUpForm(p=>({...p,type:e.target.value}))} style={{flex:1,border:`1px solid ${T.border}`,borderRadius:4,padding:"7px 10px",fontSize:12}}>
+                  {["Corrective","Preventive","Inspection"].map(t=><option key={t}>{t}</option>)}
+                </select>
+              </div>
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={submitFollowUp} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"8px 18px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Submit WO</button>
+                <button onClick={()=>setShowFollowUp(false)} style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"8px 16px",fontSize:12,cursor:"pointer",color:T.gray900}}>Cancel</button>
+              </div>
+            </div>
+          </div>}
+          {followUpSubmitted[selectedWO.id]&&<div style={{background:"#F0FDF4",border:`1px solid ${T.positive}`,borderRadius:4,padding:"12px 16px"}}>
+            <div style={{fontSize:12,fontWeight:800,color:T.positive,marginBottom:4}}>Follow-up WO Raised</div>
+            <div style={{fontSize:12,color:T.black}}>{followUpSubmitted[selectedWO.id].asset} — {followUpSubmitted[selectedWO.id].description}</div>
+          </div>}
+        </>}
+      </div>}
+
+      {/* ── ALL WORK ORDERS ── */}
+      {activeTab==="allwos"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+            <div>
+              <div style={{fontSize:13,fontWeight:800,color:T.black}}>All Work Orders</div>
+              <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Your full WO history — current and completed · {ALL_WOS.length} total</div>
+            </div>
+            <div style={{display:"flex",gap:4}}>
+              {["All","In Progress","Not Started","Complete"].map(f=>(
+                <button key={f} onClick={()=>setWoFilter(f)} style={{padding:"4px 10px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",border:`1px solid ${woFilter===f?T.primary:T.border}`,background:woFilter===f?T.primary:T.white,color:woFilter===f?T.white:T.gray900}}>{f}</button>
+              ))}
+            </div>
+          </div>
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+              <thead><tr style={{background:T.gray100}}>
+                {["WO","Asset","Line","Type","Priority","Status","Assigned","Due Date","Description"].map(h=>(
+                  <th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>
+                ))}
+              </tr></thead>
+              <tbody>{filteredAllWOs.map((wo,i)=>(
+                <tr key={wo.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
+                  <td style={{padding:"9px 14px",fontWeight:700,color:T.black,whiteSpace:"nowrap"}}>{wo.id}</td>
+                  <td style={{padding:"9px 14px",fontWeight:600,color:T.black,whiteSpace:"nowrap"}}>{wo.asset}</td>
+                  <td style={{padding:"9px 14px",color:T.gray900}}>{wo.line}</td>
+                  <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}><Badge label={wo.type} color={wo.type==="Corrective"?T.negative:T.primary}/></td>
+                  <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}><Badge label={wo.priority} color={priorityColor(wo.priority)}/></td>
+                  <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}><Badge label={wo.status} color={woStatusColor(wo.status)}/></td>
+                  <td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{wo.assignedTo}</td>
+                  <td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{wo.dueDate}</td>
+                  <td style={{padding:"9px 14px",color:T.gray900,maxWidth:240}}>{wo.description}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        </div>
+      </div>}
+
+      {/* ── SUBCONTRACTOR WOs ── */}
+      {activeTab==="subcontractor"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
+            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Subcontractor Work Orders</div>
+            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>External contractor work on site — separate handling, permits, and sign-off required · {TECH_SUB_WOS.length} active</div>
+          </div>
+          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:10}}>
+            {TECH_SUB_WOS.map(wo=>(
+              <div key={wo.id} style={{background:T.gray100,borderRadius:4,borderLeft:`4px solid ${T.neutral}`,padding:"14px 16px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap",marginBottom:8}}>
+                  <div style={{flex:1}}>
+                    <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}>
+                      <span style={{fontSize:13,fontWeight:800,color:T.black}}>{wo.id}</span>
+                      <Badge label="Subcontractor" color={T.neutral}/>
+                      <Badge label={wo.status} color={woStatusColor(wo.status)}/>
+                      <Badge label={wo.priority} color={priorityColor(wo.priority)}/>
+                    </div>
+                    <div style={{fontSize:14,fontWeight:700,color:T.black,marginBottom:4}}>{wo.asset}</div>
+                    <div style={{fontSize:12,color:T.gray900,marginBottom:6}}>{wo.description}</div>
+                    <div style={{display:"flex",gap:16,flexWrap:"wrap",fontSize:12,color:T.gray900}}>
+                      <span>🏢 <strong>Contractor:</strong> {wo.contractor}</span>
+                      <span>📅 <strong>On-site:</strong> {wo.onSiteDate}</span>
+                      <span>👤 <strong>Supervisor:</strong> {wo.supervisor}</span>
+                      <span>📋 <strong>Permit:</strong> {wo.permitNo}</span>
+                    </div>
+                  </div>
+                </div>
+                <div style={{background:T.white,borderRadius:4,border:`1px solid ${T.border}`,padding:"10px 14px",marginBottom:10}}>
+                  <div style={{fontSize:11,fontWeight:700,color:T.gray900,marginBottom:6,textTransform:"uppercase",letterSpacing:"0.04em"}}>Checklist</div>
+                  <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                    {[
+                      {label:"Permit to Work issued and signed",done:wo.status!=="Not Started"},
+                      {label:"Contractor induction completed",done:wo.status!=="Not Started"},
+                      {label:"Site access badge issued",done:wo.status!=="Not Started"},
+                      {label:"Work completed and inspected",done:wo.status==="Complete"},
+                      {label:"Formal sign-off and WO closure",done:wo.status==="Complete"},
+                    ].map((item,i)=>(
+                      <div key={i} style={{display:"flex",gap:8,alignItems:"center",fontSize:12}}>
+                        <div style={{width:16,height:16,borderRadius:3,border:`2px solid ${item.done?T.positive:T.gray400}`,background:item.done?T.positive:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                          {item.done&&<span style={{fontSize:9,color:T.white,fontWeight:800}}>✓</span>}
+                        </div>
+                        <span style={{color:item.done?T.gray400:T.black,textDecoration:item.done?"line-through":"none"}}>{item.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                  <button style={{background:"none",border:`1px solid #C7D2FE`,borderRadius:4,padding:"6px 12px",fontSize:11,fontWeight:700,color:"#4F46E5",cursor:"pointer"}}>Open in SAP PM →</button>
+                  {wo.status==="In Progress"&&<button style={{background:T.positive,color:T.white,border:"none",borderRadius:4,padding:"6px 12px",fontSize:11,fontWeight:700,cursor:"pointer"}}>Sign Off & Close WO</button>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>}
+
+      {/* ── SPARE PARTS ── */}
+      {activeTab==="spareparts"&&<ComingSoonPlaceholder
+        title="Spare Parts"
+        desc="Real-time parts availability from your ERP. Raise a PO directly from a WO, get notified when parts arrive, and see full stock history — without leaving the dashboard."
+        items={[
+          {title:"Live stock levels from ERP",desc:"Parts availability updated in real time — no more checking a separate system."},
+          {title:"Raise PO directly from a WO",desc:"If a part is out of stock, raise an emergency or standard PO in one click."},
+          {title:"Parts arrival notifications",desc:"Get notified when a part you need arrives so you can reschedule the WO immediately."},
+          {title:"Parts usage history per asset",desc:"See what parts have been used on each asset over time."},
+        ]}
+      />}
+
+    </div>
+  </div>);
+}
+
 // ── DISRUPTION MODAL ──────────────────────────────────────────────────────────
 const DISRUPTION_RECS={A:{title:"SKU 4412 → SKU 3802 Swap Executed — Line 1",priority:"High",domain:"Production",icon:"⚙️",lines:["All","Line 1"],agents:["Scheduling Agent","Inbound Materials Agent","Quality Monitoring Agent","Supervisor & Operator Co-Pilot"],suggestedAction:"Monitor Line 1 changeover to SKU 3802, confirm quality checks pass.",summary:"Line 1 switched from SKU 4412 to SKU 3802 following inbound materials failure. 35-min changeover underway.",detail:{issue:"Inbound seasoning blend Lot #SB-2291 for SKU 4412 was rejected at intake — sodium content 14% above spec.",action:"Monitor changeover progress, confirm quality sign-off on SKU 3802 first run.",steps:[{agent:"Inbound Materials Agent",domain:"Quality",action:"Quarantine Lot #SB-2291 and raise supplier deviation report.",status:"complete"},{agent:"Scheduling Agent",domain:"Planning",action:"Update Line 1 production schedule — replace SKU 4412 run with SKU 3802.",status:"complete"},{agent:"Quality Monitoring Agent",domain:"Quality",action:"Monitor first-pass yield on SKU 3802 run.",status:"pending"},{agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Guide Line 1 operator through SKU 3802 changeover SOP.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"}]}},B:{title:"Emergency SKU 4412 Batch Sourcing — Line 1 On Hold",priority:"Critical",domain:"Production",icon:"📦",lines:["All","Line 1"],agents:["Inbound Materials Agent","Planning Agent","Scheduling Agent"],suggestedAction:"Track emergency batch delivery ETA, hold Line 1.",summary:"Emergency replacement batch ordered. Line 1 on hold pending delivery.",detail:{issue:"SKU 4412 inbound materials rejected. Emergency batch ordered — 60% confidence on timing.",action:"Monitor delivery ETA. If batch arrives by 11am, proceed. If delayed, activate SKU 3802 contingency.",steps:[{agent:"Inbound Materials Agent",domain:"Quality",action:"Raise emergency PO with approved seasoning supplier.",status:"complete"},{agent:"Planning Agent",domain:"Planning",action:"Place Line 1 on hold. Prepare SKU 3802 contingency.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"}]}},C:{title:"Line 1 Held — SKU 4412 Rescheduled to Tomorrow",priority:"High",domain:"Planning",icon:"📋",lines:["All","Line 1"],agents:["Planning Agent","Scheduling Agent"],suggestedAction:"Confirm Line 1 hold and reschedule SKU 4412 to tomorrow.",summary:"Line 1 Day shift held. SKU 4412 rescheduled to tomorrow pending fresh batch.",detail:{issue:"SKU 4412 cannot run today. Full Day shift volume on Line 1 lost.",action:"Reschedule SKU 4412 to tomorrow's Day shift. Notify DC-West.",steps:[{agent:"Scheduling Agent",domain:"Planning",action:"Reschedule SKU 4412 Line 1 run to tomorrow Day shift.",status:"complete"},{agent:"Planning Agent",domain:"Planning",action:"Notify DC-West of one-day delay.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Priya Nair",role:"Scheduler",avatar:"SC"}]}}};
 
@@ -1173,11 +1733,11 @@ export default function App(){
   const addRec=rec=>setRecs(prev=>[rec,...prev]);
   const handleViewDashboardRec=(recId)=>{const rec=[...recs,...initialRecommendations].find(r=>r.id===recId);if(rec){setSelectedRec(rec);setTab("dashboard");setChatMode(null);}};
 
-  const personas=[{id:"plant_leader",label:"Plant Leader",avatar:"PL"},{id:"maint_manager",label:"Maintenance Manager",avatar:"MM"},{id:"scheduler",label:"Scheduler",avatar:"SC"},{id:"quality_manager",label:"Quality Manager",avatar:"QM"},{id:"safety_lead",label:"Safety Lead",avatar:"SL"}];
-  const personaNav={plant_leader:["dashboard","actions","lineperf","quality","maintenance","assethealth","materials","schedule","labor","safety"],maint_manager:["dashboard","actions","lineperf","maintenance","assethealth","schedule"],scheduler:["dashboard","actions","schedule","materials","labor","lineperf"],quality_manager:["dashboard","actions","quality","materials","lineperf"],safety_lead:["dashboard","actions","safety","lineperf"]};
-  const allNavItems=[{id:"dashboard",icon:"▦",label:"Summary Dashboard"},{id:"actions",icon:"☑",label:"Action Log"},{id:"lineperf",icon:"↗",label:"Line Performance"},{id:"quality",icon:"◎",label:"Quality Dashboard"},{id:"maintenance",icon:"⚙",label:"Maintenance Dashboard"},{id:"assethealth",icon:"♡",label:"Asset Health"},{id:"materials",icon:"▤",label:"Inbound Materials"},{id:"schedule",icon:"▦",label:"Production Schedule"},{id:"labor",icon:"♟",label:"Labor Scheduling"},{id:"safety",icon:"◬",label:"Safety & EHS"}];
+  const personas=[{id:"plant_leader",label:"Plant Leader",avatar:"PL"},{id:"maint_manager",label:"Maintenance Manager",avatar:"MM"},{id:"technician",label:"Technician",avatar:"TC"},{id:"scheduler",label:"Scheduler",avatar:"SC"},{id:"quality_manager",label:"Quality Manager",avatar:"QM"},{id:"safety_lead",label:"Safety Lead",avatar:"SL"}];
+  const personaNav={plant_leader:["dashboard","actions","lineperf","quality","maintenance","technician","assethealth","materials","schedule","labor","safety"],maint_manager:["dashboard","actions","lineperf","maintenance","technician","assethealth","schedule"],technician:["technician"],scheduler:["dashboard","actions","schedule","materials","labor","lineperf"],quality_manager:["dashboard","actions","quality","materials","lineperf"],safety_lead:["dashboard","actions","safety","lineperf"]};
+  const allNavItems=[{id:"dashboard",icon:"▦",label:"Summary Dashboard"},{id:"actions",icon:"☑",label:"Action Log"},{id:"lineperf",icon:"↗",label:"Line Performance"},{id:"quality",icon:"◎",label:"Quality Dashboard"},{id:"maintenance",icon:"⚙",label:"Maintenance Dashboard"},{id:"technician",icon:"⬡",label:"Technician Dashboard"},{id:"assethealth",icon:"♡",label:"Asset Health"},{id:"materials",icon:"▤",label:"Inbound Materials"},{id:"schedule",icon:"▦",label:"Production Schedule"},{id:"labor",icon:"♟",label:"Labor Scheduling"},{id:"safety",icon:"◬",label:"Safety & EHS"}];
   const activeNavIds=personaNav[persona]||personaNav.plant_leader;
-  const builtTabs=["dashboard","actions","lineperf","schedule","maintenance"];
+  const builtTabs=["dashboard","actions","lineperf","schedule","maintenance","technician"];
 
   const handleTabClick=(id)=>{setTab(id);setSelectedRec(null);setChatMode(null);};
 
@@ -1187,7 +1747,7 @@ export default function App(){
       <div style={{display:"flex",alignItems:"center",gap:10}}><span style={{color:T.white,fontWeight:800,fontSize:15}}>🏭 Plant Orchestration Agent</span><span style={{color:"#ffffff60",fontSize:12}}>Austin Plant · Snack Chips</span></div>
       <div style={{display:"flex",gap:8,alignItems:"center"}}>
         {recs.some(r=>r.fromChat)&&<span style={{background:T.info,borderRadius:4,padding:"3px 10px",fontSize:11,color:T.white,fontWeight:700}}>✦ {recs.filter(r=>r.fromChat).length} new from chat</span>}
-        {disruptionActive&&<button onClick={()=>setShowDisruption(true)} style={{background:T.negative,border:"none",borderRadius:4,padding:"5px 12px",color:T.white,fontWeight:700,fontSize:11,cursor:"pointer"}}>🚨 Live Disruption</button>}
+        {disruptionActive&&persona==="plant_leader"&&<button onClick={()=>setShowDisruption(true)} style={{background:T.negative,border:"none",borderRadius:4,padding:"5px 12px",color:T.white,fontWeight:700,fontSize:11,cursor:"pointer"}}>🚨 Live Disruption</button>}
 
         {/* Scenario Simulation button */}
         <button onClick={()=>{setChatMode(chatMode==="scenario"?null:"scenario");setSelectedRec(null);}}
@@ -1210,7 +1770,7 @@ export default function App(){
           </button>
           {personaOpen&&<div style={{position:"absolute",right:0,top:"110%",background:T.white,border:`1px solid ${T.border}`,borderRadius:4,boxShadow:"0 4px 16px rgba(0,0,0,0.15)",zIndex:200,minWidth:200,overflow:"hidden"}}>
             <div style={{padding:"8px 14px 6px",fontSize:10,fontWeight:800,color:T.gray400,textTransform:"uppercase",letterSpacing:"0.06em"}}>Switch Persona</div>
-            {personas.map(p=>(<button key={p.id} onClick={()=>{setPersona(p.id);setPersonaOpen(false);setTab("dashboard");setSelectedRec(null);setChatMode(null);}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"9px 14px",border:"none",cursor:"pointer",textAlign:"left",fontSize:13,background:persona===p.id?T.primary+"10":"transparent",fontWeight:persona===p.id?800:400,color:persona===p.id?T.primary:T.black}}>
+            {personas.map(p=>(<button key={p.id} onClick={()=>{setPersona(p.id);setPersonaOpen(false);setTab(p.id==="technician"?"technician":"dashboard");setSelectedRec(null);setChatMode(null);}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"9px 14px",border:"none",cursor:"pointer",textAlign:"left",fontSize:13,background:persona===p.id?T.primary+"10":"transparent",fontWeight:persona===p.id?800:400,color:persona===p.id?T.primary:T.black}}>
               <div style={{width:28,height:28,borderRadius:"50%",background:persona===p.id?T.primary:T.gray100,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:persona===p.id?T.white:T.gray900,flexShrink:0}}>{p.avatar}</div>
               <span>{p.label}</span>
               {persona===p.id&&<span style={{marginLeft:"auto",fontSize:11,color:T.primary}}>✓</span>}
@@ -1251,6 +1811,7 @@ export default function App(){
           {tab==="schedule"&&<ProductionScheduleView onViewDashboardRec={handleViewDashboardRec}/>}
           {tab==="maintenance"&&!selectedRec&&<MaintenanceDashboard onSelectRec={r=>setSelectedRec(r)}/>}
           {tab==="maintenance"&&selectedRec&&<DetailPage rec={selectedRec} onBack={()=>setSelectedRec(null)}/>}
+          {tab==="technician"&&<TechnicianDashboard/>}
           {!builtTabs.includes(tab)&&(<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"60vh",gap:12}}>
             <div style={{fontSize:40}}>{allNavItems.find(n=>n.id===tab)?.icon}</div>
             <div style={{fontSize:16,fontWeight:800,color:T.black}}>{allNavItems.find(n=>n.id===tab)?.label}</div>
