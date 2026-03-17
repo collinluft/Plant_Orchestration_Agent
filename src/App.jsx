@@ -1596,7 +1596,7 @@ function TechnicianDashboard(){
           <div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
               <thead><tr style={{background:T.gray100}}>
-                {["WO","Asset","Line","Type","Priority","Status","Assigned","Due Date","Description"].map(h=>(
+                {["WO","Asset","Line","Type","Priority","Status","Assigned","Due Date","Description",""].map(h=>(
                   <th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>
                 ))}
               </tr></thead>
@@ -1610,7 +1610,8 @@ function TechnicianDashboard(){
                   <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}><Badge label={wo.status} color={woStatusColor(wo.status)}/></td>
                   <td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{wo.assignedTo}</td>
                   <td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{wo.dueDate}</td>
-                  <td style={{padding:"9px 14px",color:T.gray900,maxWidth:240}}>{wo.description}</td>
+                  <td style={{padding:"9px 14px",color:T.gray900,maxWidth:200}}>{wo.description}</td>
+                  <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}><button style={{background:"none",border:`1px solid #C7D2FE`,borderRadius:3,padding:"3px 8px",fontSize:10,fontWeight:700,color:"#4F46E5",cursor:"pointer"}}>Open in SAP PM →</button></td>
                 </tr>
               ))}</tbody>
             </table>
