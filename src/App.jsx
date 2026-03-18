@@ -2315,6 +2315,457 @@ function ShutdownDashboard(){
 }
 
 
+
+// ── SETPOINT & RECIPE OPTIMIZATION DATA ──────────────────────────────────────
+const SP_LINE = "Line 3";
+
+const SP_EQUIPMENT = [
+  {id:"slicer",label:"Slicer",short:"SL",x:60,y:140,w:70,h:50,
+   params:[
+     {name:"Slice Thickness",unit:"mm",setpoint:1.5,actual:1.58,min:1.2,max:1.8,status:"warning",tag:"slicer@thickness"},
+     {name:"Feed Rate",unit:"kg/h",setpoint:820,actual:818,min:750,max:900,status:"ok",tag:"slicer@feed_rate"},
+   ],
+   agentNote:"Slice thickness drifting +0.08mm above setpoint. Recommend recalibration — linked to uneven frying and 3% QC reject uptick on Line 3."},
+  {id:"blancher",label:"Blancher",short:"BL",x:190,y:140,w:70,h:50,
+   params:[
+     {name:"Water Temp",unit:"°C",setpoint:70,actual:68.2,min:65,max:75,status:"warning",tag:"blancher@temp"},
+     {name:"Dwell Time",unit:"min",setpoint:10,actual:10.1,min:7,max:15,status:"ok",tag:"blancher@dwell"},
+   ],
+   agentNote:"Water temp 1.8°C below setpoint. May cause incomplete starch removal — monitor chip colour on optical sorter output."},
+  {id:"fryer",label:"Continuous Fryer",short:"FR",x:330,y:120,w:90,h:70,
+   params:[
+     {name:"Oil Temperature",unit:"°C",setpoint:175,actual:178.4,min:160,max:182,status:"warning",tag:"fryer@oil_temp"},
+     {name:"Belt Speed",unit:"m/min",setpoint:2.8,actual:2.81,min:2.0,max:3.5,status:"ok",tag:"fryer@belt_speed"},
+     {name:"Dwell Time",unit:"min",setpoint:2.8,actual:2.79,min:1.5,max:5.0,status:"ok",tag:"fryer@dwell"},
+     {name:"Oil Level",unit:"%",setpoint:85,actual:82,min:75,max:95,status:"warning",tag:"fryer@oil_level"},
+   ],
+   agentNote:"⚠ Oil temp running 3.4°C above setpoint — primary driver of sealer degradation (WO-4421). High oil temp increases chip moisture variance, stressing the heat sealer. Recommend reducing oil temp to 175°C and monitoring seal quality."},
+  {id:"deoiler",label:"De-oiler",short:"DO",x:480,y:140,w:70,h:50,
+   params:[
+     {name:"Vibration Freq",unit:"Hz",setpoint:18,actual:18.1,min:15,max:22,status:"ok",tag:"deoiler@freq"},
+     {name:"Oil Content Out",unit:"%",setpoint:28,actual:29.2,min:24,max:32,status:"ok",tag:"deoiler@oil_out"},
+   ],
+   agentNote:"Within spec. Oil content slightly elevated — consistent with high fryer oil temp. Will self-correct once fryer temp is adjusted."},
+  {id:"cooler",label:"Cooling Conveyor",short:"CC",x:610,y:140,w:70,h:50,
+   params:[
+     {name:"Exit Temp",unit:"°C",setpoint:42,actual:44.1,min:35,max:50,status:"ok",tag:"cooler@exit_temp"},
+     {name:"Belt Speed",unit:"m/min",setpoint:3.2,actual:3.2,min:2.5,max:4.0,status:"ok",tag:"cooler@belt_speed"},
+   ],
+   agentNote:"Operating normally. Exit temp slightly elevated — downstream of high fryer temp. Monitor seasoning adhesion."},
+  {id:"seasoner",label:"Seasoning Drum",short:"SD",x:740,y:140,w:70,h:50,
+   params:[
+     {name:"Drum Speed",unit:"RPM",setpoint:12,actual:11.8,min:8,max:16,status:"ok",tag:"seasoner@speed"},
+     {name:"Seasoning Rate",unit:"g/kg",setpoint:22,actual:23.4,min:18,max:26,status:"warning",tag:"seasoner@rate"},
+     {name:"Drum Temp",unit:"°C",setpoint:38,actual:39.1,min:32,max:45,status:"ok",tag:"seasoner@temp"},
+   ],
+   agentNote:"Seasoning application rate 6.4% above target — likely caused by elevated chip temp from fryer. Chips are stickier when hot, absorbing more seasoning. Will self-correct when fryer temp is adjusted."},
+  {id:"sealer",label:"Heat Sealer",short:"HS",x:870,y:140,w:70,h:50,
+   params:[
+     {name:"Seal Temp",unit:"°C",setpoint:185,actual:191.2,min:178,max:195,status:"critical",tag:"sealer@temp"},
+     {name:"Dwell Time",unit:"ms",setpoint:600,actual:612,min:500,max:700,status:"ok",tag:"sealer@dwell"},
+     {name:"Seal Pressure",unit:"bar",setpoint:4.2,actual:4.1,min:3.5,max:5.0,status:"ok",tag:"sealer@pressure"},
+   ],
+   agentNote:"⚠ CRITICAL — Seal temp 6.2°C above setpoint and drifting. Root cause: fryer oil temp running high → chips arrive at sealer with higher moisture variance → sealer compensating with higher temp → element degradation (WO-4421). Fix the fryer first."},
+  {id:"packager",label:"Packager",short:"PK",x:1000,y:140,w:70,h:50,
+   params:[
+     {name:"Nitrogen Fill",unit:"%",setpoint:92,actual:91.8,min:88,max:96,status:"ok",tag:"packager@n2"},
+     {name:"Seal Integrity",unit:"%",setpoint:99.5,actual:98.1,min:98,max:100,status:"warning",tag:"packager@seal"},
+   ],
+   agentNote:"Seal integrity below target — downstream effect of heat sealer running hot. 1.9% reject rate above 1.5% target. Will improve once sealer is stabilized."},
+];
+
+const SP_RECS = [
+  {id:"sr1",priority:"Critical",equipment:"Continuous Fryer",tag:"fryer@oil_temp",title:"Reduce Fryer Oil Temperature",current:178.4,target:175.0,unit:"°C",delta:-3.4,rationale:"Oil temp 3.4°C above setpoint is the root cause of a cascade: elevated chip moisture variance → sealer overcompensation → element degradation (WO-4421). Reducing to 175°C will stabilize downstream equipment within 2–3 production cycles.",crossDomain:"Maintenance: reduces load on heat sealer (linked to WO-4421). Quality: expected 2.1% reduction in QC rejects. Production: no output impact expected.",impact:{quality:"+2.1% FPY",maintenance:"Reduces sealer stress — supports WO-4421 resolution",energy:"-1.8% fryer energy"},applied:false},
+  {id:"sr2",priority:"High",equipment:"Slicer",tag:"slicer@thickness",title:"Recalibrate Slicer Thickness",current:1.58,target:1.50,unit:"mm",delta:-0.08,rationale:"Slice thickness has drifted +0.08mm over the past 48hrs, contributing to uneven frying and a 3% uptick in QC rejects on optical sorter. Recommend recalibration during next scheduled changeover.",crossDomain:"Quality: expected reduction in optical sorter rejects. Maintenance: schedule slicer blade inspection — drift pattern suggests blade wear.",impact:{quality:"-3% reject rate",maintenance:"Flag blade inspection",energy:"Neutral"},applied:false},
+  {id:"sr3",priority:"Medium",equipment:"Blancher",tag:"blancher@temp",title:"Raise Blancher Water Temperature",current:68.2,target:70.0,unit:"°C",delta:+1.8,rationale:"Water temp 1.8°C below setpoint due to overnight heat exchanger fouling on the blancher circuit. Chip colour index trending darker — if uncorrected for 24hrs will breach QC spec for SKU 3801.",crossDomain:"Quality: chip colour drifting. Maintenance: flag heat exchanger fouling on blancher circuit for next inspection cycle.",impact:{quality:"Stabilises chip colour index",maintenance:"Flag HX inspection",energy:"+0.4% energy"},applied:false},
+  {id:"sr4",priority:"Medium",equipment:"Seasoning Drum",tag:"seasoner@rate",title:"Reduce Seasoning Application Rate",current:23.4,target:22.0,unit:"g/kg",delta:-1.4,rationale:"Seasoning over-application is a downstream effect of elevated fryer temp. Will self-correct once fryer is adjusted. If fryer fix is delayed >4hrs, manually adjust drum feed rate to avoid SKU 3801 flavour spec breach.",crossDomain:"Quality: seasoning variance will breach spec in 4hrs if fryer not corrected. Planning: excess seasoning usage increasing material cost ~$120/shift.",impact:{quality:"Maintains flavour spec",planning:"-$120/shift seasoning cost",energy:"Neutral"},applied:false},
+];
+
+const SP_RECIPES = [
+  {sku:"SKU 3801",name:"BBQ Chips",lastUpdated:"Feb 10, 2026",frierTemp:175,sliceThick:1.5,blancherTemp:70,seasonRate:22,status:"Active",performance:"97.2% FPY last 7 days",agentRec:{
+    hasRec:true,reason:"Fryer oil temp has been running 3.4°C above standard for 3 days. Agent recommends updating recipe standard to reflect recalibrated fryer baseline, and reducing seasoning rate from 22 to 21g/kg to account for improved chip temp consistency post-fix.",changes:[
+      {param:"Fryer Oil Temp",current:175,proposed:175,unit:"°C",note:"Confirm actual target after recalibration — standard may need updating"},
+      {param:"Seasoning Rate",current:22,proposed:21,unit:"g/kg",note:"Reduce to account for improved moisture consistency once fryer is fixed"},
+    ]}},
+  {sku:"SKU 2204",name:"Sea Salt Chips (Crimped)",lastUpdated:"Jan 28, 2026",frierTemp:172,sliceThick:1.8,blancherTemp:68,seasonRate:18,status:"Active",performance:"98.8% FPY last 7 days",agentRec:{hasRec:false}},
+  {sku:"SKU 4412",name:"Sour Cream & Onion",lastUpdated:"Feb 18, 2026",frierTemp:176,sliceThick:1.5,blancherTemp:70,seasonRate:26,status:"On Hold",performance:"—",agentRec:{hasRec:false}},
+  {sku:"SKU 1105",name:"Lightly Salted",lastUpdated:"Dec 15, 2025",frierTemp:173,sliceThick:1.6,blancherTemp:69,seasonRate:14,status:"Inactive",performance:"—",agentRec:{hasRec:false}},
+];
+
+const SP_ANOMALIES = [
+  {id:"a1",severity:"Critical",equipment:"Heat Sealer",param:"Seal Temperature",value:"191.2°C",threshold:"185°C target / 195°C max",trend:"↑ Increasing",since:"Feb 26 — 2 days",description:"Seal temp trending upward for 48hrs. Direct driver of WO-4421. Root cause: fryer oil temp cascade.",action:"Fix fryer temp first. If sealer continues after fryer correction, escalate to maintenance."},
+  {id:"a2",severity:"High",equipment:"Slicer",param:"Slice Thickness",value:"1.58mm",threshold:"1.50mm target ±0.05mm",trend:"↑ Drifting up",since:"Feb 27 — 1 day",description:"Thickness drift consistent with blade wear. QC rejects on optical sorter up 3% in last 24hrs.",action:"Recalibrate at next changeover. Schedule blade inspection."},
+  {id:"a3",severity:"High",equipment:"Continuous Fryer",param:"Oil Temperature",value:"178.4°C",threshold:"175°C target ±3°C",trend:"↑ Above setpoint",since:"Feb 25 — 3 days",description:"Root cause of multiple downstream anomalies. Fryer thermocouple may need recalibration.",action:"Apply SR-001 recommendation. Check fryer thermocouple calibration."},
+  {id:"a4",severity:"Medium",equipment:"Blancher",param:"Water Temperature",value:"68.2°C",threshold:"70°C target ±2°C",trend:"↓ Below setpoint",since:"Feb 28 — today",description:"Heat exchanger fouling on blancher circuit reducing heat transfer efficiency.",action:"Monitor chip colour index. Flag HX for inspection at next opportunity."},
+  {id:"a5",severity:"Medium",equipment:"Packager",param:"Seal Integrity",value:"98.1%",threshold:"99.5% target / 98% min",trend:"↓ Declining",since:"Feb 27 — 1 day",description:"Downstream of heat sealer running hot. Expect improvement once sealer is stabilized.",action:"Monitor. If drops below 98%, pause and inspect packaging film spec."},
+];
+
+// ── SETPOINT DASHBOARD ────────────────────────────────────────────────────────
+function SetpointDashboard(){
+  const [activeTab,setActiveTab]=useState("overview");
+  const [selectedLine,setSelectedLine]=useState("Line 3");
+  const [selectedEquip,setSelectedEquip]=useState(null);
+  const [appliedRecs,setAppliedRecs]=useState([]);
+  const [recs,setRecs]=useState(SP_RECS);
+
+  const applyRec=(id)=>{
+    setRecs(prev=>prev.map(r=>r.id===id?{...r,applied:true}:r));
+    setAppliedRecs(prev=>[...prev,id]);
+  };
+
+  const statusColor=s=>s==="critical"?T.negative:s==="warning"?T.warning:T.positive;
+  const statusDot=s=>s==="critical"?"●":s==="warning"?"●":"●";
+  const severityColor=s=>s==="Critical"?T.negative:s==="High"?T.warning:T.info;
+  const priorityColor=p=>p==="Critical"?T.negative:p==="High"?T.warning:p==="Medium"?T.info:T.neutral;
+
+  const lineHasData=selectedLine==="Line 3";
+
+  const TABS=[
+    {id:"overview",label:"Process Overview"},
+    {id:"recommendations",label:"Optimization Recs",alert:recs.filter(r=>!r.applied).length},
+    {id:"anomalies",label:"Anomaly Detection",alert:SP_ANOMALIES.filter(a=>a.severity==="Critical"||a.severity==="High").length},
+    {id:"recipes",label:"Recipe Library"},
+  ];
+
+  const SPTab=({tab})=>{
+    const isActive=activeTab===tab.id;
+    return(<button onClick={()=>setActiveTab(tab.id)} style={{display:"flex",alignItems:"center",gap:5,padding:"12px 16px",border:"none",borderBottom:isActive?`2px solid ${T.primary}`:"2px solid transparent",background:"transparent",cursor:"pointer",fontWeight:isActive?800:500,fontSize:12,color:isActive?T.primary:T.gray900,whiteSpace:"nowrap"}}>
+      <span>{tab.label}</span>
+      {tab.alert>0&&<span style={{background:tab.id==="anomalies"?T.negative:T.warning,color:T.white,borderRadius:10,padding:"1px 6px",fontSize:10,fontWeight:800}}>{tab.alert}</span>}
+    </button>);
+  };
+
+  // Gauge bar component
+  const GaugeBar=({min,max,setpoint,actual,unit,status})=>{
+    const pct=v=>Math.max(0,Math.min(100,((v-min)/(max-min))*100));
+    const spPct=pct(setpoint);
+    const actPct=pct(actual);
+    const color=statusColor(status);
+    return(<div style={{position:"relative",height:8,background:T.border,borderRadius:4,marginTop:4}}>
+      <div style={{position:"absolute",left:0,width:`${actPct}%`,height:"100%",background:color,borderRadius:4,transition:"width 0.3s"}}/>
+      <div style={{position:"absolute",left:`${spPct}%`,top:-2,width:2,height:12,background:T.black,borderRadius:1,transform:"translateX(-50%)"}}/>
+    </div>);
+  };
+
+  const noDataView=(<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"60vh",gap:12}}>
+    <div style={{fontSize:32}}>📊</div>
+    <div style={{fontSize:15,fontWeight:800,color:T.black}}>{selectedLine} — No Data Available</div>
+    <div style={{fontSize:13,color:T.gray900}}>Process data for {selectedLine} is not yet connected to the Setpoint & Recipe Optimization Agent.</div>
+    <div style={{background:T.primary+"12",border:`1px solid ${T.primary}30`,borderRadius:4,padding:"10px 20px",fontSize:12,color:T.primary,fontWeight:600}}>Line 3 is the active demo line — select Line 3 to view live data</div>
+  </div>);
+
+  return(<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
+    {/* Header */}
+    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px 0",flexShrink:0}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12,flexWrap:"wrap",gap:8}}>
+        <div>
+          <div style={{fontSize:18,fontWeight:800,color:T.black}}>Setpoint & Recipe Optimization</div>
+          <div style={{fontSize:12,color:T.gray900,marginTop:2}}>Process Engineering · Real-time setpoint monitoring & AI-driven optimization</div>
+        </div>
+        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+          {/* Line filter */}
+          <div style={{display:"flex",gap:4}}>
+            {["Line 1","Line 2","Line 3"].map(l=>(
+              <button key={l} onClick={()=>setSelectedLine(l)} style={{padding:"6px 14px",borderRadius:4,fontSize:12,fontWeight:700,cursor:"pointer",border:`1px solid ${selectedLine===l?T.primary:T.border}`,background:selectedLine===l?T.primary:T.white,color:selectedLine===l?T.white:T.gray900}}>{l}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div style={{display:"flex",gap:0,overflowX:"auto"}}>
+        {TABS.map(t=><SPTab key={t.id} tab={t}/>)}
+      </div>
+    </div>
+
+    <div style={{flex:1,overflowY:"auto",background:T.gray100}}>
+      {!lineHasData ? noDataView : (<>
+
+      {/* ── PROCESS OVERVIEW ── */}
+      {activeTab==="overview"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+
+        {/* Agent banner */}
+        <div style={{background:T.primary+"10",border:`1px solid ${T.primary}30`,borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"12px 16px"}}>
+          <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>🧠 Setpoint & Recipe Optimization Agent — {selectedLine} · SKU 3801 (BBQ Chips) · Feb 28, 2026 07:00</div>
+          <div style={{fontSize:12,color:T.black,marginBottom:6}}>Root cause identified: fryer oil temperature running 3.4°C above setpoint for 3 days, creating a cascade of downstream issues — elevated chip moisture variance, sealer overcompensation, seasoning over-application, and packaging seal integrity decline. Applying SR-001 (reduce fryer to 175°C) is expected to resolve 4 of 5 active anomalies within 2–3 production cycles.</div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            <Badge label="1 Critical anomaly" color={T.negative}/>
+            <Badge label="2 High warnings" color={T.warning}/>
+            <Badge label="4 Optimization recs" color={T.info}/>
+            <Badge label="Root cause: Fryer oil temp" color={T.primary}/>
+          </div>
+        </div>
+
+        {/* Process flow diagram */}
+        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+            <div>
+              <div style={{fontSize:13,fontWeight:800,color:T.black}}>Process Flow — {selectedLine} · Live Setpoints</div>
+              <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Click any equipment to see all parameters · Black marker = setpoint · Coloured bar = actual</div>
+            </div>
+            <div style={{display:"flex",gap:10,fontSize:11,color:T.gray900}}>
+              <span style={{display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:"50%",background:T.positive,display:"inline-block"}}/> On spec</span>
+              <span style={{display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:"50%",background:T.warning,display:"inline-block"}}/> Warning</span>
+              <span style={{display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:"50%",background:T.negative,display:"inline-block"}}/> Critical</span>
+            </div>
+          </div>
+          <div style={{padding:"20px",overflowX:"auto"}}>
+            {/* SVG Process Flow Diagram */}
+            <svg viewBox="0 0 1120 320" xmlns="http://www.w3.org/2000/svg" style={{width:"100%",minWidth:900,display:"block"}}>
+              {/* Flow arrows between equipment */}
+              {[[125,165,190,165],[260,165,330,165],[420,165,480,165],[550,165,610,165],[680,165,740,165],[810,165,870,165],[940,165,1000,165]].map(([x1,y1,x2,y2],i)=>(
+                <g key={i}>
+                  <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#94A3B8" strokeWidth="2" markerEnd="url(#arrow)"/>
+                </g>
+              ))}
+              <defs>
+                <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                  <path d="M0,0 L8,3 L0,6 Z" fill="#94A3B8"/>
+                </marker>
+              </defs>
+
+              {/* Raw material input */}
+              <rect x="10" y="148" width="50" height="34" rx="4" fill="#F1F5F9" stroke="#CBD5E1" strokeWidth="1.5"/>
+              <text x="35" y="161" textAnchor="middle" fontSize="8" fontWeight="700" fill="#64748B">RAW</text>
+              <text x="35" y="173" textAnchor="middle" fontSize="8" fontWeight="700" fill="#64748B">INPUT</text>
+              <line x1="60" y1="165" x2="55" y2="165" stroke="#94A3B8" strokeWidth="2"/>
+
+              {/* Equipment nodes */}
+              {SP_EQUIPMENT.map(eq=>{
+                const worstStatus=eq.params.reduce((w,p)=>p.status==="critical"?"critical":p.status==="warning"&&w!=="critical"?"warning":w,"ok");
+                const borderCol=statusColor(worstStatus);
+                const isSelected=selectedEquip===eq.id;
+                const mainParam=eq.params[0];
+                const pctActual=((mainParam.actual-mainParam.min)/(mainParam.max-mainParam.min))*100;
+                const pctSP=((mainParam.setpoint-mainParam.min)/(mainParam.max-mainParam.min))*100;
+
+                return(<g key={eq.id} onClick={()=>setSelectedEquip(isSelected?null:eq.id)} style={{cursor:"pointer"}}>
+                  {/* Equipment box */}
+                  <rect x={eq.x} y={eq.y} width={eq.w} height={eq.h} rx="5"
+                    fill={isSelected?"#EFF6FF":T.white}
+                    stroke={isSelected?T.primary:borderCol}
+                    strokeWidth={isSelected?2.5:1.5}/>
+                  {/* Status dot */}
+                  <circle cx={eq.x+eq.w-8} cy={eq.y+8} r="5" fill={borderCol}/>
+                  {/* Equipment label */}
+                  <text x={eq.x+eq.w/2} y={eq.y+16} textAnchor="middle" fontSize="8" fontWeight="800" fill="#1E293B">{eq.short}</text>
+                  {/* Equipment name */}
+                  {eq.label.split(" ").map((word,wi)=>(
+                    <text key={wi} x={eq.x+eq.w/2} y={eq.y+eq.h+12+(wi*10)} textAnchor="middle" fontSize="8" fill="#64748B">{word}</text>
+                  ))}
+                  {/* Main param value */}
+                  <text x={eq.x+eq.w/2} y={eq.y+30} textAnchor="middle" fontSize="9" fontWeight="700" fill={borderCol}>{mainParam.actual}{mainParam.unit}</text>
+                  {/* Mini gauge */}
+                  <rect x={eq.x+8} y={eq.y+38} width={eq.w-16} height="5" rx="2" fill="#E2E8F0"/>
+                  <rect x={eq.x+8} y={eq.y+38} width={Math.max(0,Math.min(eq.w-16,(pctActual/100)*(eq.w-16)))} height="5" rx="2" fill={borderCol}/>
+                  <rect x={eq.x+8+(pctSP/100)*(eq.w-16)-1} y={eq.y+36} width="2" height="9" rx="1" fill="#1E293B"/>
+                </g>);
+              })}
+
+              {/* Output box */}
+              <rect x="1070" y="148" width="50" height="34" rx="4" fill="#F0FDF4" stroke="#86EFAC" strokeWidth="1.5"/>
+              <text x="1095" y="161" textAnchor="middle" fontSize="8" fontWeight="700" fill="#16A34A">PACKED</text>
+              <text x="1095" y="173" textAnchor="middle" fontSize="8" fontWeight="700" fill="#16A34A">OUTPUT</text>
+
+              {/* Root cause callout arrow for fryer */}
+              <path d="M375,115 L375,100 L375,85" stroke={T.negative} strokeWidth="1.5" strokeDasharray="3 2" fill="none"/>
+              <rect x="290" y="60" width="170" height="24" rx="4" fill={T.negative+"18"} stroke={T.negative} strokeWidth="1"/>
+              <text x="375" y="75" textAnchor="middle" fontSize="8" fontWeight="800" fill={T.negative}>⚠ ROOT CAUSE — Fix First</text>
+            </svg>
+          </div>
+        </div>
+
+        {/* Selected equipment detail */}
+        {selectedEquip&&SP_EQUIPMENT.filter(e=>e.id===selectedEquip).map(eq=>{
+          const worstStatus=eq.params.reduce((w,p)=>p.status==="critical"?"critical":p.status==="warning"&&w!=="critical"?"warning":w,"ok");
+          return(<div key={eq.id} style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",borderTop:`3px solid ${statusColor(worstStatus)}`}}>
+            <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div style={{fontSize:13,fontWeight:800,color:T.black}}>{eq.label} — All Parameters</div>
+              <button onClick={()=>setSelectedEquip(null)} style={{background:"none",border:"none",cursor:"pointer",color:T.gray400,fontSize:16}}>✕</button>
+            </div>
+            <div style={{padding:"16px 20px",display:"flex",gap:16,flexWrap:"wrap"}}>
+              <div style={{flex:"2 1 300px",display:"flex",flexDirection:"column",gap:10}}>
+                {eq.params.map(p=>(
+                  <div key={p.tag} style={{background:T.gray100,borderRadius:4,padding:"10px 14px",borderLeft:`3px solid ${statusColor(p.status)}`}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                      <span style={{fontSize:12,fontWeight:700,color:T.black}}>{p.name}</span>
+                      <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                        <span style={{fontSize:11,color:T.gray400}}>SP: {p.setpoint}{p.unit}</span>
+                        <span style={{fontSize:13,fontWeight:800,color:statusColor(p.status)}}>{p.actual}{p.unit}</span>
+                        <Badge label={p.status==="critical"?"Critical":p.status==="warning"?"Warning":"On Spec"} color={statusColor(p.status)}/>
+                      </div>
+                    </div>
+                    <GaugeBar min={p.min} max={p.max} setpoint={p.setpoint} actual={p.actual} unit={p.unit} status={p.status}/>
+                    <div style={{display:"flex",justifyContent:"space-between",marginTop:3,fontSize:9,color:T.gray400}}>
+                      <span>{p.min}{p.unit}</span><span style={{color:T.gray900,fontWeight:600}}>SP: {p.setpoint}{p.unit}</span><span>{p.max}{p.unit}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div style={{flex:"1 1 200px",background:T.primary+"08",borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"12px 14px"}}>
+                <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:6}}>🧠 Agent Note</div>
+                <div style={{fontSize:12,color:T.black,lineHeight:1.6}}>{eq.agentNote}</div>
+              </div>
+            </div>
+          </div>);
+        })}
+
+        {/* Quick equipment overview grid */}
+        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+          {SP_EQUIPMENT.map(eq=>{
+            const worstStatus=eq.params.reduce((w,p)=>p.status==="critical"?"critical":p.status==="warning"&&w!=="critical"?"warning":w,"ok");
+            const mp=eq.params[0];
+            return(<div key={eq.id} onClick={()=>setSelectedEquip(selectedEquip===eq.id?null:eq.id)} style={{flex:"1 1 120px",background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",padding:"10px 14px",cursor:"pointer",borderTop:`3px solid ${statusColor(worstStatus)}`,border:selectedEquip===eq.id?`2px solid ${T.primary}`:undefined}}>
+              <div style={{fontSize:11,fontWeight:800,color:T.black,marginBottom:2}}>{eq.label}</div>
+              <div style={{fontSize:14,fontWeight:800,color:statusColor(worstStatus)}}>{mp.actual}{mp.unit}</div>
+              <div style={{fontSize:10,color:T.gray400}}>SP: {mp.setpoint}{mp.unit}</div>
+              <div style={{fontSize:10,color:statusColor(worstStatus),fontWeight:700,marginTop:2}}>{worstStatus==="critical"?"⚠ Critical":worstStatus==="warning"?"⚠ Warning":"✓ On Spec"}</div>
+            </div>);
+          })}
+        </div>
+      </div>}
+
+      {/* ── OPTIMIZATION RECOMMENDATIONS ── */}
+      {activeTab==="recommendations"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:12}}>
+        <div style={{background:T.white,borderRadius:4,padding:"12px 16px",boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+          <div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:4}}>Setpoint Optimization Recommendations — {selectedLine}</div>
+          <div style={{fontSize:12,color:T.gray900}}>Agent-generated recommendations ranked by impact. Apply to send setpoint change to operator co-pilot and notify line supervisor.</div>
+        </div>
+        {recs.map(r=>(
+          <div key={r.id} style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",borderLeft:`4px solid ${r.applied?T.positive:priorityColor(r.priority)}`,overflow:"hidden",opacity:r.applied?0.75:1}}>
+            <div style={{padding:"14px 18px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap",marginBottom:8}}>
+                <div style={{flex:1}}>
+                  <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
+                    <Badge label={r.priority} color={r.applied?T.positive:priorityColor(r.priority)}/>
+                    <Badge label={r.equipment} color={T.primary}/>
+                    {r.applied&&<Badge label="✓ Applied" color={T.positive}/>}
+                  </div>
+                  <div style={{fontSize:14,fontWeight:800,color:T.black,marginBottom:4}}>{r.title}</div>
+                  <div style={{display:"flex",gap:20,flexWrap:"wrap",marginBottom:8}}>
+                    <div style={{textAlign:"center",padding:"6px 14px",background:T.negative+"10",borderRadius:4}}>
+                      <div style={{fontSize:10,color:T.gray400,marginBottom:2}}>Current</div>
+                      <div style={{fontSize:16,fontWeight:800,color:T.negative}}>{r.current}{r.unit}</div>
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",fontSize:16,color:T.gray400}}>→</div>
+                    <div style={{textAlign:"center",padding:"6px 14px",background:T.positive+"10",borderRadius:4}}>
+                      <div style={{fontSize:10,color:T.gray400,marginBottom:2}}>Target</div>
+                      <div style={{fontSize:16,fontWeight:800,color:T.positive}}>{r.target}{r.unit}</div>
+                    </div>
+                    <div style={{textAlign:"center",padding:"6px 14px",background:T.gray100,borderRadius:4}}>
+                      <div style={{fontSize:10,color:T.gray400,marginBottom:2}}>Delta</div>
+                      <div style={{fontSize:16,fontWeight:800,color:r.delta<0?T.info:T.warning}}>{r.delta>0?"+":""}{r.delta}{r.unit}</div>
+                    </div>
+                  </div>
+                  <div style={{fontSize:12,color:T.gray900,marginBottom:8}}>{r.rationale}</div>
+                  <div style={{background:T.primary+"08",borderLeft:`2px solid ${T.primary}`,borderRadius:3,padding:"8px 12px",marginBottom:8}}>
+                    <div style={{fontSize:10,fontWeight:700,color:T.primary,marginBottom:3}}>CROSS-DOMAIN IMPACT</div>
+                    <div style={{fontSize:11,color:T.black}}>{r.crossDomain}</div>
+                  </div>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                    {Object.entries(r.impact).map(([k,v])=>(
+                      <span key={k} style={{fontSize:10,background:T.positive+"12",color:T.positive,border:`1px solid ${T.positive}30`,borderRadius:3,padding:"2px 8px",fontWeight:600}}>{k}: {v}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              {!r.applied&&<div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                <button onClick={()=>applyRec(r.id)} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"7px 16px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Apply & Notify Operator →</button>
+                <button style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"7px 14px",fontSize:12,cursor:"pointer",color:T.gray900}}>Add to Dashboard</button>
+              </div>}
+              {r.applied&&<div style={{background:"#F0FDF4",border:`1px solid ${T.positive}`,borderRadius:4,padding:"8px 12px",fontSize:12,color:T.positive,fontWeight:700}}>✅ Applied — Operator notified. Monitoring outcome over next 2–3 production cycles.</div>}
+            </div>
+          </div>
+        ))}
+      </div>}
+
+      {/* ── ANOMALY DETECTION ── */}
+      {activeTab==="anomalies"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:12}}>
+        <div style={{background:T.white,borderRadius:4,padding:"12px 16px",boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+          <div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:4}}>Anomaly Detection — {selectedLine}</div>
+          <div style={{fontSize:12,color:T.gray900}}>Parameters trending outside acceptable ranges, ranked by severity. Agent monitors all setpoints continuously against historical baselines and recipe standards.</div>
+        </div>
+        {SP_ANOMALIES.map(a=>(
+          <div key={a.id} style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",borderLeft:`4px solid ${severityColor(a.severity)}`,padding:"14px 18px"}}>
+            <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}>
+              <Badge label={a.severity} color={severityColor(a.severity)}/>
+              <Badge label={a.equipment} color={T.primary}/>
+              <span style={{fontSize:12,fontWeight:800,color:T.black}}>{a.param}</span>
+            </div>
+            <div style={{display:"flex",gap:16,flexWrap:"wrap",marginBottom:8}}>
+              <div><div style={{fontSize:10,color:T.gray400}}>Current Value</div><div style={{fontSize:14,fontWeight:800,color:severityColor(a.severity)}}>{a.value}</div></div>
+              <div><div style={{fontSize:10,color:T.gray400}}>Threshold</div><div style={{fontSize:12,fontWeight:600,color:T.black}}>{a.threshold}</div></div>
+              <div><div style={{fontSize:10,color:T.gray400}}>Trend</div><div style={{fontSize:12,fontWeight:700,color:severityColor(a.severity)}}>{a.trend}</div></div>
+              <div><div style={{fontSize:10,color:T.gray400}}>Since</div><div style={{fontSize:12,color:T.gray900}}>{a.since}</div></div>
+            </div>
+            <div style={{fontSize:12,color:T.gray900,marginBottom:6}}>{a.description}</div>
+            <div style={{background:T.primary+"08",borderLeft:`2px solid ${T.primary}`,borderRadius:3,padding:"6px 10px",fontSize:11,color:T.primary}}>💡 {a.action}</div>
+          </div>
+        ))}
+      </div>}
+
+      {/* ── RECIPE LIBRARY ── */}
+      {activeTab==="recipes"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+
+        {/* Agent banner */}
+        <div style={{background:T.primary+"10",border:`1px solid ${T.primary}30`,borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"12px 16px"}}>
+          <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>🧠 Recipe Optimization Agent — {selectedLine}</div>
+          <div style={{fontSize:12,color:T.black}}>Agent continuously monitors production performance against recipe standards. When actual conditions drift from standard for more than 24hrs, or when FPY falls below target, the agent recommends recipe updates for process engineering review. Updates require process engineer approval before taking effect.</div>
+        </div>
+
+        {/* Recipes with agent recs */}
+        {SP_RECIPES.map(r=>{
+          const statusColor=r.status==="Active"?T.positive:r.status==="On Hold"?T.warning:T.neutral;
+          return(<div key={r.sku} style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",overflow:"hidden",borderLeft:`4px solid ${r.agentRec.hasRec?T.warning:statusColor}`}}>
+            <div style={{padding:"14px 18px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
+              <div style={{flex:1}}>
+                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
+                  <span style={{fontSize:13,fontWeight:800,color:T.black}}>{r.sku}</span>
+                  <span style={{fontSize:13,color:T.gray900}}>{r.name}</span>
+                  <Badge label={r.status} color={statusColor}/>
+                  {r.agentRec.hasRec&&<Badge label="🧠 Recipe update recommended" color={T.warning}/>}
+                </div>
+                <div style={{display:"flex",gap:16,flexWrap:"wrap",fontSize:11,color:T.gray900,marginBottom:r.agentRec.hasRec?8:0}}>
+                  <span>Fryer: <strong>{r.frierTemp}°C</strong></span>
+                  <span>Slice: <strong>{r.sliceThick}mm</strong></span>
+                  <span>Blancher: <strong>{r.blancherTemp}°C</strong></span>
+                  <span>Seasoning: <strong>{r.seasonRate}g/kg</strong></span>
+                  <span>Last updated: <strong>{r.lastUpdated}</strong></span>
+                  {r.performance!=="—"&&<span>Performance: <strong style={{color:T.positive}}>{r.performance}</strong></span>}
+                </div>
+              </div>
+            </div>
+
+            {/* Agent recommendation */}
+            {r.agentRec.hasRec&&<div style={{borderTop:`1px solid ${T.border}`,padding:"12px 18px",background:T.warning+"06"}}>
+              <div style={{fontSize:11,fontWeight:700,color:T.warning,marginBottom:6}}>🧠 Recommended Recipe Changes — Review & Approve</div>
+              <div style={{fontSize:12,color:T.black,marginBottom:10}}>{r.agentRec.reason}</div>
+              <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:10}}>
+                {r.agentRec.changes.map((c,i)=>(
+                  <div key={i} style={{background:T.white,border:`1px solid ${T.border}`,borderRadius:4,padding:"10px 14px",flex:"1 1 200px"}}>
+                    <div style={{fontSize:11,fontWeight:700,color:T.black,marginBottom:4}}>{c.param}</div>
+                    <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:4}}>
+                      <span style={{fontSize:12,color:T.gray400}}>{c.current}{c.unit}</span>
+                      <span style={{fontSize:11,color:T.gray400}}>→</span>
+                      <span style={{fontSize:13,fontWeight:800,color:T.positive}}>{c.proposed}{c.unit}</span>
+                    </div>
+                    <div style={{fontSize:10,color:T.gray900,fontStyle:"italic"}}>{c.note}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{display:"flex",gap:8}}>
+                <button style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"7px 16px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Approve & Update Recipe</button>
+                <button style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"7px 14px",fontSize:12,cursor:"pointer",color:T.gray900}}>Dismiss</button>
+              </div>
+            </div>}
+          </div>);
+        })}
+      </div>}
+
+      </>)}
+    </div>
+  </div>);
+}
+
+
 // ── DISRUPTION MODAL ──────────────────────────────────────────────────────────
 const DISRUPTION_RECS={A:{title:"SKU 4412 → SKU 3802 Swap Executed — Line 1",priority:"High",domain:"Production",icon:"⚙️",lines:["All","Line 1"],agents:["Scheduling Agent","Inbound Materials Agent","Quality Monitoring Agent","Supervisor & Operator Co-Pilot"],suggestedAction:"Monitor Line 1 changeover to SKU 3802, confirm quality checks pass.",summary:"Line 1 switched from SKU 4412 to SKU 3802 following inbound materials failure. 35-min changeover underway.",detail:{issue:"Inbound seasoning blend Lot #SB-2291 for SKU 4412 was rejected at intake — sodium content 14% above spec.",action:"Monitor changeover progress, confirm quality sign-off on SKU 3802 first run.",steps:[{agent:"Inbound Materials Agent",domain:"Quality",action:"Quarantine Lot #SB-2291 and raise supplier deviation report.",status:"complete"},{agent:"Scheduling Agent",domain:"Planning",action:"Update Line 1 production schedule — replace SKU 4412 run with SKU 3802.",status:"complete"},{agent:"Quality Monitoring Agent",domain:"Quality",action:"Monitor first-pass yield on SKU 3802 run.",status:"pending"},{agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Guide Line 1 operator through SKU 3802 changeover SOP.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"}]}},B:{title:"Emergency SKU 4412 Batch Sourcing — Line 1 On Hold",priority:"Critical",domain:"Production",icon:"📦",lines:["All","Line 1"],agents:["Inbound Materials Agent","Planning Agent","Scheduling Agent"],suggestedAction:"Track emergency batch delivery ETA, hold Line 1.",summary:"Emergency replacement batch ordered. Line 1 on hold pending delivery.",detail:{issue:"SKU 4412 inbound materials rejected. Emergency batch ordered — 60% confidence on timing.",action:"Monitor delivery ETA. If batch arrives by 11am, proceed. If delayed, activate SKU 3802 contingency.",steps:[{agent:"Inbound Materials Agent",domain:"Quality",action:"Raise emergency PO with approved seasoning supplier.",status:"complete"},{agent:"Planning Agent",domain:"Planning",action:"Place Line 1 on hold. Prepare SKU 3802 contingency.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"}]}},C:{title:"Line 1 Held — SKU 4412 Rescheduled to Tomorrow",priority:"High",domain:"Planning",icon:"📋",lines:["All","Line 1"],agents:["Planning Agent","Scheduling Agent"],suggestedAction:"Confirm Line 1 hold and reschedule SKU 4412 to tomorrow.",summary:"Line 1 Day shift held. SKU 4412 rescheduled to tomorrow pending fresh batch.",detail:{issue:"SKU 4412 cannot run today. Full Day shift volume on Line 1 lost.",action:"Reschedule SKU 4412 to tomorrow's Day shift. Notify DC-West.",steps:[{agent:"Scheduling Agent",domain:"Planning",action:"Reschedule SKU 4412 Line 1 run to tomorrow Day shift.",status:"complete"},{agent:"Planning Agent",domain:"Planning",action:"Notify DC-West of one-day delay.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Priya Nair",role:"Scheduler",avatar:"SC"}]}}};
 
@@ -2358,10 +2809,10 @@ export default function App(){
   const handleViewDashboardRec=(recId)=>{const rec=[...recs,...initialRecommendations].find(r=>r.id===recId);if(rec){setSelectedRec(rec);setTab("dashboard");setChatMode(null);}};
 
   const personas=[{id:"plant_leader",label:"Plant Leader",avatar:"PL"},{id:"maint_manager",label:"Maintenance Manager",avatar:"MM"},{id:"technician",label:"Technician",avatar:"TC"},{id:"scheduler",label:"Scheduler",avatar:"SC"},{id:"quality_manager",label:"Quality Manager",avatar:"QM"},{id:"safety_lead",label:"Safety Lead",avatar:"SL"}];
-  const personaNav={plant_leader:["dashboard","actions","lineperf","quality","maintenance","technician","shutdown","assethealth","materials","schedule","labor","safety"],maint_manager:["dashboard","actions","lineperf","maintenance","technician","shutdown","assethealth","schedule"],technician:["technician"],scheduler:["dashboard","actions","schedule","materials","labor","lineperf"],quality_manager:["dashboard","actions","quality","materials","lineperf"],safety_lead:["dashboard","actions","safety","lineperf"]};
-  const allNavItems=[{id:"dashboard",icon:"▦",label:"Summary Dashboard"},{id:"actions",icon:"☑",label:"Action Log"},{id:"lineperf",icon:"↗",label:"Line Performance"},{id:"quality",icon:"◎",label:"Quality Dashboard"},{id:"maintenance",icon:"⚙",label:"Maintenance Dashboard"},{id:"technician",icon:"⬡",label:"Technician Dashboard"},{id:"shutdown",icon:"◈",label:"Shutdown Management"},{id:"assethealth",icon:"♡",label:"Asset Health"},{id:"materials",icon:"▤",label:"Inbound Materials"},{id:"schedule",icon:"▦",label:"Production Schedule"},{id:"labor",icon:"♟",label:"Labor Scheduling"},{id:"safety",icon:"◬",label:"Safety & EHS"}];
+  const personaNav={plant_leader:["dashboard","actions","lineperf","quality","maintenance","technician","shutdown","setpoint","assethealth","materials","schedule","labor","safety"],maint_manager:["dashboard","actions","lineperf","maintenance","technician","shutdown","assethealth","schedule"],technician:["technician"],scheduler:["dashboard","actions","schedule","materials","labor","lineperf"],quality_manager:["dashboard","actions","quality","materials","lineperf"],safety_lead:["dashboard","actions","safety","lineperf"]};
+  const allNavItems=[{id:"dashboard",icon:"▦",label:"Summary Dashboard"},{id:"actions",icon:"☑",label:"Action Log"},{id:"lineperf",icon:"↗",label:"Line Performance"},{id:"quality",icon:"◎",label:"Quality Dashboard"},{id:"maintenance",icon:"⚙",label:"Maintenance Dashboard"},{id:"technician",icon:"⬡",label:"Technician Dashboard"},{id:"shutdown",icon:"◈",label:"Shutdown Management"},{id:"setpoint",icon:"⊕",label:"Setpoint & Recipe Optimization"},{id:"assethealth",icon:"♡",label:"Asset Health"},{id:"materials",icon:"▤",label:"Inbound Materials"},{id:"schedule",icon:"▦",label:"Production Schedule"},{id:"labor",icon:"♟",label:"Labor Scheduling"},{id:"safety",icon:"◬",label:"Safety & EHS"}];
   const activeNavIds=personaNav[persona]||personaNav.plant_leader;
-  const builtTabs=["dashboard","actions","lineperf","schedule","maintenance","technician","shutdown"];
+  const builtTabs=["dashboard","actions","lineperf","schedule","maintenance","technician","shutdown","setpoint"];
 
   const handleTabClick=(id)=>{setTab(id);setSelectedRec(null);setChatMode(null);};
 
@@ -2437,6 +2888,7 @@ export default function App(){
           {tab==="maintenance"&&selectedRec&&<DetailPage rec={selectedRec} onBack={()=>setSelectedRec(null)}/>}
           {tab==="technician"&&<TechnicianDashboard/>}
           {tab==="shutdown"&&<ShutdownDashboard/>}
+          {tab==="setpoint"&&<SetpointDashboard/>}
           {!builtTabs.includes(tab)&&(<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"60vh",gap:12}}>
             <div style={{fontSize:40}}>{allNavItems.find(n=>n.id===tab)?.icon}</div>
             <div style={{fontSize:16,fontWeight:800,color:T.black}}>{allNavItems.find(n=>n.id===tab)?.label}</div>
