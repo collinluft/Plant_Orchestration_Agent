@@ -2393,11 +2393,11 @@ const SP_RECIPES = [
 ];
 
 const SP_ANOMALIES = [
-  {id:"a1",severity:"Critical",equipment:"Heat Sealer",param:"Seal Temperature",value:"191.2°C",threshold:"185°C target / 195°C max",trend:"↑ Increasing",since:"Feb 26 — 2 days",description:"Seal temp trending upward for 48hrs. Direct driver of WO-4421. Root cause: fryer oil temp cascade.",action:"Fix fryer temp first. If sealer continues after fryer correction, escalate to maintenance."},
-  {id:"a2",severity:"High",equipment:"Slicer",param:"Slice Thickness",value:"1.58mm",threshold:"1.50mm target ±0.05mm",trend:"↑ Drifting up",since:"Feb 27 — 1 day",description:"Thickness drift consistent with blade wear. QC rejects on optical sorter up 3% in last 24hrs.",action:"Recalibrate at next changeover. Schedule blade inspection."},
-  {id:"a3",severity:"High",equipment:"Continuous Fryer",param:"Oil Temperature",value:"178.4°C",threshold:"175°C target ±3°C",trend:"↑ Above setpoint",since:"Feb 25 — 3 days",description:"Root cause of multiple downstream anomalies. Fryer thermocouple may need recalibration.",action:"Apply SR-001 recommendation. Check fryer thermocouple calibration."},
-  {id:"a4",severity:"Medium",equipment:"Blancher",param:"Water Temperature",value:"68.2°C",threshold:"70°C target ±2°C",trend:"↓ Below setpoint",since:"Feb 28 — today",description:"Heat exchanger fouling on blancher circuit reducing heat transfer efficiency.",action:"Monitor chip colour index. Flag HX for inspection at next opportunity."},
-  {id:"a5",severity:"Medium",equipment:"Packager",param:"Seal Integrity",value:"98.1%",threshold:"99.5% target / 98% min",trend:"↓ Declining",since:"Feb 27 — 1 day",description:"Downstream of heat sealer running hot. Expect improvement once sealer is stabilized.",action:"Monitor. If drops below 98%, pause and inspect packaging film spec."},
+  {id:"a1",severity:"Critical",equipment:"Heat Sealer",param:"Seal Temperature",value:"191.2°C",threshold:"185°C target / 195°C max",trend:"↑ Increasing",since:"Feb 26 — 2 days",description:"Seal temp trending upward for 48hrs. Direct driver of WO-4421. Root cause: fryer oil temp cascade — chips arriving at sealer with higher moisture variance, sealer compensating with higher temp.",actionType:"wo",actionLabel:"View WO-4421 in SAP PM →",actionNote:"WO-4421 already raised — Carlos Rivera assigned. Fix fryer temp first; sealer should stabilize within 2 production cycles."},
+  {id:"a2",severity:"High",equipment:"Slicer",param:"Slice Thickness",value:"1.58mm",threshold:"1.50mm target ±0.05mm",trend:"↑ Drifting up",since:"Feb 27 — 1 day",description:"Thickness drift consistent with blade wear. QC rejects on optical sorter up 3% in last 24hrs. If uncorrected will breach spec by tomorrow shift.",actionType:"setpoint",actionLabel:"Apply Recalibration →",actionNote:"Recalibrate slicer to 1.50mm at next changeover. Schedule blade inspection — drift pattern suggests wear."},
+  {id:"a3",severity:"High",equipment:"Continuous Fryer",param:"Oil Temperature",value:"178.4°C",threshold:"175°C target ±3°C",trend:"↑ Above setpoint",since:"Feb 25 — 3 days",description:"Root cause of multiple downstream anomalies. Fryer thermocouple may need recalibration. Has been above setpoint for 3 consecutive days — every downstream deviation traces back to this.",actionType:"setpoint",actionLabel:"Apply Fryer Fix (SR-001) →",actionNote:"See Optimization Recs tab — SR-001 will reduce fryer to 175°C. Estimated to resolve 4 of 5 active anomalies within 2–3 cycles."},
+  {id:"a4",severity:"Medium",equipment:"Blancher",param:"Water Temperature",value:"68.2°C",threshold:"70°C target ±2°C",trend:"↓ Below setpoint",since:"Feb 28 — today",description:"Heat exchanger fouling on blancher circuit reducing heat transfer efficiency. Chip colour index trending darker — if uncorrected for 24hrs will breach QC spec for SKU 3801.",actionType:"escalate",actionLabel:"Escalate to Plant Leader →",actionNote:"Flag for maintenance inspection at next opportunity. Monitor chip colour index on optical sorter output."},
+  {id:"a5",severity:"Medium",equipment:"Packager",param:"Seal Integrity",value:"98.1%",threshold:"99.5% target / 98% min",trend:"↓ Declining",since:"Feb 27 — 1 day",description:"Downstream of heat sealer running hot. At 98.1% we are just above the 98% minimum — if sealer temp continues rising this will breach minimum spec and require a line stop.",actionType:"monitor",actionLabel:"Mark as Monitoring →",actionNote:"Expect improvement once fryer and sealer are corrected. If drops below 98%, pause line and inspect packaging film spec."},
 ];
 
 // ── SETPOINT DASHBOARD ────────────────────────────────────────────────────────
@@ -2679,27 +2679,54 @@ function SetpointDashboard(){
 
       {/* ── ANOMALY DETECTION ── */}
       {activeTab==="anomalies"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:12}}>
-        <div style={{background:T.white,borderRadius:4,padding:"12px 16px",boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-          <div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:4}}>Anomaly Detection — {selectedLine}</div>
-          <div style={{fontSize:12,color:T.gray900}}>Parameters trending outside acceptable ranges, ranked by severity. Agent monitors all setpoints continuously against historical baselines and recipe standards.</div>
+        <div style={{background:T.primary+"10",border:`1px solid ${T.primary}30`,borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"12px 16px"}}>
+          <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>🧠 Setpoint & Recipe Optimization Agent — Anomaly Feed · {selectedLine}</div>
+          <div style={{fontSize:12,color:T.black}}>The agent continuously monitors all process parameters against recipe standards and historical baselines. Anomalies are things already outside acceptable range — they need a decision. Each one has a recommended action: apply a setpoint fix, raise or view a work order, escalate, or mark as monitoring.</div>
         </div>
-        {SP_ANOMALIES.map(a=>(
-          <div key={a.id} style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",borderLeft:`4px solid ${severityColor(a.severity)}`,padding:"14px 18px"}}>
-            <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}>
-              <Badge label={a.severity} color={severityColor(a.severity)}/>
-              <Badge label={a.equipment} color={T.primary}/>
-              <span style={{fontSize:12,fontWeight:800,color:T.black}}>{a.param}</span>
+        {SP_ANOMALIES.map(a=>{
+          const actColor=a.actionType==="wo"?"#4F46E5":a.actionType==="setpoint"?T.primary:a.actionType==="escalate"?T.negative:T.neutral;
+          const actBg=a.actionType==="wo"?"#EEF2FF":a.actionType==="setpoint"?T.primary+"10":a.actionType==="escalate"?T.negative+"10":T.gray100;
+          return(<div key={a.id} style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",borderLeft:`4px solid ${severityColor(a.severity)}`}}>
+            <div style={{padding:"14px 18px"}}>
+              {/* Header row */}
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap",marginBottom:8}}>
+                <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                  <Badge label={a.severity} color={severityColor(a.severity)}/>
+                  <Badge label={a.equipment} color={T.primary}/>
+                  <span style={{fontSize:13,fontWeight:800,color:T.black}}>{a.param}</span>
+                </div>
+                <span style={{fontSize:11,color:T.gray400}}>Detected: {a.since}</span>
+              </div>
+              {/* Values row */}
+              <div style={{display:"flex",gap:16,flexWrap:"wrap",marginBottom:10}}>
+                <div style={{padding:"6px 12px",background:severityColor(a.severity)+"10",borderRadius:4,textAlign:"center"}}>
+                  <div style={{fontSize:10,color:T.gray400,marginBottom:2}}>Current</div>
+                  <div style={{fontSize:16,fontWeight:800,color:severityColor(a.severity)}}>{a.value}</div>
+                </div>
+                <div style={{padding:"6px 12px",background:T.gray100,borderRadius:4,textAlign:"center"}}>
+                  <div style={{fontSize:10,color:T.gray400,marginBottom:2}}>Target / Limit</div>
+                  <div style={{fontSize:12,fontWeight:600,color:T.black}}>{a.threshold}</div>
+                </div>
+                <div style={{padding:"6px 12px",background:T.gray100,borderRadius:4,textAlign:"center"}}>
+                  <div style={{fontSize:10,color:T.gray400,marginBottom:2}}>Trend</div>
+                  <div style={{fontSize:12,fontWeight:700,color:severityColor(a.severity)}}>{a.trend}</div>
+                </div>
+              </div>
+              {/* Description */}
+              <div style={{fontSize:12,color:T.gray900,marginBottom:10,lineHeight:1.6}}>{a.description}</div>
+              {/* Action section */}
+              <div style={{background:actBg,border:`1px solid ${actColor}30`,borderRadius:4,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,flexWrap:"wrap"}}>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:10,fontWeight:700,color:actColor,marginBottom:3,textTransform:"uppercase",letterSpacing:"0.04em"}}>
+                    {a.actionType==="wo"?"🔧 Maintenance Action":a.actionType==="setpoint"?"⚙ Setpoint Fix Available":a.actionType==="escalate"?"🚨 Escalation Recommended":"👁 Monitoring"}
+                  </div>
+                  <div style={{fontSize:11,color:T.black}}>{a.actionNote}</div>
+                </div>
+                <button style={{background:actColor,color:T.white,border:"none",borderRadius:4,padding:"7px 14px",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>{a.actionLabel}</button>
+              </div>
             </div>
-            <div style={{display:"flex",gap:16,flexWrap:"wrap",marginBottom:8}}>
-              <div><div style={{fontSize:10,color:T.gray400}}>Current Value</div><div style={{fontSize:14,fontWeight:800,color:severityColor(a.severity)}}>{a.value}</div></div>
-              <div><div style={{fontSize:10,color:T.gray400}}>Threshold</div><div style={{fontSize:12,fontWeight:600,color:T.black}}>{a.threshold}</div></div>
-              <div><div style={{fontSize:10,color:T.gray400}}>Trend</div><div style={{fontSize:12,fontWeight:700,color:severityColor(a.severity)}}>{a.trend}</div></div>
-              <div><div style={{fontSize:10,color:T.gray400}}>Since</div><div style={{fontSize:12,color:T.gray900}}>{a.since}</div></div>
-            </div>
-            <div style={{fontSize:12,color:T.gray900,marginBottom:6}}>{a.description}</div>
-            <div style={{background:T.primary+"08",borderLeft:`2px solid ${T.primary}`,borderRadius:3,padding:"6px 10px",fontSize:11,color:T.primary}}>💡 {a.action}</div>
-          </div>
-        ))}
+          </div>);
+        })}
       </div>}
 
       {/* ── RECIPE LIBRARY ── */}
