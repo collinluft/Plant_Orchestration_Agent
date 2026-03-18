@@ -950,7 +950,7 @@ function Dashboard({recs,onSelectRec,onShowDisruption,disruptionActive,persona})
           <div><div style={{fontSize:13,fontWeight:800,color:T.black}}>Performance Scorecard — {lineFilter==="All"?"All Lines":lineFilter}</div><div style={{fontSize:11,color:T.gray900,marginTop:2}}>Prior 24 hours · 3 shifts</div></div>
           {lineFilter!=="All"&&d.alerts.length>0&&<div style={{display:"flex",flexDirection:"column",gap:4}}>{d.alerts.map((a,i)=><div key={i} style={{fontSize:11,color:T.negative,fontWeight:600}}>⚠ {a}</div>)}</div>}
         </div>
-        <div style={{padding:"16px 20px",overflowX:"auto"}}><div style={{display:"flex",gap:12,minWidth:500}}>{visibleDomainColumns.map(col=>(<DomainColumn key={col.domain} {...col} recCount={0} onScrollToRecs={scrollToRecs}/>))}</div></div>
+        <div style={{padding:"16px 20px",overflowX:"auto"}}><div style={{display:"flex",gap:12,minWidth:500}}>{visibleDomainColumns.map(col=>{const recIds=domainRecMap[col.domain]||[];const colRecCount=standardRecs.filter(r=>recIds.includes(r.id)).length;return(<DomainColumn key={col.domain} {...col} recCount={colRecCount} onScrollToRecs={scrollToRecs}/>);})}</div></div>
         <div style={{borderTop:`1px solid ${T.border}`,padding:"14px 20px"}}>
           <div style={{fontSize:12,fontWeight:700,color:T.gray900,marginBottom:10}}>Shift Breakdown</div>
           <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
