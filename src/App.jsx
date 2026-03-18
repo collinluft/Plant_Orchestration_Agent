@@ -1863,6 +1863,458 @@ function TechnicianDashboard(){
   </div>);
 }
 
+
+// ── SHUTDOWN DASHBOARD DATA ───────────────────────────────────────────────────
+const SHUTDOWN = {
+  name:"Line 3 Annual Shutdown",
+  asset:"Line 3 — Full Line",
+  dates:"Mar 14–16, 2026",
+  daysOut:14,
+  duration:"2.5 days",
+  status:"Planning",
+  budget:142000,
+  budgetSpent:18400,
+  jobsTotal:6,
+  jobsReady:3,
+  partsReadiness:72,
+  contractorsConfirmed:2,
+  contractorsPending:1,
+};
+
+const SHUTDOWN_JOBS = [
+  {id:"SJ-001",title:"Heat Sealer — Element Replacement & Jaw Rebuild",type:"Corrective",priority:"Critical",assignedTo:"Carlos Rivera",contractor:null,estDays:0.5,minHrs:4,maxHrs:4,certainty:"High",status:"Ready",partsReady:true,toolsReady:true,prereqs:[],blockedBy:[],day:1,startHr:8,color:"#D64454",note:"Triggered by Feb 28 degradation signal. Parts confirmed in stock."},
+  {id:"SJ-002",title:"Conveyor Drivetrain Overhaul",type:"Preventive",priority:"High",assignedTo:"Marcus Webb",contractor:null,estDays:1,minHrs:7,maxHrs:9,certainty:"Medium",status:"Ready",partsReady:true,toolsReady:true,prereqs:["SJ-001"],blockedBy:[],day:1,startHr:13,color:"#1565C0",note:"Can begin once sealer work complete. Belt tension tools confirmed."},
+  {id:"SJ-003",title:"Filler Head Replacement — 5-Year Lifecycle",type:"Preventive",priority:"High",assignedTo:"Priya Singh",contractor:null,estDays:0.75,minHrs:5,maxHrs:6,certainty:"High",status:"Ready",partsReady:true,toolsReady:false,prereqs:[],blockedBy:["SJ-004"],day:1,startHr:8,color:"#1565C0",note:"Filler head confirmed in stock. Awaiting calibration tools from supplier."},
+  {id:"SJ-004",title:"Electrical Panel Rewire — Zone B",type:"Corrective",priority:"High",assignedTo:null,contractor:"PowerGrid Services",estDays:1,minHrs:8,maxHrs:10,certainty:"Medium",status:"Contractor Pending",partsReady:true,toolsReady:true,prereqs:[],blockedBy:[],day:1,startHr:8,color:"#673AB7",note:"PowerGrid Services confirmed on-site Mar 14. 10-hr minimum shift. LOTO coordination required with internal team."},
+  {id:"SJ-005",title:"Structural Weld Inspection & Repair",type:"Inspection",priority:"Medium",assignedTo:null,contractor:"SteelWeld Specialists",estDays:null,minHrs:4,maxHrs:16,certainty:"Low",status:"Scope Uncertain",partsReady:false,toolsReady:true,prereqs:["SJ-004"],blockedBy:[],day:2,startHr:8,color:"#E65100",note:"Cannot diagnose until line is open. Best case: 4hrs (welds clean). Worst case: 16hrs (cracks found, full re-weld required). Schedule holds buffer."},
+  {id:"SJ-006",title:"Cooling System Recharge — Apex Refrigeration",type:"Preventive",priority:"Medium",assignedTo:null,contractor:"Apex Refrigeration",estDays:0.25,minHrs:2,maxHrs:2,certainty:"High",status:"Ready",partsReady:true,toolsReady:true,prereqs:[],blockedBy:[],day:3,startHr:8,color:"#197A56",note:"Apex on-site from subcontractor WO. 2hr job, can run in parallel with closure activities."},
+];
+
+const SHUTDOWN_PARTS = [
+  {part:"Sealer Heating Element",partNo:"SE-441",job:"SJ-001",qty:2,leadWeeks:1,status:"In Stock",supplier:"ThermoTech",cost:340,eta:null},
+  {part:"Sealer Jaw Assembly",partNo:"SJ-204",job:"SJ-001",qty:1,leadWeeks:3,status:"In Stock",supplier:"ThermoTech",cost:1200,eta:null},
+  {part:"Conveyor Drive Belt (HD)",partNo:"CB-880",job:"SJ-002",qty:1,leadWeeks:2,status:"In Stock",supplier:"BeltCo",cost:420,eta:null},
+  {part:"Drive Sprocket Set",partNo:"DS-112",job:"SJ-002",qty:1,leadWeeks:4,status:"In Stock",supplier:"BeltCo",cost:780,eta:null},
+  {part:"Filler Head Assembly (5yr)",partNo:"FH-500",job:"SJ-003",qty:1,leadWeeks:8,status:"In Stock",supplier:"FillerTech",cost:8400,eta:null},
+  {part:"Filler Calibration Kit",partNo:"FK-022",job:"SJ-003",qty:1,leadWeeks:2,status:"On Order",supplier:"FillerTech",cost:240,eta:"Mar 7"},
+  {part:"Electrical Cable Bundle (Zone B)",partNo:"EC-440",job:"SJ-004",qty:1,leadWeeks:1,status:"In Stock",supplier:"ElecSupply",cost:1100,eta:null},
+  {part:"Circuit Breaker Set",partNo:"CB-220",job:"SJ-004",qty:6,leadWeeks:2,status:"In Stock",supplier:"ElecSupply",cost:900,eta:null},
+  {part:"Weld Rod Set (structural)",partNo:"WR-S80",job:"SJ-005",qty:null,leadWeeks:1,status:"Conditional",supplier:"SteelWeld",cost:null,eta:"On-site with contractor — quantity TBD post-diagnosis"},
+  {part:"Refrigerant R-404A",partNo:"REF-404",job:"SJ-006",qty:1,leadWeeks:0,status:"In Stock",supplier:"Apex Refrigeration",cost:380,eta:null},
+];
+
+const SHUTDOWN_CONTRACTORS = [
+  {name:"PowerGrid Services",job:"SJ-004",role:"Electrical Rewire Specialists",minShift:10,onSiteDate:"Mar 14",headcount:3,dayRate:2800,status:"Confirmed",contact:"Dave Kowalczyk",notes:"10-hr minimum shift. Coordinate LOTO handover with Carlos Rivera."},
+  {name:"SteelWeld Specialists",job:"SJ-005",role:"Structural Welding & NDT",minShift:8,onSiteDate:"Mar 15",headcount:2,dayRate:3200,status:"Confirmed",contact:"Maria Santos",notes:"Scope TBD on-site. Bring full NDT kit. Best/worst case 4-16hrs — budget for worst case."},
+  {name:"Apex Refrigeration",job:"SJ-006",role:"Refrigerant Recharge",minShift:4,onSiteDate:"Mar 16",headcount:1,dayRate:1400,status:"Pending Confirmation",contact:"James Okafor (on-site supervisor)",notes:"Already on subcontractor WO list. Confirm arrival time by Mar 10."},
+];
+
+const SHUTDOWN_INTERNAL = [
+  {name:"Carlos Rivera",role:"Senior Technician",jobs:["SJ-001"],hoursAllocated:4,certified:["Heat Sealer","Electrical","Filler","Conveyor"]},
+  {name:"Marcus Webb",role:"Technician",jobs:["SJ-002"],hoursAllocated:9,certified:["Conveyor","Heat Tunnel","Packaging"]},
+  {name:"Priya Singh",role:"Technician",jobs:["SJ-003"],hoursAllocated:6,certified:["Filler","Conveyor"]},
+];
+
+// ── SHUTDOWN DASHBOARD ────────────────────────────────────────────────────────
+function ShutdownDashboard(){
+  const [activeTab,setActiveTab]=useState("planning");
+  const [scheduleView,setScheduleView]=useState("optimistic");
+
+  const TABS=[
+    {id:"planning",label:"Planning & Prep"},
+    {id:"schedule",label:"Schedule"},
+    {id:"workforce",label:"Workforce"},
+    {id:"execution",label:"Execution"},
+  ];
+
+  const SDTab=({tab})=>{
+    const isActive=activeTab===tab.id;
+    return(<button onClick={()=>setActiveTab(tab.id)} style={{display:"flex",alignItems:"center",gap:5,padding:"12px 16px",border:"none",borderBottom:isActive?`2px solid ${T.primary}`:"2px solid transparent",background:"transparent",cursor:"pointer",fontWeight:isActive?800:500,fontSize:12,color:isActive?T.primary:T.gray900,whiteSpace:"nowrap"}}>{tab.label}</button>);
+  };
+
+  const partStatusColor=s=>s==="In Stock"?T.positive:s==="On Order"?T.info:s==="Conditional"?T.warning:T.negative;
+  const jobStatusColor=s=>s==="Ready"?T.positive:s==="Contractor Pending"?T.warning:s==="Scope Uncertain"?T.warning:T.neutral;
+  const certaintyColor=c=>c==="High"?T.positive:c==="Medium"?T.warning:T.negative;
+
+  // Schedule Gantt data
+  const DAY_LABELS=["Day 1 — Mar 14","Day 2 — Mar 15","Day 3 — Mar 16"];
+  const HOURS_PER_DAY=10; // 8am-6pm
+  const totalCols=DAY_LABELS.length*HOURS_PER_DAY;
+  const jobToCol=(day,startHr,hrs)=>{
+    const dayOffset=(day-1)*HOURS_PER_DAY;
+    const hrOffset=startHr-8;
+    return{left:(dayOffset+hrOffset)/totalCols*100,width:hrs/totalCols*100};
+  };
+
+  // Build schedule positions
+  const schedJobs=SHUTDOWN_JOBS.map(j=>{
+    const hrs=scheduleView==="optimistic"?j.minHrs:j.maxHrs;
+    return{...j,hrs,pos:jobToCol(j.day,j.startHr,hrs)};
+  });
+
+  // Adjust SJ-005 on pessimistic
+  const sj005=schedJobs.find(j=>j.id==="SJ-005");
+  // SJ-002 prereqs SJ-001, recalc start
+  const sj001=schedJobs.find(j=>j.id==="SJ-001");
+  const sj002=schedJobs.find(j=>j.id==="SJ-002");
+  if(sj001&&sj002){
+    const sj001End=(1-1)*HOURS_PER_DAY+(sj001.startHr-8)+sj001.hrs;
+    const sj002Start=sj001End;
+    sj002.pos=jobToCol(1,8+sj002Start,sj002.hrs);
+  }
+
+  const totalBudget=SHUTDOWN_CONTRACTORS.reduce((a,c)=>a+c.dayRate*2.5,0)+SHUTDOWN_PARTS.reduce((a,p)=>a+(p.cost||0),0)+42000;
+
+  return(<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
+    {/* Header */}
+    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px 0",flexShrink:0}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12,flexWrap:"wrap",gap:8}}>
+        <div>
+          <div style={{fontSize:18,fontWeight:800,color:T.black}}>{SHUTDOWN.name}</div>
+          <div style={{fontSize:12,color:T.gray900,marginTop:2}}>{SHUTDOWN.dates} · {SHUTDOWN.duration} · Austin Plant · {SHUTDOWN.daysOut} days out</div>
+        </div>
+        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+          {[
+            {label:"Jobs",value:`${SHUTDOWN.jobsReady}/${SHUTDOWN.jobsTotal} Ready`,color:SHUTDOWN.jobsReady===SHUTDOWN.jobsTotal?T.positive:T.warning},
+            {label:"Parts Readiness",value:`${SHUTDOWN.partsReadiness}%`,color:SHUTDOWN.partsReadiness>=90?T.positive:T.warning},
+            {label:"Contractors",value:`${SHUTDOWN.contractorsConfirmed}/${SHUTDOWN.contractorsConfirmed+SHUTDOWN.contractorsPending} Confirmed`,color:SHUTDOWN.contractorsPending>0?T.warning:T.positive},
+            {label:"Budget Est.",value:`$${(totalBudget/1000).toFixed(0)}k`,color:T.black},
+          ].map(k=>(
+            <div key={k.label} style={{textAlign:"center",padding:"6px 14px",background:T.gray100,borderRadius:4}}>
+              <div style={{fontSize:15,fontWeight:800,color:k.color}}>{k.value}</div>
+              <div style={{fontSize:10,color:T.gray400}}>{k.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{display:"flex",gap:0,overflowX:"auto"}}>
+        {TABS.map(t=><SDTab key={t.id} tab={t}/>)}
+      </div>
+    </div>
+
+    <div style={{flex:1,overflowY:"auto",background:T.gray100}}>
+
+      {/* ── PLANNING & PREP ── */}
+      {activeTab==="planning"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+
+        {/* Agent banner */}
+        <div style={{background:T.primary+"10",border:`1px solid ${T.primary}30`,borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"12px 16px"}}>
+          <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>🧠 Shutdown Planning Agent — {SHUTDOWN.daysOut} Days to Shutdown</div>
+          <div style={{fontSize:12,color:T.black,marginBottom:8}}>3 of 6 jobs are fully ready. 2 items require action before Mar 10: Filler Calibration Kit delivery confirmation and Apex Refrigeration on-site confirmation. SJ-005 scope remains uncertain until Day 2 diagnosis — schedule holds 16-hr buffer.</div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            <Badge label="⚠ Apex confirmation needed by Mar 10" color={T.warning}/>
+            <Badge label="⚠ Filler Calibration Kit ETA Mar 7" color={T.warning}/>
+            <Badge label="⚠ SJ-005 scope uncertain" color={T.warning}/>
+          </div>
+        </div>
+
+        {/* Jobs readiness */}
+        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
+            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Shutdown Scope — Job Readiness</div>
+            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>6 jobs · {SHUTDOWN.duration} · Parts and tools status per job</div>
+          </div>
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+              <thead><tr style={{background:T.gray100}}>
+                {["Job","Title","Assigned To","Est. Duration","Certainty","Parts","Tools","Status","Pre-Reqs"].map(h=>(
+                  <th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>
+                ))}
+              </tr></thead>
+              <tbody>{SHUTDOWN_JOBS.map((j,i)=>(
+                <tr key={j.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
+                  <td style={{padding:"9px 14px",fontWeight:800,color:T.black,whiteSpace:"nowrap"}}><span style={{color:j.color}}>●</span> {j.id}</td>
+                  <td style={{padding:"9px 14px",fontWeight:600,color:T.black,maxWidth:220}}>{j.title}</td>
+                  <td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{j.assignedTo||<span style={{color:T.warning,fontWeight:700}}>{j.contractor}</span>}</td>
+                  <td style={{padding:"9px 14px",whiteSpace:"nowrap",color:T.gray900}}>{j.minHrs===j.maxHrs?`${j.minHrs}h`:`${j.minHrs}–${j.maxHrs}h`}</td>
+                  <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}><Badge label={j.certainty} color={certaintyColor(j.certainty)}/></td>
+                  <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}>{j.partsReady?<span style={{color:T.positive,fontWeight:700}}>✓ Ready</span>:<span style={{color:T.warning,fontWeight:700}}>⚠ Pending</span>}</td>
+                  <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}>{j.toolsReady?<span style={{color:T.positive,fontWeight:700}}>✓ Ready</span>:<span style={{color:T.warning,fontWeight:700}}>⚠ Pending</span>}</td>
+                  <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}><Badge label={j.status} color={jobStatusColor(j.status)}/></td>
+                  <td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{j.prereqs.length>0?j.prereqs.join(", "):"—"}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Parts tracker */}
+        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
+            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Parts Kitting — Long Lead Tracker</div>
+            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>All parts required across 6 jobs · {SHUTDOWN_PARTS.filter(p=>p.status==="In Stock").length} of {SHUTDOWN_PARTS.length} confirmed in stock</div>
+          </div>
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+              <thead><tr style={{background:T.gray100}}>
+                {["Part","Part No.","Job","Qty","Lead Time","Status","Supplier","Cost","ETA / Notes"].map(h=>(
+                  <th key={h} style={{padding:"8px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>
+                ))}
+              </tr></thead>
+              <tbody>{SHUTDOWN_PARTS.map((p,i)=>(
+                <tr key={p.partNo} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
+                  <td style={{padding:"8px 14px",fontWeight:600,color:T.black}}>{p.part}</td>
+                  <td style={{padding:"8px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{p.partNo}</td>
+                  <td style={{padding:"8px 14px",whiteSpace:"nowrap"}}><span style={{fontWeight:700,color:SHUTDOWN_JOBS.find(j=>j.id===p.job)?.color}}>{p.job}</span></td>
+                  <td style={{padding:"8px 14px",color:T.gray900}}>{p.qty||"TBD"}</td>
+                  <td style={{padding:"8px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{p.leadWeeks===0?"Same day":`${p.leadWeeks}w`}</td>
+                  <td style={{padding:"8px 14px",whiteSpace:"nowrap"}}><Badge label={p.status} color={partStatusColor(p.status)}/></td>
+                  <td style={{padding:"8px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{p.supplier}</td>
+                  <td style={{padding:"8px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{p.cost?`$${p.cost.toLocaleString()}`:"TBD"}</td>
+                  <td style={{padding:"8px 14px",color:p.eta?T.warning:T.gray400,fontSize:11,fontWeight:p.eta?700:400}}>{p.eta||"—"}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        </div>
+      </div>}
+
+      {/* ── SCHEDULE ── */}
+      {activeTab==="schedule"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+
+        {/* Optimizer banner */}
+        <div style={{background:"#FFF8E1",border:`1px solid ${T.warning}`,borderLeft:`3px solid ${T.warning}`,borderRadius:4,padding:"12px 16px"}}>
+          <div style={{fontSize:11,fontWeight:700,color:T.warning,marginBottom:4}}>🧠 Shutdown Schedule Optimizer — Probabilistic View Active</div>
+          <div style={{fontSize:12,color:T.black,marginBottom:8}}>SJ-005 (Structural Weld Inspection) has uncertain scope — cannot diagnose until Day 2. Toggle between optimistic (4hr) and pessimistic (16hr) scenarios to see downstream impact. If worst case, Day 3 runs 4hrs over — Apex Refrigeration shift must be extended or rescheduled.</div>
+          <div style={{display:"flex",gap:6}}>
+            <button onClick={()=>setScheduleView("optimistic")} style={{padding:"5px 14px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",border:`1px solid ${scheduleView==="optimistic"?T.positive:T.border}`,background:scheduleView==="optimistic"?T.positive:T.white,color:scheduleView==="optimistic"?T.white:T.gray900}}>Optimistic (4hr welds clean)</button>
+            <button onClick={()=>setScheduleView("pessimistic")} style={{padding:"5px 14px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",border:`1px solid ${scheduleView==="pessimistic"?T.negative:T.border}`,background:scheduleView==="pessimistic"?T.negative:T.white,color:scheduleView==="pessimistic"?T.white:T.gray900}}>Pessimistic (16hr cracks found)</button>
+            {scheduleView==="pessimistic"&&<Badge label="⚠ Day 3 overrun — Apex shift extension required" color={T.negative}/>}
+          </div>
+        </div>
+
+        {/* Gantt */}
+        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
+            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Shutdown Schedule — Gantt View</div>
+            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Mar 14–16 · 08:00–18:00 each day · {scheduleView==="optimistic"?"Optimistic scenario":"Pessimistic scenario — worst case"}</div>
+          </div>
+          <div style={{padding:"16px 20px",overflowX:"auto"}}>
+            {/* Day headers */}
+            <div style={{display:"flex",marginLeft:140,marginBottom:4}}>
+              {DAY_LABELS.map(d=><div key={d} style={{flex:1,textAlign:"center",fontSize:11,fontWeight:700,color:T.gray900,borderLeft:`1px solid ${T.border}`,paddingLeft:4}}>{d}</div>)}
+            </div>
+            {/* Hour markers */}
+            <div style={{display:"flex",marginLeft:140,marginBottom:8}}>
+              {DAY_LABELS.map(d=><div key={d} style={{flex:1,display:"flex",justifyContent:"space-between"}}>
+                {[8,10,12,14,16,18].map(h=><span key={h} style={{fontSize:9,color:T.gray400}}>{h}:00</span>)}
+              </div>)}
+            </div>
+            {/* Job rows */}
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              {schedJobs.map(j=>(
+                <div key={j.id} style={{display:"flex",alignItems:"center",gap:0}}>
+                  <div style={{width:140,flexShrink:0,paddingRight:12}}>
+                    <div style={{fontSize:11,fontWeight:800,color:j.color}}>{j.id}</div>
+                    <div style={{fontSize:10,color:T.gray400,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:128}}>{j.assignedTo||j.contractor}</div>
+                  </div>
+                  <div style={{flex:1,height:32,background:T.gray100,borderRadius:3,position:"relative",border:`1px solid ${T.border}`}}>
+                    {DAY_LABELS.map((_,i)=><div key={i} style={{position:"absolute",left:`${(i/3)*100}%`,top:0,bottom:0,borderLeft:`1px dashed ${T.border}40`,zIndex:0}}/>)}
+                    {/* Uncertainty bar for SJ-005 */}
+                    {j.id==="SJ-005"&&scheduleView==="optimistic"&&<div style={{position:"absolute",left:`${j.pos.left}%`,width:`${jobToCol(j.day,j.startHr,j.maxHrs).width}%`,top:3,bottom:3,background:T.warning+"20",borderRadius:3,border:`1px dashed ${T.warning}`,zIndex:1}}></div>}
+                    <div title={j.title} style={{position:"absolute",left:`${j.pos.left}%`,width:`${Math.max(j.pos.width,2)}%`,top:3,bottom:3,background:j.color,borderRadius:3,opacity:0.85,zIndex:2,display:"flex",alignItems:"center",overflow:"hidden",paddingLeft:6}}>
+                      <span style={{fontSize:9,color:T.white,fontWeight:700,whiteSpace:"nowrap"}}>{j.id} · {j.hrs}h</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Legend */}
+            <div style={{display:"flex",gap:16,marginTop:12,flexWrap:"wrap",marginLeft:140}}>
+              {SHUTDOWN_JOBS.map(j=><div key={j.id} style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:T.gray900}}><span style={{width:10,height:10,borderRadius:2,background:j.color,display:"inline-block"}}/>{j.id}</div>)}
+              <div style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:T.gray900}}><span style={{width:10,height:10,borderRadius:2,background:T.warning+"30",border:`1px dashed ${T.warning}`,display:"inline-block"}}/> Uncertainty buffer</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Job detail cards */}
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          <div style={{fontSize:12,fontWeight:800,color:T.black}}>Job Details & Dependencies</div>
+          {SHUTDOWN_JOBS.map(j=>(
+            <div key={j.id} style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",borderLeft:`4px solid ${j.color}`,padding:"12px 16px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
+                <div style={{flex:1}}>
+                  <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
+                    <span style={{fontSize:12,fontWeight:800,color:j.color}}>{j.id}</span>
+                    <Badge label={j.priority} color={j.priority==="Critical"?T.negative:j.priority==="High"?T.warning:T.info}/>
+                    <Badge label={`Certainty: ${j.certainty}`} color={certaintyColor(j.certainty)}/>
+                    <Badge label={j.status} color={jobStatusColor(j.status)}/>
+                    {j.prereqs.length>0&&<Badge label={`After: ${j.prereqs.join(", ")}`} color={T.neutral}/>}
+                  </div>
+                  <div style={{fontSize:13,fontWeight:700,color:T.black,marginBottom:2}}>{j.title}</div>
+                  <div style={{fontSize:11,color:T.gray900,marginBottom:j.note?6:0}}>{j.assignedTo?"Internal: "+j.assignedTo:"Contractor: "+j.contractor} · Day {j.day} · {j.minHrs===j.maxHrs?`${j.minHrs}h`:`${j.minHrs}–${j.maxHrs}h`}</div>
+                  {j.note&&<div style={{fontSize:11,color:T.primary}}>🧠 {j.note}</div>}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>}
+
+      {/* ── WORKFORCE ── */}
+      {activeTab==="workforce"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+
+        <div style={{background:T.primary+"10",border:`1px solid ${T.primary}30`,borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"12px 16px"}}>
+          <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>🧠 Workforce & Contractor Orchestrator</div>
+          <div style={{fontSize:12,color:T.black}}>3 internal technicians across 3 jobs. 3 contractors covering specialist scope. PowerGrid Services has a 10-hr minimum shift — agent has confirmed SJ-004 fits within that constraint. SteelWeld scope is variable — contractor briefed on best/worst case. Apex confirmation still pending.</div>
+        </div>
+
+        {/* Internal team */}
+        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
+            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Internal Workforce</div>
+            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>{SHUTDOWN_INTERNAL.length} technicians allocated · Skills verified against job requirements</div>
+          </div>
+          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:12}}>
+            {SHUTDOWN_INTERNAL.map(t=>(
+              <div key={t.name} style={{background:T.gray100,borderRadius:4,padding:"14px 16px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap",marginBottom:10}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <div style={{width:32,height:32,borderRadius:"50%",background:T.primary,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:T.white,flexShrink:0}}>{t.name.split(" ").map(n=>n[0]).join("")}</div>
+                    <div><div style={{fontSize:13,fontWeight:800,color:T.black}}>{t.name}</div><div style={{fontSize:11,color:T.gray900}}>{t.role}</div></div>
+                  </div>
+                  <div style={{display:"flex",gap:10}}>
+                    <div style={{textAlign:"center",padding:"4px 10px",background:T.white,borderRadius:4}}>
+                      <div style={{fontSize:14,fontWeight:800,color:T.black}}>{t.hoursAllocated}h</div>
+                      <div style={{fontSize:10,color:T.gray400}}>Allocated</div>
+                    </div>
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
+                  {t.jobs.map(j=>{const job=SHUTDOWN_JOBS.find(sj=>sj.id===j);return(<span key={j} style={{fontSize:11,fontWeight:700,color:job?.color,background:job?.color+"18",border:`1px solid ${job?.color}40`,borderRadius:3,padding:"2px 8px"}}>{j} — {job?.title.split("—")[0].trim()}</span>);})}
+                </div>
+                <div style={{fontSize:11,color:T.gray900}}>Certified: {t.certified.join(" · ")}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Contractors */}
+        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
+            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Contractors</div>
+            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>{SHUTDOWN_CONTRACTORS.length} contractors · {SHUTDOWN_CONTRACTORS.filter(c=>c.status==="Confirmed").length} confirmed · {SHUTDOWN_CONTRACTORS.filter(c=>c.status==="Pending Confirmation").length} pending</div>
+          </div>
+          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:12}}>
+            {SHUTDOWN_CONTRACTORS.map(c=>{
+              const job=SHUTDOWN_JOBS.find(j=>j.id===c.job);
+              return(<div key={c.name} style={{background:T.gray100,borderRadius:4,borderLeft:`4px solid ${c.status==="Confirmed"?T.positive:T.warning}`,padding:"14px 16px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap",marginBottom:8}}>
+                  <div>
+                    <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
+                      <span style={{fontSize:13,fontWeight:800,color:T.black}}>{c.name}</span>
+                      <Badge label={c.status} color={c.status==="Confirmed"?T.positive:T.warning}/>
+                      <span style={{fontSize:11,fontWeight:700,color:job?.color,background:job?.color+"18",border:`1px solid ${job?.color}40`,borderRadius:3,padding:"2px 8px"}}>{c.job}</span>
+                    </div>
+                    <div style={{fontSize:12,color:T.gray900,marginBottom:4}}>{c.role} · {c.headcount} person{c.headcount>1?"s":""} · On-site: {c.onSiteDate}</div>
+                    <div style={{display:"flex",gap:16,fontSize:11,color:T.gray900,flexWrap:"wrap"}}>
+                      <span>Min shift: <strong>{c.minShift}h</strong></span>
+                      <span>Day rate: <strong>${c.dayRate.toLocaleString()}</strong></span>
+                      <span>Contact: <strong>{c.contact}</strong></span>
+                    </div>
+                  </div>
+                </div>
+                <div style={{background:T.white,borderRadius:3,padding:"8px 12px",fontSize:11,color:T.gray900,borderLeft:`2px solid ${T.primary}`}}>🧠 {c.notes}</div>
+              </div>);
+            })}
+          </div>
+        </div>
+
+        {/* Shift plan */}
+        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
+            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Shift Plan — Who's On When</div>
+          </div>
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+              <thead><tr style={{background:T.gray100}}>
+                {["Person","Type","Day 1 (Mar 14)","Day 2 (Mar 15)","Day 3 (Mar 16)","Notes"].map(h=>(
+                  <th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>
+                ))}
+              </tr></thead>
+              <tbody>
+                {[
+                  {name:"Carlos Rivera",type:"Internal",d1:"SJ-001 (4h)",d2:"Standby / support",d3:"Closure & sign-off",notes:"Available all 3 days"},
+                  {name:"Marcus Webb",type:"Internal",d1:"SJ-002 (8–9h)",d2:"Overflow if needed",d3:"—",notes:"Full day 1 commitment"},
+                  {name:"Priya Singh",type:"Internal",d1:"SJ-003 (5–6h)",d2:"—",d3:"—",notes:"Day 1 only — tools pending"},
+                  {name:"PowerGrid Services",type:"Contractor",d1:"SJ-004 (10h min)",d2:"—",d3:"—",notes:"10hr minimum — Day 1"},
+                  {name:"SteelWeld Specialists",type:"Contractor",d1:"—",d2:"SJ-005 (4–16h)",d3:"Overflow if worst case",notes:"Scope TBD Day 2 AM"},
+                  {name:"Apex Refrigeration",type:"Contractor",d1:"—",d2:"—",d3:"SJ-006 (2h)",notes:"Pending confirmation"},
+                ].map((r,i)=>(
+                  <tr key={r.name} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
+                    <td style={{padding:"9px 14px",fontWeight:700,color:T.black,whiteSpace:"nowrap"}}>{r.name}</td>
+                    <td style={{padding:"9px 14px"}}><Badge label={r.type} color={r.type==="Internal"?T.primary:T.neutral}/></td>
+                    <td style={{padding:"9px 14px",color:r.d1==="—"?T.gray400:T.black,fontWeight:r.d1==="—"?400:600}}>{r.d1}</td>
+                    <td style={{padding:"9px 14px",color:r.d2==="—"?T.gray400:T.black,fontWeight:r.d2==="—"?400:600}}>{r.d2}</td>
+                    <td style={{padding:"9px 14px",color:r.d3==="—"?T.gray400:T.black,fontWeight:r.d3==="—"?400:600}}>{r.d3}</td>
+                    <td style={{padding:"9px 14px",color:T.gray900,fontSize:11}}>{r.notes}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>}
+
+      {/* ── EXECUTION ── */}
+      {activeTab==="execution"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+
+        <div style={{background:"#FEF2F2",border:`1px solid ${T.negative}30`,borderRadius:4,padding:"12px 16px",display:"flex",alignItems:"center",gap:10}}>
+          <div style={{width:10,height:10,borderRadius:"50%",background:T.gray400,flexShrink:0}}/>
+          <div><span style={{fontSize:12,fontWeight:800,color:T.gray900}}>Shutdown not yet active — </span><span style={{fontSize:12,color:T.gray900}}>Execution view goes live on Mar 14 at 08:00. Live job tracking, time on tool, budget actuals, and real-time schedule reoptimisation will appear here once the shutdown commences.</span></div>
+        </div>
+
+        {/* Preview of what execution will look like */}
+        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
+            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Execution Dashboard — Preview</div>
+            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>This is what the live execution view will show once the shutdown begins</div>
+          </div>
+          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:12}}>
+            {/* Mock KPI strip */}
+            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+              {[
+                {label:"Jobs Complete",value:"0/6",color:T.gray400},
+                {label:"Hours on Tool",value:"0.0h",color:T.gray400},
+                {label:"vs Plan",value:"—",color:T.gray400},
+                {label:"Budget Used",value:"$0",color:T.gray400},
+                {label:"Schedule Status",value:"Not Started",color:T.gray400},
+              ].map(k=>(
+                <div key={k.label} style={{flex:1,minWidth:100,textAlign:"center",padding:"10px 14px",background:T.gray100,borderRadius:4,opacity:0.5}}>
+                  <div style={{fontSize:16,fontWeight:800,color:k.color}}>{k.value}</div>
+                  <div style={{fontSize:10,color:T.gray400}}>{k.label}</div>
+                </div>
+              ))}
+            </div>
+            {/* Mock job status board */}
+            {SHUTDOWN_JOBS.map(j=>(
+              <div key={j.id} style={{background:T.gray100,borderRadius:4,borderLeft:`4px solid ${T.border}`,padding:"12px 16px",opacity:0.5}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                  <div>
+                    <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:2}}><span style={{fontSize:12,fontWeight:800,color:T.gray400}}>{j.id}</span><Badge label="Not Started" color={T.neutral}/></div>
+                    <div style={{fontSize:12,color:T.gray400}}>{j.title}</div>
+                  </div>
+                  <div style={{display:"flex",gap:10,fontSize:11,color:T.gray400}}>
+                    <span>Est: {j.minHrs}h</span>
+                    <span>Actual: —</span>
+                    <span>Start: —</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+            <div style={{background:T.primary+"10",border:`1px solid ${T.primary}30`,borderRadius:4,padding:"12px 16px"}}>
+              <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>🧠 What the Schedule Optimizer will do on Day 2</div>
+              <div style={{fontSize:12,color:T.black}}>When SJ-005 opens and the diagnostic finding comes in, the agent will immediately re-model the remaining schedule. If cracks are found and SJ-005 extends to 16hrs, it will: flag the Day 3 overrun, recommend extending the SteelWeld shift, notify Apex Refrigeration of a delayed start, and recalculate budget actuals. All in real time, before the supervisor has had a chance to react.</div>
+            </div>
+          </div>
+        </div>
+      </div>}
+
+    </div>
+  </div>);
+}
+
+
 // ── DISRUPTION MODAL ──────────────────────────────────────────────────────────
 const DISRUPTION_RECS={A:{title:"SKU 4412 → SKU 3802 Swap Executed — Line 1",priority:"High",domain:"Production",icon:"⚙️",lines:["All","Line 1"],agents:["Scheduling Agent","Inbound Materials Agent","Quality Monitoring Agent","Supervisor & Operator Co-Pilot"],suggestedAction:"Monitor Line 1 changeover to SKU 3802, confirm quality checks pass.",summary:"Line 1 switched from SKU 4412 to SKU 3802 following inbound materials failure. 35-min changeover underway.",detail:{issue:"Inbound seasoning blend Lot #SB-2291 for SKU 4412 was rejected at intake — sodium content 14% above spec.",action:"Monitor changeover progress, confirm quality sign-off on SKU 3802 first run.",steps:[{agent:"Inbound Materials Agent",domain:"Quality",action:"Quarantine Lot #SB-2291 and raise supplier deviation report.",status:"complete"},{agent:"Scheduling Agent",domain:"Planning",action:"Update Line 1 production schedule — replace SKU 4412 run with SKU 3802.",status:"complete"},{agent:"Quality Monitoring Agent",domain:"Quality",action:"Monitor first-pass yield on SKU 3802 run.",status:"pending"},{agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Guide Line 1 operator through SKU 3802 changeover SOP.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"}]}},B:{title:"Emergency SKU 4412 Batch Sourcing — Line 1 On Hold",priority:"Critical",domain:"Production",icon:"📦",lines:["All","Line 1"],agents:["Inbound Materials Agent","Planning Agent","Scheduling Agent"],suggestedAction:"Track emergency batch delivery ETA, hold Line 1.",summary:"Emergency replacement batch ordered. Line 1 on hold pending delivery.",detail:{issue:"SKU 4412 inbound materials rejected. Emergency batch ordered — 60% confidence on timing.",action:"Monitor delivery ETA. If batch arrives by 11am, proceed. If delayed, activate SKU 3802 contingency.",steps:[{agent:"Inbound Materials Agent",domain:"Quality",action:"Raise emergency PO with approved seasoning supplier.",status:"complete"},{agent:"Planning Agent",domain:"Planning",action:"Place Line 1 on hold. Prepare SKU 3802 contingency.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"}]}},C:{title:"Line 1 Held — SKU 4412 Rescheduled to Tomorrow",priority:"High",domain:"Planning",icon:"📋",lines:["All","Line 1"],agents:["Planning Agent","Scheduling Agent"],suggestedAction:"Confirm Line 1 hold and reschedule SKU 4412 to tomorrow.",summary:"Line 1 Day shift held. SKU 4412 rescheduled to tomorrow pending fresh batch.",detail:{issue:"SKU 4412 cannot run today. Full Day shift volume on Line 1 lost.",action:"Reschedule SKU 4412 to tomorrow's Day shift. Notify DC-West.",steps:[{agent:"Scheduling Agent",domain:"Planning",action:"Reschedule SKU 4412 Line 1 run to tomorrow Day shift.",status:"complete"},{agent:"Planning Agent",domain:"Planning",action:"Notify DC-West of one-day delay.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Priya Nair",role:"Scheduler",avatar:"SC"}]}}};
 
@@ -1906,10 +2358,10 @@ export default function App(){
   const handleViewDashboardRec=(recId)=>{const rec=[...recs,...initialRecommendations].find(r=>r.id===recId);if(rec){setSelectedRec(rec);setTab("dashboard");setChatMode(null);}};
 
   const personas=[{id:"plant_leader",label:"Plant Leader",avatar:"PL"},{id:"maint_manager",label:"Maintenance Manager",avatar:"MM"},{id:"technician",label:"Technician",avatar:"TC"},{id:"scheduler",label:"Scheduler",avatar:"SC"},{id:"quality_manager",label:"Quality Manager",avatar:"QM"},{id:"safety_lead",label:"Safety Lead",avatar:"SL"}];
-  const personaNav={plant_leader:["dashboard","actions","lineperf","quality","maintenance","technician","assethealth","materials","schedule","labor","safety"],maint_manager:["dashboard","actions","lineperf","maintenance","technician","assethealth","schedule"],technician:["technician"],scheduler:["dashboard","actions","schedule","materials","labor","lineperf"],quality_manager:["dashboard","actions","quality","materials","lineperf"],safety_lead:["dashboard","actions","safety","lineperf"]};
-  const allNavItems=[{id:"dashboard",icon:"▦",label:"Summary Dashboard"},{id:"actions",icon:"☑",label:"Action Log"},{id:"lineperf",icon:"↗",label:"Line Performance"},{id:"quality",icon:"◎",label:"Quality Dashboard"},{id:"maintenance",icon:"⚙",label:"Maintenance Dashboard"},{id:"technician",icon:"⬡",label:"Technician Dashboard"},{id:"assethealth",icon:"♡",label:"Asset Health"},{id:"materials",icon:"▤",label:"Inbound Materials"},{id:"schedule",icon:"▦",label:"Production Schedule"},{id:"labor",icon:"♟",label:"Labor Scheduling"},{id:"safety",icon:"◬",label:"Safety & EHS"}];
+  const personaNav={plant_leader:["dashboard","actions","lineperf","quality","maintenance","technician","shutdown","assethealth","materials","schedule","labor","safety"],maint_manager:["dashboard","actions","lineperf","maintenance","technician","shutdown","assethealth","schedule"],technician:["technician"],scheduler:["dashboard","actions","schedule","materials","labor","lineperf"],quality_manager:["dashboard","actions","quality","materials","lineperf"],safety_lead:["dashboard","actions","safety","lineperf"]};
+  const allNavItems=[{id:"dashboard",icon:"▦",label:"Summary Dashboard"},{id:"actions",icon:"☑",label:"Action Log"},{id:"lineperf",icon:"↗",label:"Line Performance"},{id:"quality",icon:"◎",label:"Quality Dashboard"},{id:"maintenance",icon:"⚙",label:"Maintenance Dashboard"},{id:"technician",icon:"⬡",label:"Technician Dashboard"},{id:"shutdown",icon:"◈",label:"Shutdown Management"},{id:"assethealth",icon:"♡",label:"Asset Health"},{id:"materials",icon:"▤",label:"Inbound Materials"},{id:"schedule",icon:"▦",label:"Production Schedule"},{id:"labor",icon:"♟",label:"Labor Scheduling"},{id:"safety",icon:"◬",label:"Safety & EHS"}];
   const activeNavIds=personaNav[persona]||personaNav.plant_leader;
-  const builtTabs=["dashboard","actions","lineperf","schedule","maintenance","technician"];
+  const builtTabs=["dashboard","actions","lineperf","schedule","maintenance","technician","shutdown"];
 
   const handleTabClick=(id)=>{setTab(id);setSelectedRec(null);setChatMode(null);};
 
@@ -1984,6 +2436,7 @@ export default function App(){
           {tab==="maintenance"&&!selectedRec&&<MaintenanceDashboard onSelectRec={r=>setSelectedRec(r)}/>}
           {tab==="maintenance"&&selectedRec&&<DetailPage rec={selectedRec} onBack={()=>setSelectedRec(null)}/>}
           {tab==="technician"&&<TechnicianDashboard/>}
+          {tab==="shutdown"&&<ShutdownDashboard/>}
           {!builtTabs.includes(tab)&&(<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"60vh",gap:12}}>
             <div style={{fontSize:40}}>{allNavItems.find(n=>n.id===tab)?.icon}</div>
             <div style={{fontSize:16,fontWeight:800,color:T.black}}>{allNavItems.find(n=>n.id===tab)?.label}</div>
