@@ -60,9 +60,9 @@ const techPerformance = [
     thisWeek:{completed:8,target:10,onTime:7,lateCount:1},
     efficiency:{avgActualVsEstimate:0.92,trend:"Improving"},
     wosThisWeek:[
-      {id:"WO-4418",asset:"Line 1 Conveyor",estHrs:2,actualHrs:1.8,onTime:true,status:"Complete"},
-      {id:"WO-4419",asset:"Line 2 Filler",estHrs:3,actualHrs:2.7,onTime:true,status:"Complete"},
-      {id:"WO-4420",asset:"Line 3 Crimping Unit",estHrs:1.5,actualHrs:1.6,onTime:false,status:"Complete"},
+      {id:"WO-4418",estHrs:2,actualHrs:1.8,asset:"Line 1 Conveyor",estHrs:2,actualHrs:1.8,onTime:true,status:"Complete"},
+      {id:"WO-4419",estHrs:3,actualHrs:2.7,asset:"Line 2 Filler",estHrs:3,actualHrs:2.7,onTime:true,status:"Complete"},
+      {id:"WO-4420",estHrs:1.5,actualHrs:1.6,asset:"Line 3 Crimping Unit",estHrs:1.5,actualHrs:1.6,onTime:false,status:"Complete"},
       {id:"WO-4421",asset:"Line 3 Heat Sealer",estHrs:4,actualHrs:1.5,onTime:null,status:"In Progress"},
     ],
     coachingSuggestions:[],
@@ -73,9 +73,9 @@ const techPerformance = [
     thisWeek:{completed:5,target:8,onTime:3,lateCount:2},
     efficiency:{avgActualVsEstimate:1.38,trend:"Declining"},
     wosThisWeek:[
-      {id:"WO-4415",asset:"Line 2 Heat Tunnel",estHrs:2,actualHrs:3.1,onTime:false,status:"Complete"},
-      {id:"WO-4416",asset:"Line 2 Conveyor Belt",estHrs:1,actualHrs:1.4,onTime:true,status:"Complete"},
-      {id:"WO-4417",asset:"Line 1 Packaging",estHrs:2,actualHrs:2.6,onTime:false,status:"Complete"},
+      {id:"WO-4415",estHrs:2,actualHrs:3.1,asset:"Line 2 Heat Tunnel",estHrs:2,actualHrs:3.1,onTime:false,status:"Complete"},
+      {id:"WO-4416",estHrs:1,actualHrs:1.4,asset:"Line 2 Conveyor Belt",estHrs:1,actualHrs:1.4,onTime:true,status:"Complete"},
+      {id:"WO-4417",estHrs:2,actualHrs:2.6,asset:"Line 1 Packaging",estHrs:2,actualHrs:2.6,onTime:false,status:"Complete"},
       {id:"WO-4425",asset:"Line 2 Conveyor Belt",estHrs:1,actualHrs:0.5,onTime:null,status:"In Progress"},
     ],
     coachingSuggestions:[
@@ -104,8 +104,8 @@ const techPerformance = [
     thisWeek:{completed:2,target:6,onTime:1,lateCount:1},
     efficiency:{avgActualVsEstimate:1.72,trend:"Needs Support"},
     wosThisWeek:[
-      {id:"WO-4410",asset:"Line 2 Conveyor",estHrs:1,actualHrs:1.9,onTime:false,status:"Complete"},
-      {id:"WO-4411",asset:"Line 1 Conveyor",estHrs:1,actualHrs:1.6,onTime:true,status:"Complete"},
+      {id:"WO-4410",estHrs:1,actualHrs:1.9,asset:"Line 2 Conveyor",estHrs:1,actualHrs:1.9,onTime:false,status:"Complete"},
+      {id:"WO-4411",estHrs:1,actualHrs:1.6,asset:"Line 1 Conveyor",estHrs:1,actualHrs:1.6,onTime:true,status:"Complete"},
     ],
     coachingSuggestions:[
       {type:"SOP",note:"Averaging 1.72x estimated time — Co-Pilot guided walkthroughs recommended for all assigned WOs until average drops below 1.2x"},
@@ -1215,9 +1215,9 @@ function CoPilotChat({activeTab}){
 
 // ── TECHNICIAN DASHBOARD DATA ─────────────────────────────────────────────────
 const TECH_WOS = [
-  {id:"WO-4421",asset:"Line 3 Heat Sealer",assetId:"A-001",line:"Line 3",location:"Line 3 — Zone B",type:"Corrective",priority:"Critical",status:"In Progress",estimatedHrs:4,actualHrs:1.5,startedAt:"07:15am",dueDate:"Today",description:"Sealer inspection — vibration index 8.4 exceeds threshold (7.0), temp variance ±6°C. Full component check required. Part #SE-441 in transit (arriving tomorrow 7am).",safetyFlags:["LOTO required before any work","PPE: heat-resistant gloves, safety glasses","Burn risk — allow sealer to cool 15 min before touching elements"],partsRequired:[{part:"Sealer Heating Element",partNo:"SE-441",qty:1,status:"In Transit",eta:"Tomorrow 7am"},{part:"Sealer Temperature Probe",partNo:"SE-442",qty:1,status:"Stock-Out",eta:"Emergency PO raised"}],sopSteps:[{step:"Complete LOTO procedure — Line 3 sealer (LOTO SOP v4.0)",done:true},{step:"Allow sealer to cool for minimum 15 minutes",done:true},{step:"Inspect heating element for visible damage or discolouration",done:false},{step:"Check thermocouple connections — fault code E-14 indicates thermocouple fault",done:false},{step:"Measure element resistance — spec: 8–12 Ω",done:false},{step:"Inspect sealing jaw alignment — check for wear marks",done:false},{step:"Test temperature uniformity across sealing bar",done:false},{step:"Re-calibrate temperature controller to ±2°C tolerance",done:false},{step:"Run test seals on scrap material and inspect seal integrity",done:false},{step:"Remove LOTO and restore to service — notify supervisor",done:false}],assetHistory:{lastPM:"Jan 15, 2026",lastFailure:"Nov 3, 2025 — element replacement",openIssues:"Vibration trend increasing since Jan 20",healthScore:34,mtbf:"6.2 months"},agentNote:"Part #SE-441 is in transit — arriving tomorrow 7am. Complete inspection steps 1–6 today to prepare. Do not attempt element replacement until part arrives.",followUpNeeded:false},
-  {id:"WO-4425",asset:"Line 2 Conveyor Belt",assetId:"A-003",line:"Line 2",location:"Line 2 — Zone A",type:"Preventive",priority:"Low",status:"In Progress",estimatedHrs:1,actualHrs:0.5,startedAt:"06:00am",dueDate:"Today",description:"Routine belt inspection — tension check, wear assessment, lubrication.",safetyFlags:["LOTO required before tension adjustment","PPE: safety glasses"],partsRequired:[{part:"Belt Lubricant",partNo:"LUB-012",qty:1,status:"In Stock",eta:null}],sopSteps:[{step:"Complete LOTO procedure if adjusting tension",done:true},{step:"Inspect belt surface for cracks, fraying, or wear",done:true},{step:"Check belt tension — spec: 15–20 N/mm",done:true},{step:"Apply lubricant to rollers per schedule",done:false},{step:"Check roller alignment — all rollers must spin freely",done:false},{step:"Inspect belt tracking — should run centred within 5mm",done:false},{step:"Remove LOTO and run belt at slow speed for 2 minutes to verify",done:false}],assetHistory:{lastPM:"Feb 20, 2026",lastFailure:"None in 12 months",openIssues:"None",healthScore:81,mtbf:"Not applicable — no failures recorded"},agentNote:"Routine inspection — no anomalies flagged. Current PM cycle appropriate. Strategy Agent recommends extending to 10-week cycle at next review.",followUpNeeded:false},
-  {id:"WO-4422",asset:"Line 2 Heat Tunnel",assetId:"A-006",line:"Line 2",location:"Line 2 — Zone C",type:"Preventive",priority:"High",status:"Not Started",estimatedHrs:2,actualHrs:0,startedAt:null,dueDate:"Mar 3",description:"Initiate first PM cycle — inspect heating elements, check safety interlocks, calibrate temp controls.",safetyFlags:["LOTO required","PPE: heat-resistant gloves, safety glasses, face shield","Burn risk — high voltage heating elements"],partsRequired:[{part:"Heat Tunnel Igniter",partNo:"HT-209",qty:1,status:"Low Stock",eta:null}],sopSteps:[{step:"Complete LOTO procedure — Line 2 heat tunnel (LOTO SOP v4.0)",done:false},{step:"Allow tunnel to cool — minimum 20 minutes",done:false},{step:"Inspect heating elements for damage or corrosion",done:false},{step:"Check all safety interlock switches — must trip at 280°C",done:false},{step:"Inspect igniter — check for carbon deposits",done:false},{step:"Calibrate temperature controller — set points: 220°C / 240°C / 220°C",done:false},{step:"Check conveyor belt tracking through tunnel",done:false},{step:"Remove LOTO and run empty at 50% speed for 5 minutes",done:false},{step:"Verify temperature uniformity — max variance ±5°C",done:false}],assetHistory:{lastPM:"Never",lastFailure:"No recorded failures",openIssues:"No PM program previously — this is first inspection",healthScore:67,mtbf:"Unknown"},agentNote:"This is the first PM ever on this asset. Take extra time on steps 3–5 to establish a baseline condition report. Note any anomalies for the PM program record.",followUpNeeded:false},
+  {id:"WO-4421",asset:"Line 3 Heat Sealer",assetId:"A-001",line:"Line 3",location:"Line 3 — Zone B",type:"Corrective",priority:"Critical",status:"In Execution",estimatedHrs:4,actualHrs:1.5,startedAt:"07:15am",dueDate:"Today",description:"Sealer inspection — vibration index 8.4 exceeds threshold (7.0), temp variance ±6°C. Full component check required. Part #SE-441 in transit (arriving tomorrow 7am).",safetyFlags:["LOTO required before any work","PPE: heat-resistant gloves, safety glasses","Burn risk — allow sealer to cool 15 min before touching elements"],partsKitting:[{part:"Sealer Heating Element",partNo:"SE-441",qty:1,status:"In Stock",eta:null},{part:"Sealer Temperature Probe",partNo:"SE-442",qty:1,status:"In Stock",eta:null}],toolKitting:[{tool:"Digital multimeter",required:true,available:true},{tool:"Torque wrench (20–100 Nm)",required:true,available:true},{tool:"Infrared thermometer",required:true,available:true},{tool:"Insulated screwdriver set",required:true,available:true}],sopSteps:[{phase:"Pre-Execution",step:"Complete LOTO procedure — Line 3 sealer (LOTO SOP v4.0)",done:true},{phase:"Pre-Execution",step:"Allow sealer to cool for minimum 15 minutes",done:true},{phase:"Execution",step:"Inspect heating element for visible damage or discolouration",done:false},{phase:"Execution",step:"Check thermocouple connections — fault code E-14 indicates thermocouple fault",done:false},{phase:"Execution",step:"Measure element resistance — spec: 8–12 Ω",done:false},{phase:"Execution",step:"Inspect sealing jaw alignment — check for wear marks",done:false},{phase:"Execution",step:"Test temperature uniformity across sealing bar",done:false},{phase:"Execution",step:"Re-calibrate temperature controller to ±2°C tolerance",done:false},{phase:"Post-Execution",step:"Run test seals on scrap material and inspect seal integrity",done:false},{phase:"Post-Execution",step:"Remove LOTO and restore to service — notify supervisor",done:false}],assetHistory:{lastPM:"Jan 15, 2026",lastFailure:"Nov 3, 2025 — element replacement",openIssues:"Vibration trend increasing since Jan 20",healthScore:34,mtbf:"6.2 months"},agentNote:"Part #SE-441 is in transit — arriving tomorrow 7am. Complete inspection steps 1–6 today to prepare. Do not attempt element replacement until part arrives.",followUpNeeded:false},
+  {id:"WO-4425",asset:"Line 2 Conveyor Belt",assetId:"A-003",line:"Line 2",location:"Line 2 — Zone A",type:"Preventive",priority:"Low",status:"In Execution",estimatedHrs:1,actualHrs:0.5,startedAt:"06:00am",dueDate:"Today",description:"Routine belt inspection — tension check, wear assessment, lubrication.",safetyFlags:["LOTO required before tension adjustment","PPE: safety glasses"],partsKitting:[{part:"Belt Lubricant",partNo:"LUB-012",qty:1,status:"In Stock",eta:null}],toolKitting:[{tool:"Belt tension gauge",required:true,available:true},{tool:"Torque wrench (10–50 Nm)",required:true,available:true},{tool:"Lubricant applicator",required:true,available:true}],sopSteps:[{phase:"Pre-Execution",step:"Complete LOTO procedure if adjusting tension",done:true},{phase:"Pre-Execution",step:"Inspect belt surface for cracks, fraying, or wear",done:true},{phase:"Execution",step:"Check belt tension — spec: 15–20 N/mm",done:true},{phase:"Execution",step:"Apply lubricant to rollers per schedule",done:false},{phase:"Execution",step:"Check roller alignment — all rollers must spin freely",done:false},{phase:"Execution",step:"Inspect belt tracking — should run centred within 5mm",done:false},{phase:"Post-Execution",step:"Remove LOTO and run belt at slow speed for 2 minutes to verify",done:false}],assetHistory:{lastPM:"Feb 20, 2026",lastFailure:"None in 12 months",openIssues:"None",healthScore:81,mtbf:"Not applicable — no failures recorded"},agentNote:"Routine inspection — no anomalies flagged. Current PM cycle appropriate. Strategy Agent recommends extending to 10-week cycle at next review.",followUpNeeded:false},
+  {id:"WO-4422",asset:"Line 2 Heat Tunnel",assetId:"A-006",line:"Line 2",location:"Line 2 — Zone C",type:"Preventive",priority:"High",status:"Pre-Work",estimatedHrs:2,actualHrs:0,startedAt:null,dueDate:"Mar 3",description:"Initiate first PM cycle — inspect heating elements, check safety interlocks, calibrate temp controls.",safetyFlags:["LOTO required","PPE: heat-resistant gloves, safety glasses, face shield","Burn risk — high voltage heating elements"],partsKitting:[{part:"Heat Tunnel Igniter",partNo:"HT-209",qty:1,status:"Low Stock",eta:null}],toolKitting:[{tool:"Multimeter",required:true,available:true},{tool:"Thermocouple calibrator",required:true,available:false},{tool:"Infrared thermometer",required:true,available:true},{tool:"Safety interlock test kit",required:true,available:true}],sopSteps:[{phase:"Pre-Execution",step:"Complete LOTO procedure — Line 2 heat tunnel (LOTO SOP v4.0)",done:false},{phase:"Pre-Execution",step:"Allow tunnel to cool — minimum 20 minutes",done:false},{phase:"Execution",step:"Inspect heating elements for damage or corrosion",done:false},{phase:"Execution",step:"Check all safety interlock switches — must trip at 280°C",done:false},{phase:"Execution",step:"Inspect igniter — check for carbon deposits",done:false},{phase:"Execution",step:"Calibrate temperature controller — set points: 220°C / 240°C / 220°C",done:false},{phase:"Execution",step:"Check conveyor belt tracking through tunnel",done:false},{phase:"Post-Execution",step:"Remove LOTO and run empty at 50% speed for 5 minutes",done:false},{phase:"Post-Execution",step:"Verify temperature uniformity — max variance ±5°C",done:false}],assetHistory:{lastPM:"Never",lastFailure:"No recorded failures",openIssues:"No PM program previously — this is first inspection",healthScore:67,mtbf:"Unknown"},agentNote:"This is the first PM ever on this asset. Take extra time on steps 3–5 to establish a baseline condition report. Note any anomalies for the PM program record.",followUpNeeded:false},
 ];
 
 const TECH_SUB_WOS = [
@@ -1258,14 +1258,14 @@ const TECH_DAILY_SCHEDULE = [
 
 // All WOs (full history + current)
 const ALL_WOS = [
-  {id:"WO-4421",asset:"Line 3 Heat Sealer",line:"Line 3",type:"Corrective",priority:"Critical",status:"In Progress",assignedTo:"You",dueDate:"Feb 28, 2026",description:"Sealer inspection — vibration and temp variance above threshold."},
-  {id:"WO-4425",asset:"Line 2 Conveyor Belt",line:"Line 2",type:"Preventive",priority:"Low",status:"In Progress",assignedTo:"You",dueDate:"Feb 28, 2026",description:"Routine belt inspection — tension check, wear assessment."},
-  {id:"WO-4422",asset:"Line 2 Heat Tunnel",line:"Line 2",type:"Preventive",priority:"High",status:"Not Started",assignedTo:"You",dueDate:"Mar 3, 2026",description:"Initiate first PM cycle — inspect heating elements."},
-  {id:"WO-4418",asset:"Line 1 Conveyor",line:"Line 1",type:"Preventive",priority:"Low",status:"Complete",assignedTo:"You",dueDate:"Feb 25, 2026",description:"Quarterly conveyor belt inspection and lubrication."},
-  {id:"WO-4419",asset:"Line 2 Filler",line:"Line 2",type:"Preventive",priority:"Medium",status:"Complete",assignedTo:"You",dueDate:"Feb 24, 2026",description:"Filler calibration check — no issues found."},
-  {id:"WO-4420",asset:"Line 3 Crimping Unit",line:"Line 3",type:"Corrective",priority:"Medium",status:"Complete",assignedTo:"You",dueDate:"Feb 22, 2026",description:"Crimping jaw alignment — minor adjustment made."},
-  {id:"WO-4415",asset:"Line 2 Heat Tunnel",line:"Line 2",type:"Preventive",priority:"High",status:"Complete",assignedTo:"You",dueDate:"Feb 18, 2026",description:"Heating element visual inspection."},
-  {id:"WO-4410",asset:"Line 2 Conveyor",line:"Line 2",type:"Preventive",priority:"Low",status:"Complete",assignedTo:"You",dueDate:"Feb 14, 2026",description:"Belt tension and tracking check."},
+  {id:"WO-4421",asset:"Line 3 Heat Sealer",line:"Line 3",type:"Corrective",priority:"Critical",status:"In Execution",assignedTo:"You",estHrs:4,actualHrs:1.5,dueDate:"Feb 28, 2026",description:"Sealer inspection — vibration and temp variance above threshold."},
+  {id:"WO-4425",asset:"Line 2 Conveyor Belt",line:"Line 2",type:"Preventive",priority:"Low",status:"In Execution",assignedTo:"You",estHrs:1,actualHrs:0.5,dueDate:"Feb 28, 2026",description:"Routine belt inspection — tension check, wear assessment."},
+  {id:"WO-4422",asset:"Line 2 Heat Tunnel",line:"Line 2",type:"Preventive",priority:"High",status:"Pre-Work",assignedTo:"You",estHrs:2,actualHrs:0,dueDate:"Mar 3, 2026",description:"Initiate first PM cycle — inspect heating elements."},
+  {id:"WO-4418",estHrs:2,actualHrs:1.8,asset:"Line 1 Conveyor",line:"Line 1",type:"Preventive",priority:"Low",status:"Complete",assignedTo:"You",dueDate:"Feb 25, 2026",description:"Quarterly conveyor belt inspection and lubrication."},
+  {id:"WO-4419",estHrs:3,actualHrs:2.7,asset:"Line 2 Filler",line:"Line 2",type:"Preventive",priority:"Medium",status:"Complete",assignedTo:"You",dueDate:"Feb 24, 2026",description:"Filler calibration check — no issues found."},
+  {id:"WO-4420",estHrs:1.5,actualHrs:1.6,asset:"Line 3 Crimping Unit",line:"Line 3",type:"Corrective",priority:"Medium",status:"Complete",assignedTo:"You",dueDate:"Feb 22, 2026",description:"Crimping jaw alignment — minor adjustment made."},
+  {id:"WO-4415",estHrs:2,actualHrs:3.1,asset:"Line 2 Heat Tunnel",line:"Line 2",type:"Preventive",priority:"High",status:"Complete",assignedTo:"You",dueDate:"Feb 18, 2026",description:"Heating element visual inspection."},
+  {id:"WO-4410",estHrs:1,actualHrs:1.9,asset:"Line 2 Conveyor",line:"Line 2",type:"Preventive",priority:"Low",status:"Complete",assignedTo:"You",dueDate:"Feb 14, 2026",description:"Belt tension and tracking check."},
 ];
 
 function TechnicianDashboard(){
@@ -1275,6 +1275,10 @@ function TechnicianDashboard(){
   const [showFollowUp,setShowFollowUp]=useState(false);
   const [followUpForm,setFollowUpForm]=useState({asset:"",description:"",priority:"Medium",type:"Corrective"});
   const [followUpSubmitted,setFollowUpSubmitted]=useState({});
+  const [showCompletionModal,setShowCompletionModal]=useState(false);
+  const [completionWO,setCompletionWO]=useState(null);
+  const [completionForm,setCompletionForm]=useState({notes:"",notifyOperator:true,photoAttached:false});
+  const [completionSubmitted,setCompletionSubmitted]=useState({});
   const [woFilter,setWoFilter]=useState("All");
 
   const toggleStep=(woId,stepIdx)=>{
@@ -1282,18 +1286,31 @@ function TechnicianDashboard(){
     if(selectedWO?.id===woId)setSelectedWO(prev=>({...prev,sopSteps:prev.sopSteps.map((s,i)=>i!==stepIdx?s:{...s,done:!s.done})}));
   };
   const markStatus=(woId,status)=>{
+    if(status==="Complete"){
+      const wo=wos.find(w=>w.id===woId);
+      setCompletionWO(wo);setCompletionForm({notes:"",notifyOperator:true,photoAttached:false});setShowCompletionModal(true);
+      return;
+    }
     setWos(prev=>prev.map(w=>w.id!==woId?w:{...w,status}));
     if(selectedWO?.id===woId)setSelectedWO(prev=>({...prev,status}));
+  };
+  const submitCompletion=()=>{
+    if(!completionWO)return;
+    setWos(prev=>prev.map(w=>w.id!==completionWO.id?w:{...w,status:"Complete"}));
+    if(selectedWO?.id===completionWO.id)setSelectedWO(prev=>({...prev,status:"Complete"}));
+    setCompletionSubmitted(prev=>({...prev,[completionWO.id]:completionForm}));
+    setShowCompletionModal(false);setCompletionWO(null);
   };
   const submitFollowUp=()=>{setFollowUpSubmitted(prev=>({...prev,[selectedWO?.id]:followUpForm}));setShowFollowUp(false);};
   const openWOPrep=(wo)=>{setSelectedWO(wo);setActiveTab("woprep");};
 
   const priorityColor=p=>p==="Critical"?T.negative:p==="High"?T.warning:p==="Medium"?T.info:T.neutral;
-  const woStatusColor=s=>s==="Complete"?T.positive:s==="In Progress"?T.info:s==="Not Started"?T.neutral:T.negative;
+  const woStatusColor=s=>s==="Complete"?T.positive:s==="In Execution"?T.info:s==="Closing Out"?T.warning:s==="Pre-Work"?T.neutral:s==="Not Started"?T.neutral:T.negative;
+  const effColor=r=>r<=1.0?T.positive:r<=1.2?T.warning:T.negative;
   const completedJobs=wos.filter(w=>w.status==="Complete").length;
-  const inProgressJobs=wos.filter(w=>w.status==="In Progress").length;
+  const inProgressJobs=wos.filter(w=>["Pre-Work","In Execution","Closing Out"].includes(w.status)).length;
   const totalHrsRemaining=wos.filter(w=>w.status!=="Complete").reduce((a,w)=>a+(w.estimatedHrs-(w.actualHrs||0)),0);
-  const blockedParts=wos.filter(w=>w.partsRequired.some(p=>p.status==="Stock-Out")).length;
+  const blockedParts=wos.filter(w=>(w.partsKitting||w.partsRequired||[]).some(p=>p.status==="Stock-Out")).length;
 
   const schedTypeColor=t=>t==="meeting"?T.info:t==="work"?T.primary:t==="handover"?"#673AB7":T.gray400;
   const schedTypeLabel=t=>t==="meeting"?"Meeting":t==="work"?"Work Block":t==="handover"?"Handover":"Routine";
@@ -1344,7 +1361,7 @@ function TechnicianDashboard(){
       {wo.safetyFlags?.length>0&&<div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:6}}>
         {wo.safetyFlags.slice(0,2).map((f,i)=><span key={i} style={{fontSize:10,color:T.warning,background:T.warning+"15",border:`1px solid ${T.warning}30`,borderRadius:3,padding:"2px 8px"}}>⚠ {f}</span>)}
       </div>}
-      {wo.partsRequired?.some(p=>p.status==="Stock-Out")&&<div style={{background:"#FEF2F2",border:`1px solid ${T.negative}30`,borderRadius:3,padding:"4px 10px",fontSize:11,color:T.negative,fontWeight:700,marginBottom:6}}>⚠ Part stock-out — job may be blocked. Check WO Prep.</div>}
+      {wo.partsRequired?.some(p=>p.status==="Stock-Out")||wo.partsKitting?.some(p=>p.status==="Stock-Out")?<div style={{background:"#FEF2F2",border:`1px solid ${T.negative}30`,borderRadius:3,padding:"4px 10px",fontSize:11,color:T.negative,fontWeight:700,marginBottom:6}}>⚠ Part stock-out — job may be blocked. Check WO Prep.</div>:null}
       {wo.sopSteps?.length>0&&<div style={{marginBottom:8}}>
         <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:T.gray900,marginBottom:3}}>
           <span>SOP Progress</span>
@@ -1355,8 +1372,11 @@ function TechnicianDashboard(){
       {wo.agentNote&&<div style={{background:T.primary+"10",borderLeft:`3px solid ${T.primary}`,borderRadius:3,padding:"6px 10px",fontSize:11,color:T.primary,marginBottom:8}}>🧠 {wo.agentNote}</div>}
       {showPrep&&<div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:4}}>
         <button onClick={()=>openWOPrep(wo)} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Open WO Prep →</button>
-        {wo.status==="Not Started"&&<button onClick={()=>markStatus(wo.id,"In Progress")} style={{background:"none",border:`1px solid ${T.primary}`,borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer",color:T.primary}}>Start Job</button>}
-        {wo.status==="In Progress"&&<button onClick={()=>markStatus(wo.id,"Complete")} style={{background:"none",border:`1px solid ${T.positive}`,borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer",color:T.positive}}>Mark Complete</button>}
+        {wo.status==="Not Started"&&<button onClick={()=>markStatus(wo.id,"Pre-Work")} style={{background:"none",border:`1px solid ${T.neutral}`,borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer",color:T.gray900}}>Begin Pre-Work</button>}
+        {wo.status==="Pre-Work"&&<button onClick={()=>markStatus(wo.id,"In Execution")} style={{background:"none",border:`1px solid ${T.primary}`,borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer",color:T.primary}}>Start Execution</button>}
+        {wo.status==="In Execution"&&<button onClick={()=>markStatus(wo.id,"Closing Out")} style={{background:"none",border:`1px solid ${T.warning}`,borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer",color:T.warning}}>Move to Closure</button>}
+        {wo.status==="Closing Out"&&<button onClick={()=>markStatus(wo.id,"Complete")} style={{background:"none",border:`1px solid ${T.positive}`,borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer",color:T.positive}}>Mark Complete</button>}
+        {completionSubmitted[wo.id]&&<Badge label="📷 Completion photo attached" color={T.positive}/>}
         {!followUpSubmitted[wo.id]&&<button onClick={()=>{setSelectedWO(wo);setShowFollowUp(true);}} style={{background:"none",border:`1px dashed ${T.border}`,borderRadius:4,padding:"7px 12px",fontSize:12,cursor:"pointer",color:T.gray900}}>+ Follow-up WO</button>}
         {followUpSubmitted[wo.id]&&<Badge label="Follow-up WO raised" color={T.positive}/>}
       </div>}
@@ -1483,8 +1503,10 @@ function TechnicianDashboard(){
                 <div style={{fontSize:12,color:T.gray900}}>{selectedWO.location} · Est: {selectedWO.estimatedHrs}h · Due: {selectedWO.dueDate}</div>
               </div>
               <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                {selectedWO.status==="Not Started"&&<button onClick={()=>markStatus(selectedWO.id,"In Progress")} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Start Job</button>}
-                {selectedWO.status==="In Progress"&&<button onClick={()=>markStatus(selectedWO.id,"Complete")} style={{background:T.positive,color:T.white,border:"none",borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Mark Complete</button>}
+                {selectedWO.status==="Not Started"&&<button onClick={()=>markStatus(selectedWO.id,"Pre-Work")} style={{background:T.gray400,color:T.white,border:"none",borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Begin Pre-Work</button>}
+                {selectedWO.status==="Pre-Work"&&<button onClick={()=>markStatus(selectedWO.id,"In Execution")} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Start Execution</button>}
+                {selectedWO.status==="In Execution"&&<button onClick={()=>markStatus(selectedWO.id,"Closing Out")} style={{background:T.warning,color:T.white,border:"none",borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Move to Closure</button>}
+                {selectedWO.status==="Closing Out"&&<button onClick={()=>markStatus(selectedWO.id,"Complete")} style={{background:T.positive,color:T.white,border:"none",borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Mark Complete</button>}
                 <button style={{background:"none",border:`1px solid #C7D2FE`,borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,color:"#4F46E5",cursor:"pointer"}}>Open in SAP PM →</button>
               </div>
             </div>
@@ -1497,35 +1519,104 @@ function TechnicianDashboard(){
             {selectedWO.safetyFlags.map((f,i)=><div key={i} style={{fontSize:12,color:T.black,marginBottom:4}}>• {f}</div>)}
           </div>}
 
+          {/* Defect Photo — only on WO-4421 */}
+          {selectedWO.id==="WO-4421"&&<div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",overflow:"hidden"}}>
+            <div style={{padding:"12px 18px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div style={{fontSize:13,fontWeight:800,color:T.black}}>Defect Photo — Original Issue</div>
+              <span style={{fontSize:11,color:T.gray400}}>Reported by Line 3 Operator · Feb 14, 2026</span>
+            </div>
+            <div style={{padding:"16px 18px",display:"flex",gap:16,flexWrap:"wrap",alignItems:"flex-start"}}>
+              <div style={{position:"relative",flexShrink:0}}>
+                <svg width="280" height="180" viewBox="0 0 280 180" xmlns="http://www.w3.org/2000/svg" style={{borderRadius:4,border:`1px solid ${T.border}`,display:"block"}}>
+                  {/* Machine body */}
+                  <rect width="280" height="180" fill="#2D2D2D"/>
+                  <rect x="20" y="30" width="240" height="120" rx="6" fill="#3D3D3D"/>
+                  {/* Sealing bar */}
+                  <rect x="40" y="70" width="200" height="18" rx="3" fill="#555"/>
+                  <rect x="40" y="92" width="200" height="18" rx="3" fill="#555"/>
+                  {/* Heating elements */}
+                  <rect x="50" y="73" width="30" height="12" rx="2" fill="#888"/>
+                  <rect x="90" y="73" width="30" height="12" rx="2" fill="#888"/>
+                  <rect x="130" y="73" width="30" height="12" rx="2" fill="#CC4400" opacity="0.9"/>
+                  <rect x="170" y="73" width="30" height="12" rx="2" fill="#888"/>
+                  <rect x="210" y="73" width="30" height="12" rx="2" fill="#888"/>
+                  {/* Discolouration on element 3 */}
+                  <rect x="130" y="73" width="30" height="12" rx="2" fill="#FF6600" opacity="0.6"/>
+                  {/* Label */}
+                  <text x="20" y="20" fill="#aaa" fontSize="9" fontFamily="monospace">LINE 3 HEAT SEALER · SN-4421-B</text>
+                  {/* Annotation circle — squiggly highlight */}
+                  <ellipse cx="145" cy="79" rx="28" ry="16" fill="none" stroke="#FF3333" strokeWidth="2.5" strokeDasharray="4 2" opacity="0.9"/>
+                  {/* Arrow */}
+                  <line x1="180" y1="60" x2="162" y2="72" stroke="#FF3333" strokeWidth="2" markerEnd="url(#arr)"/>
+                  <defs><marker id="arr" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#FF3333"/></marker></defs>
+                  {/* Annotation label */}
+                  <rect x="175" y="46" width="88" height="16" rx="3" fill="#FF3333" opacity="0.85"/>
+                  <text x="180" y="57" fill="white" fontSize="9" fontFamily="Arial" fontWeight="bold">Element 3 — discoloured</text>
+                </svg>
+              </div>
+              <div style={{flex:1,minWidth:160}}>
+                <div style={{fontSize:12,fontWeight:700,color:T.black,marginBottom:6}}>Operator Notes</div>
+                <div style={{fontSize:12,color:T.gray900,lineHeight:1.6,marginBottom:10}}>"Sealer bar element 3 showing visible discolouration and inconsistent seal temperature. Seal quality dropping on SKU 3801 bags — rejecting approximately 1 in 8 seals at QC."</div>
+                <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                  <div style={{fontSize:11,color:T.gray400}}>Reported: Feb 14, 2026 · 09:32am</div>
+                  <div style={{fontSize:11,color:T.gray400}}>Reported by: Line 3 Operator (J. Park)</div>
+                  <div style={{fontSize:11,color:T.gray400}}>WO raised: Feb 14, 2026 · Auto-generated by Asset Health Agent</div>
+                </div>
+              </div>
+            </div>
+          </div>}
+
+
           {/* SOP + Parts + History */}
           <div style={{display:"flex",gap:16,flexWrap:"wrap",alignItems:"flex-start"}}>
+            {/* Phased SOP Checklist */}
             <div style={{flex:"2 1 300px",background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
               <div style={{padding:"12px 18px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div style={{fontSize:13,fontWeight:800,color:T.black}}>SOP Checklist</div>
                 <span style={{fontSize:11,color:T.gray900,fontWeight:600}}>{selectedWO.sopSteps.filter(s=>s.done).length}/{selectedWO.sopSteps.length} complete</span>
               </div>
-              <div style={{padding:"12px 18px",display:"flex",flexDirection:"column",gap:6}}>
-                {selectedWO.sopSteps.map((s,i)=>(
-                  <div key={i} onClick={()=>toggleStep(selectedWO.id,i)} style={{display:"flex",gap:10,alignItems:"flex-start",padding:"8px 10px",borderRadius:4,background:s.done?T.positive+"10":T.gray100,cursor:"pointer",border:`1px solid ${s.done?T.positive+"30":T.border}`}}>
-                    <div style={{width:18,height:18,borderRadius:3,border:`2px solid ${s.done?T.positive:T.gray400}`,background:s.done?T.positive:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>
-                      {s.done&&<span style={{fontSize:10,color:T.white,fontWeight:800}}>✓</span>}
+              <div style={{padding:"12px 18px",display:"flex",flexDirection:"column",gap:0}}>
+                {["Pre-Execution","Execution","Post-Execution"].map(phase=>{
+                  const phaseSteps=selectedWO.sopSteps.map((s,i)=>({...s,idx:i})).filter(s=>s.phase===phase);
+                  if(phaseSteps.length===0)return null;
+                  const phaseColor=phase==="Pre-Execution"?T.warning:phase==="Execution"?T.primary:"#673AB7";
+                  const phaseDone=phaseSteps.filter(s=>s.done).length;
+                  return(
+                    <div key={phase} style={{marginBottom:12}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                        <div style={{width:4,height:36,background:phaseColor,borderRadius:2,flexShrink:0}}/>
+                        <div>
+                          <div style={{fontSize:11,fontWeight:800,color:phaseColor,textTransform:"uppercase",letterSpacing:"0.05em"}}>{phase}</div>
+                          <div style={{fontSize:10,color:T.gray400}}>{phaseDone}/{phaseSteps.length} complete</div>
+                        </div>
+                      </div>
+                      <div style={{display:"flex",flexDirection:"column",gap:5,paddingLeft:12}}>
+                        {phaseSteps.map((s)=>(
+                          <div key={s.idx} onClick={()=>toggleStep(selectedWO.id,s.idx)} style={{display:"flex",gap:10,alignItems:"flex-start",padding:"8px 10px",borderRadius:4,background:s.done?T.positive+"10":T.gray100,cursor:"pointer",border:`1px solid ${s.done?T.positive+"30":T.border}`}}>
+                            <div style={{width:18,height:18,borderRadius:3,border:`2px solid ${s.done?T.positive:T.gray400}`,background:s.done?T.positive:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>
+                              {s.done&&<span style={{fontSize:10,color:T.white,fontWeight:800}}>✓</span>}
+                            </div>
+                            <span style={{fontSize:12,color:s.done?T.gray400:T.black,textDecoration:s.done?"line-through":"none",lineHeight:1.5}}>{s.step}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <span style={{fontSize:12,color:s.done?T.gray400:T.black,textDecoration:s.done?"line-through":"none",lineHeight:1.5}}>{s.step}</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
             <div style={{flex:"1 1 220px",display:"flex",flexDirection:"column",gap:12}}>
+              {/* Parts Kitting */}
               <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-                <div style={{padding:"12px 18px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>Parts Required</div></div>
+                <div style={{padding:"12px 18px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>Parts Kitting</div></div>
                 <div style={{padding:"12px 18px",display:"flex",flexDirection:"column",gap:8}}>
-                  {selectedWO.partsRequired.map((p,i)=>(
+                  {(selectedWO.partsKitting||selectedWO.partsRequired||[]).map((p,i)=>(
                     <div key={i} style={{padding:"8px 10px",background:T.gray100,borderRadius:4,borderLeft:`3px solid ${p.status==="In Stock"?T.positive:p.status==="In Transit"?T.info:T.negative}`}}>
                       <div style={{fontSize:12,fontWeight:700,color:T.black}}>{p.part}</div>
                       <div style={{fontSize:10,color:T.gray400,marginBottom:4}}>{p.partNo} · Qty: {p.qty}</div>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                        <Badge label={p.status} color={p.status==="In Stock"?T.positive:p.status==="In Transit"?T.info:T.negative}/>
+                        <Badge label={p.status} color={p.status==="In Stock"?T.positive:p.status==="In Transit"?T.info:p.status==="Low Stock"?T.warning:T.negative}/>
                         {p.eta&&<span style={{fontSize:10,color:T.gray900}}>ETA: {p.eta}</span>}
                       </div>
                     </div>
@@ -1533,6 +1624,20 @@ function TechnicianDashboard(){
                 </div>
               </div>
 
+              {/* Tool Kitting */}
+              {selectedWO.toolKitting&&<div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+                <div style={{padding:"12px 18px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>Tool Kitting</div></div>
+                <div style={{padding:"12px 18px",display:"flex",flexDirection:"column",gap:6}}>
+                  {selectedWO.toolKitting.map((t,i)=>(
+                    <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 10px",background:T.gray100,borderRadius:4,borderLeft:`3px solid ${t.available?T.positive:T.negative}`}}>
+                      <span style={{fontSize:12,color:T.black}}>{t.tool}</span>
+                      <Badge label={t.available?"Available":"Not Available"} color={t.available?T.positive:T.negative}/>
+                    </div>
+                  ))}
+                </div>
+              </div>}
+
+              {/* Asset History */}
               <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
                 <div style={{padding:"12px 18px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>Asset History</div></div>
                 <div style={{padding:"12px 18px",display:"flex",flexDirection:"column",gap:6}}>
@@ -1596,12 +1701,13 @@ function TechnicianDashboard(){
           <div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
               <thead><tr style={{background:T.gray100}}>
-                {["WO","Asset","Line","Type","Priority","Status","Assigned","Due Date","Description",""].map(h=>(
+                {["WO","Asset","Line","Type","Priority","Status","Assigned","Est. Hrs","Actual Hrs","Due Date","Description",""].map(h=>(
                   <th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>
                 ))}
               </tr></thead>
-              <tbody>{filteredAllWOs.map((wo,i)=>(
-                <tr key={wo.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
+              <tbody>{filteredAllWOs.map((wo,i)=>{
+                const effRatio=wo.estHrs&&wo.actualHrs>0?wo.actualHrs/wo.estHrs:null;
+                return(<tr key={wo.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
                   <td style={{padding:"9px 14px",fontWeight:700,color:T.black,whiteSpace:"nowrap"}}>{wo.id}</td>
                   <td style={{padding:"9px 14px",fontWeight:600,color:T.black,whiteSpace:"nowrap"}}>{wo.asset}</td>
                   <td style={{padding:"9px 14px",color:T.gray900}}>{wo.line}</td>
@@ -1609,11 +1715,13 @@ function TechnicianDashboard(){
                   <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}><Badge label={wo.priority} color={priorityColor(wo.priority)}/></td>
                   <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}><Badge label={wo.status} color={woStatusColor(wo.status)}/></td>
                   <td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{wo.assignedTo}</td>
+                  <td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{wo.estHrs?`${wo.estHrs}h`:"—"}</td>
+                  <td style={{padding:"9px 14px",whiteSpace:"nowrap",fontWeight:effRatio?700:400,color:effRatio?effColor(effRatio):T.gray400}}>{wo.actualHrs>0?`${wo.actualHrs}h`:"—"}{effRatio&&<span style={{fontSize:10,marginLeft:4,color:effColor(effRatio)}}>({effRatio.toFixed(1)}x)</span>}</td>
                   <td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{wo.dueDate}</td>
-                  <td style={{padding:"9px 14px",color:T.gray900,maxWidth:200}}>{wo.description}</td>
+                  <td style={{padding:"9px 14px",color:T.gray900,maxWidth:180}}>{wo.description}</td>
                   <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}><button style={{background:"none",border:`1px solid #C7D2FE`,borderRadius:3,padding:"3px 8px",fontSize:10,fontWeight:700,color:"#4F46E5",cursor:"pointer"}}>Open in SAP PM →</button></td>
-                </tr>
-              ))}</tbody>
+                </tr>);
+              })}</tbody>
             </table>
           </div>
         </div>
@@ -1689,6 +1797,69 @@ function TechnicianDashboard(){
       />}
 
     </div>
+
+    {/* ── COMPLETION MODAL ── */}
+    {showCompletionModal&&completionWO&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+      <div style={{background:T.white,borderRadius:6,width:"100%",maxWidth:520,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.3)",overflow:"hidden"}}>
+        <div style={{background:T.positive,padding:"14px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <div style={{fontSize:11,fontWeight:700,color:"#ffffff99",marginBottom:2}}>MARK COMPLETE · {completionWO.id}</div>
+            <div style={{fontSize:15,fontWeight:800,color:T.white}}>{completionWO.asset}</div>
+          </div>
+          <button onClick={()=>setShowCompletionModal(false)} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:4,padding:"6px 12px",color:T.white,cursor:"pointer",fontWeight:700,fontSize:12}}>✕</button>
+        </div>
+        <div style={{padding:"20px",display:"flex",flexDirection:"column",gap:14}}>
+          {/* Completion photo */}
+          <div>
+            <div style={{fontSize:12,fontWeight:700,color:T.black,marginBottom:8}}>Completion Photo</div>
+            {!completionForm.photoAttached
+              ?<div onClick={()=>setCompletionForm(p=>({...p,photoAttached:true}))} style={{border:`2px dashed ${T.border}`,borderRadius:4,padding:"24px",textAlign:"center",cursor:"pointer",background:T.gray100}}>
+                <div style={{fontSize:28,marginBottom:6}}>📷</div>
+                <div style={{fontSize:12,fontWeight:700,color:T.gray900}}>Tap to attach completion photo</div>
+                <div style={{fontSize:11,color:T.gray400,marginTop:2}}>Shows proof of repair for operator and supervisor</div>
+              </div>
+              :<div style={{position:"relative",borderRadius:4,overflow:"hidden",border:`2px solid ${T.positive}`}}>
+                <svg width="100%" height="150" viewBox="0 0 480 150" xmlns="http://www.w3.org/2000/svg">
+                  <rect width="480" height="150" fill="#1A2A1A"/>
+                  <rect x="20" y="20" width="440" height="110" rx="6" fill="#2A3A2A"/>
+                  <rect x="40" y="50" width="400" height="18" rx="3" fill="#4A6A4A"/>
+                  <rect x="40" y="72" width="400" height="18" rx="3" fill="#4A6A4A"/>
+                  <rect x="50" y="53" width="30" height="12" rx="2" fill="#6A9A6A"/>
+                  <rect x="90" y="53" width="30" height="12" rx="2" fill="#6A9A6A"/>
+                  <rect x="130" y="53" width="30" height="12" rx="2" fill="#6A9A6A"/>
+                  <rect x="170" y="53" width="30" height="12" rx="2" fill="#6A9A6A"/>
+                  <rect x="210" y="53" width="30" height="12" rx="2" fill="#6A9A6A"/>
+                  <text x="20" y="14" fill="#6A9A6A" fontSize="9" fontFamily="monospace">LINE 3 HEAT SEALER · SN-4421-B · REPAIR COMPLETE</text>
+                  <text x="240" y="138" fill="#44BB44" fontSize="10" fontFamily="Arial" fontWeight="bold" textAnchor="middle">✓ Element 3 replaced — sealer restored, test seals passed QC</text>
+                </svg>
+                <div style={{position:"absolute",top:8,right:8,background:T.positive,borderRadius:3,padding:"2px 8px",fontSize:10,fontWeight:800,color:T.white}}>✓ Photo attached</div>
+              </div>
+            }
+          </div>
+          {/* Notes */}
+          <div>
+            <div style={{fontSize:12,fontWeight:700,color:T.black,marginBottom:6}}>Completion Notes</div>
+            <textarea value={completionForm.notes} onChange={e=>setCompletionForm(p=>({...p,notes:e.target.value}))} placeholder="What was done and how was it fixed? Any observations for future reference..." rows={3} style={{width:"100%",border:`1px solid ${T.border}`,borderRadius:4,padding:"8px 10px",fontSize:12,boxSizing:"border-box",resize:"vertical"}}/>
+          </div>
+          {/* Notify operator */}
+          <div onClick={()=>setCompletionForm(p=>({...p,notifyOperator:!p.notifyOperator}))} style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",padding:"10px 14px",background:completionForm.notifyOperator?T.positive+"12":T.gray100,border:`1px solid ${completionForm.notifyOperator?T.positive:T.border}`,borderRadius:4}}>
+            <div style={{width:20,height:20,borderRadius:4,border:`2px solid ${completionForm.notifyOperator?T.positive:T.gray400}`,background:completionForm.notifyOperator?T.positive:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              {completionForm.notifyOperator&&<span style={{fontSize:11,color:T.white,fontWeight:800}}>✓</span>}
+            </div>
+            <div>
+              <div style={{fontSize:12,fontWeight:700,color:T.black}}>Notify Line Operator & Supervisor</div>
+              <div style={{fontSize:11,color:T.gray900}}>Sends completion summary and photo — closes the loop with the team</div>
+            </div>
+          </div>
+          {/* Actions */}
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={submitCompletion} style={{flex:1,background:T.positive,color:T.white,border:"none",borderRadius:4,padding:"10px",fontSize:13,fontWeight:700,cursor:"pointer"}}>Mark Complete & Close WO</button>
+            <button onClick={()=>setShowCompletionModal(false)} style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"10px 16px",fontSize:12,cursor:"pointer",color:T.gray900}}>Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>}
+
   </div>);
 }
 
