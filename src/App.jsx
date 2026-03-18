@@ -2407,6 +2407,7 @@ function SetpointDashboard(){
   const [selectedEquip,setSelectedEquip]=useState(null);
   const [appliedRecs,setAppliedRecs]=useState([]);
   const [recs,setRecs]=useState(SP_RECS);
+  const [anomalyActioned,setAnomalyActioned]=useState({});
 
   const applyRec=(id)=>{
     setRecs(prev=>prev.map(r=>r.id===id?{...r,applied:true}:r));
@@ -2722,8 +2723,14 @@ function SetpointDashboard(){
                   </div>
                   <div style={{fontSize:11,color:T.black}}>{a.actionNote}</div>
                 </div>
-                <button style={{background:actColor,color:T.white,border:"none",borderRadius:4,padding:"7px 14px",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>{a.actionLabel}</button>
+                {!anomalyActioned[a.id]
+                  ?<button onClick={()=>setAnomalyActioned(prev=>({...prev,[a.id]:a.actionType}))} style={{background:actColor,color:T.white,border:"none",borderRadius:4,padding:"7px 14px",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>{a.actionLabel}</button>
+                  :<span style={{fontSize:11,fontWeight:700,color:T.positive,whiteSpace:"nowrap",flexShrink:0}}>✓ {a.actionType==="wo"?"Opened in SAP PM":a.actionType==="setpoint"?"Fix Applied — Operator Notified":a.actionType==="escalate"?"Escalated to Plant Leader":"Marked as Monitoring"}</span>
+                }
               </div>
+              {anomalyActioned[a.id]&&<div style={{marginTop:8,background:"#F0FDF4",border:`1px solid ${T.positive}`,borderRadius:4,padding:"8px 12px",fontSize:11,color:T.positive,fontWeight:600}}>
+                ✅ {a.actionType==="wo"?"WO-4421 opened in SAP PM. Carlos Rivera notified.":a.actionType==="setpoint"?`Setpoint fix applied. Operator notified. Monitoring next 2–3 production cycles.`:a.actionType==="escalate"?"Escalated to Plant Leader — added to dashboard recommendations.":"Anomaly flagged as monitoring. Agent will alert if it worsens."}
+              </div>}
             </div>
           </div>);
         })}
