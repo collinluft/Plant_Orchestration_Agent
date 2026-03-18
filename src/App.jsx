@@ -2500,7 +2500,7 @@ function SetpointDashboard(){
           <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
             <div>
               <div style={{fontSize:13,fontWeight:800,color:T.black}}>Process Flow — {selectedLine} · Live Setpoints</div>
-              <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Click any equipment to see all parameters · Black marker = setpoint · Coloured bar = actual</div>
+
             </div>
             <div style={{display:"flex",gap:10,fontSize:11,color:T.gray900}}>
               <span style={{display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:"50%",background:T.positive,display:"inline-block"}}/> On spec</span>
