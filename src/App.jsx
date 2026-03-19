@@ -1,2951 +1,2938 @@
 import { useState, useRef, useEffect } from "react";
-
-const T = {
-  primary:"#197A56", positive:"#29BA74", negative:"#D64454", neutral:"#7C7C7C",
-  warning:"#F59E0B", info:"#1976D2", black:"#000000", gray900:"#4C4D4D",
-  gray400:"#B1B1B7", gray100:"#F3F3F3", white:"#FFFFFF", border:"#E0E0E0",
-};
-
-const Badge=({label,color})=>(<span style={{background:color+"18",color,border:`1px solid ${color}40`,borderRadius:3,padding:"2px 8px",fontSize:11,fontWeight:700,whiteSpace:"nowrap"}}>{label}</span>);
-const PriorityColor=p=>p==="Critical"?T.negative:p==="High"?T.warning:p==="Medium"?T.info:T.neutral;
-const statusColor=s=>s==="Complete"?T.positive:s==="In Progress"?T.info:s==="Action Required"?T.negative:T.warning;
-const Metric=({label,value,target,unit="",good,bad})=>{
-  const color=good?T.positive:bad?T.negative:T.warning;
-  return(<div style={{display:"flex",flexDirection:"column",gap:2}}><div style={{fontSize:10,color:T.gray900,fontWeight:600,whiteSpace:"nowrap"}}>{label}</div><div style={{fontSize:16,fontWeight:800,color,lineHeight:1}}>{value}{unit}</div>{target!=null&&<div style={{fontSize:10,color:T.gray400}}>Target: {target}{unit}</div>}</div>);
-};
-
-// ── MAINTENANCE DATA ──────────────────────────────────────────────────────────
-
-const maintAssets = [
-  {id:"A-001",name:"Line 3 Heat Sealer",line:"Line 3",criticality:"Critical",safetyImpact:"High",qualityImpact:"High",productionImpact:"High",failureCost:42000,replacementCost:800,currentStrategy:"Reactive",agentRec:"Increase PM Frequency",recReason:"Vibration index 8.4 exceeds threshold. Failure causes full line stoppage and quality escapes. Criticality warrants monthly PM minimum.",healthScore:34,vibration:8.4,tempVariance:6.1,lastPM:"Jan 15, 2026",nextPM:"Overdue",failureRisk:"Critical",trend:"Degrading"},
-  {id:"A-002",name:"Line 1 Label Applicator",line:"Line 1",criticality:"High",safetyImpact:"Low",qualityImpact:"High",productionImpact:"Medium",failureCost:8500,replacementCost:1200,currentStrategy:"Scheduled PM",agentRec:"Maintain Current",recReason:"Current 8-week PM cycle aligns with degradation rate. Quality impact is high but failure is recoverable within 30 min. No change needed.",healthScore:72,vibration:3.1,tempVariance:1.2,lastPM:"Feb 10, 2026",nextPM:"Apr 7, 2026",failureRisk:"Medium",trend:"Stable"},
-  {id:"A-003",name:"Line 2 Conveyor Belt",line:"Line 2",criticality:"Medium",safetyImpact:"Low",qualityImpact:"Low",productionImpact:"Medium",failureCost:3200,replacementCost:420,currentStrategy:"Scheduled PM",agentRec:"Reduce Frequency",recReason:"Current 4-week cycle is excessive given low criticality and $420 replacement cost. Failure causes <15 min downtime. Extend to 10 weeks to reduce technician load.",healthScore:81,vibration:2.2,tempVariance:0.8,lastPM:"Feb 20, 2026",nextPM:"Mar 20, 2026",failureRisk:"Low",trend:"Stable"},
-  {id:"A-004",name:"Line 3 Packaging Filler",line:"Line 3",criticality:"High",safetyImpact:"Low",qualityImpact:"High",productionImpact:"High",failureCost:14000,replacementCost:2100,currentStrategy:"Scheduled PM",agentRec:"Increase PM Frequency",recReason:"High production and quality impact. Recent scrap rate increase on Line 3 partially attributed to filler calibration drift. Reduce interval from 8 weeks to 5 weeks.",healthScore:58,vibration:4.7,tempVariance:2.9,lastPM:"Jan 28, 2026",nextPM:"Mar 25, 2026",failureRisk:"High",trend:"Degrading"},
-  {id:"A-005",name:"Line 1 Mixing Motor",line:"Line 1",criticality:"Low",safetyImpact:"Low",qualityImpact:"Low",productionImpact:"Low",failureCost:600,replacementCost:180,currentStrategy:"Scheduled PM",agentRec:"Run to Failure",recReason:"Low criticality across all dimensions. Replacement cost is $180 and failure causes <5 min downtime. PM cost exceeds expected failure cost. Safe to run to failure.",healthScore:91,vibration:1.4,tempVariance:0.4,lastPM:"Feb 1, 2026",nextPM:"Mar 1, 2026",failureRisk:"Low",trend:"Stable"},
-  {id:"A-006",name:"Line 2 Heat Tunnel",line:"Line 2",criticality:"High",safetyImpact:"Medium",qualityImpact:"High",productionImpact:"High",failureCost:18000,replacementCost:3400,currentStrategy:"Reactive",agentRec:"Initiate PM Program",recReason:"No current PM program despite high criticality. Safety impact (burn risk) and quality impact (seal integrity) make reactive strategy unacceptable. Initiate 6-week PM cycle immediately.",healthScore:67,vibration:3.8,tempVariance:3.2,lastPM:"Never",nextPM:"Not scheduled",failureRisk:"High",trend:"Unknown"},
-  {id:"A-007",name:"Line 3 Crimping Unit",line:"Line 3",criticality:"Medium",safetyImpact:"Low",qualityImpact:"Medium",productionImpact:"Medium",failureCost:4800,replacementCost:650,currentStrategy:"Scheduled PM",agentRec:"Maintain Current",recReason:"Current 6-week cycle appropriate for medium criticality asset. Health score 74 indicates no immediate risk. Continue monitoring.",healthScore:74,vibration:2.9,tempVariance:1.6,lastPM:"Feb 5, 2026",nextPM:"Mar 19, 2026",failureRisk:"Medium",trend:"Stable"},
-  {id:"A-008",name:"Line 1 Sealing Bar",line:"Line 1",criticality:"Low",safetyImpact:"Low",qualityImpact:"Medium",productionImpact:"Low",failureCost:1100,replacementCost:95,currentStrategy:"Scheduled PM",agentRec:"Run to Failure",recReason:"Replacement cost is $95. Even with medium quality impact, the failure is quickly detectable and recoverable. PM cost over 12 months exceeds expected failure cost by 3x.",healthScore:88,vibration:1.8,tempVariance:0.6,lastPM:"Feb 15, 2026",nextPM:"Mar 15, 2026",failureRisk:"Low",trend:"Stable"},
-];
-
-const maintWorkOrders = [
-  {id:"WO-4421",asset:"Line 3 Heat Sealer",line:"Line 3",type:"Corrective",priority:"Critical",status:"In Progress",assignedTo:"Carlos Rivera",estimatedHrs:4,actualHrs:1.5,dueDate:"Feb 28, 2026",description:"Sealer inspection — vibration and temp variance above threshold. Full component check required.",agentSuggestion:null},
-  {id:"WO-4422",asset:"Line 2 Heat Tunnel",line:"Line 2",type:"Preventive",priority:"High",status:"Open",assignedTo:null,estimatedHrs:2,actualHrs:0,dueDate:"Mar 3, 2026",description:"Initiate first PM cycle — inspect heating elements, check safety interlocks, calibrate temp controls.",agentSuggestion:"Assign to Marcus Webb — heat tunnel certified, available this afternoon after WO-4425 completes."},
-  {id:"WO-4423",asset:"Line 3 Packaging Filler",line:"Line 3",type:"Preventive",priority:"High",status:"Open",assignedTo:null,estimatedHrs:3,actualHrs:0,dueDate:"Mar 4, 2026",description:"Filler calibration and seal check — scrap rate increase linked to calibration drift.",agentSuggestion:"Assign to Priya Singh — filler-certified, currently underutilised (2.5hrs available today)."},
-  {id:"WO-4424",asset:"Line 1 Label Applicator",line:"Line 1",type:"Corrective",priority:"Medium",status:"Open",assignedTo:"Priya Singh",estimatedHrs:1.5,actualHrs:0,dueDate:"Mar 2, 2026",description:"Label misalignment root cause investigation — check applicator head alignment and sensor calibration.",agentSuggestion:null},
-  {id:"WO-4425",asset:"Line 2 Conveyor Belt",line:"Line 2",type:"Preventive",priority:"Low",status:"In Progress",assignedTo:"Marcus Webb",estimatedHrs:1,actualHrs:0.5,dueDate:"Mar 6, 2026",description:"Routine belt inspection — tension check, wear assessment.",agentSuggestion:null},
-  {id:"WO-4426",asset:"Line 1 Mixing Motor",line:"Line 1",type:"Preventive",priority:"Low",status:"Open",assignedTo:null,estimatedHrs:0.5,actualHrs:0,dueDate:"Mar 10, 2026",description:"Routine lubrication and visual inspection.",agentSuggestion:"Consider cancelling — Maintenance Strategy Agent recommends run-to-failure for this asset. Saves 0.5 technician hours."},
-];
-
-const maintTechnicians = [
-  {name:"Carlos Rivera",role:"Senior Technician",certifications:["Heat Sealer","Filler","Conveyor","Electrical"],currentWOs:["WO-4421"],scheduledHrs:8,allocatedHrs:4,availableHrs:4,utilization:50,status:"On Job"},
-  {name:"Marcus Webb",role:"Technician",certifications:["Heat Tunnel","Conveyor","Packaging"],currentWOs:["WO-4425"],scheduledHrs:8,allocatedHrs:3,availableHrs:5,utilization:38,status:"On Job"},
-  {name:"Priya Singh",role:"Technician",certifications:["Filler","Label Applicator","Mixing"],currentWOs:["WO-4424"],scheduledHrs:8,allocatedHrs:1.5,availableHrs:6.5,utilization:19,status:"Available"},
-  {name:"James Okafor",role:"Junior Technician",certifications:["Conveyor","General"],currentWOs:[],scheduledHrs:8,allocatedHrs:0,availableHrs:8,utilization:0,status:"Unassigned"},
-];
-
-// ── SPARE PARTS DATA ──────────────────────────────────────────────────────────
-const spareParts = [
-  {id:"P-001",name:"Sealer Heating Element",partNo:"SE-441",line:"Line 3",asset:"Heat Sealer",stock:0,minStock:2,status:"Stock-Out",blockedWOs:["WO-4421"],unitCost:340,supplier:"Supplier B",leadTimeDays:3,emergencyLeadTimeDays:1,emergencyUnitCost:420,agentRec:"Emergency PO raised — next-day AM delivery confirmed",poRaised:true},
-  {id:"P-002",name:"Heat Tunnel Igniter",partNo:"HT-209",line:"Line 2",asset:"Heat Tunnel",stock:1,minStock:3,status:"Low Stock",blockedWOs:[],unitCost:185,supplier:"Supplier A",leadTimeDays:5,emergencyLeadTimeDays:2,emergencyUnitCost:240,agentRec:"Order 3 units standard delivery — 5-day lead time, no emergency needed",poRaised:false},
-  {id:"P-003",name:"Filler Calibration Weight Set",partNo:"FC-112",line:"Line 3",asset:"Packaging Filler",stock:0,minStock:1,status:"Stock-Out",blockedWOs:["WO-4423"],unitCost:95,supplier:"Supplier C",leadTimeDays:2,emergencyLeadTimeDays:1,emergencyUnitCost:130,agentRec:"Emergency PO recommended — WO-4423 blocked without this part",poRaised:false},
-  {id:"P-004",name:"Label Applicator Head",partNo:"LA-334",line:"Line 1",asset:"Label Applicator",stock:2,minStock:2,status:"At Min",blockedWOs:[],unitCost:220,supplier:"Supplier A",leadTimeDays:4,emergencyLeadTimeDays:null,emergencyUnitCost:null,agentRec:"Reorder triggered — stock at minimum. 4-day standard lead time.",poRaised:false},
-  {id:"P-005",name:"Conveyor Belt Tensioner",partNo:"CB-087",line:"Line 2",asset:"Conveyor Belt",stock:4,minStock:2,status:"OK",blockedWOs:[],unitCost:65,supplier:"Supplier B",leadTimeDays:3,emergencyLeadTimeDays:null,emergencyUnitCost:null,agentRec:null,poRaised:false},
-  {id:"P-006",name:"Sealer Temperature Probe",partNo:"SE-442",line:"Line 3",asset:"Heat Sealer",stock:0,minStock:2,status:"Stock-Out",blockedWOs:["WO-4421"],unitCost:280,supplier:"Supplier B",leadTimeDays:3,emergencyLeadTimeDays:1,emergencyUnitCost:360,agentRec:"Emergency PO recommended — needed for sealer inspection WO-4421",poRaised:false},
-];
-
-// ── TECHNICIAN PERFORMANCE DATA ───────────────────────────────────────────────
-const techPerformance = [
-  {
-    name:"Carlos Rivera",role:"Senior Technician",avatar:"CR",
-    thisWeek:{completed:8,target:10,onTime:7,lateCount:1},
-    efficiency:{avgActualVsEstimate:0.92,trend:"Improving"},
-    wosThisWeek:[
-      {id:"WO-4418",estHrs:2,actualHrs:1.8,asset:"Line 1 Conveyor",estHrs:2,actualHrs:1.8,onTime:true,status:"Complete"},
-      {id:"WO-4419",estHrs:3,actualHrs:2.7,asset:"Line 2 Filler",estHrs:3,actualHrs:2.7,onTime:true,status:"Complete"},
-      {id:"WO-4420",estHrs:1.5,actualHrs:1.6,asset:"Line 3 Crimping Unit",estHrs:1.5,actualHrs:1.6,onTime:false,status:"Complete"},
-      {id:"WO-4421",asset:"Line 3 Heat Sealer",estHrs:4,actualHrs:1.5,onTime:null,status:"In Progress"},
-    ],
-    coachingSuggestions:[],
-    strengths:["Fastest diagnosis on electrical faults","Mentors junior technicians well"],
-  },
-  {
-    name:"Marcus Webb",role:"Technician",avatar:"MW",
-    thisWeek:{completed:5,target:8,onTime:3,lateCount:2},
-    efficiency:{avgActualVsEstimate:1.38,trend:"Declining"},
-    wosThisWeek:[
-      {id:"WO-4415",estHrs:2,actualHrs:3.1,asset:"Line 2 Heat Tunnel",estHrs:2,actualHrs:3.1,onTime:false,status:"Complete"},
-      {id:"WO-4416",estHrs:1,actualHrs:1.4,asset:"Line 2 Conveyor Belt",estHrs:1,actualHrs:1.4,onTime:true,status:"Complete"},
-      {id:"WO-4417",estHrs:2,actualHrs:2.6,asset:"Line 1 Packaging",estHrs:2,actualHrs:2.6,onTime:false,status:"Complete"},
-      {id:"WO-4425",asset:"Line 2 Conveyor Belt",estHrs:1,actualHrs:0.5,onTime:null,status:"In Progress"},
-    ],
-    coachingSuggestions:[
-      {type:"SOP",note:"Averaging 1.38x estimated time on heat tunnel work — recommend Co-Pilot SOP walkthrough before WO-4422 to improve first-time completion rate"},
-      {type:"Training",note:"Heat Tunnel PM Checklist v1.1 not completed since Nov 2025 — refresh recommended before first PM execution"},
-    ],
-    strengths:["Strong on conveyor and packaging","Good safety compliance record"],
-  },
-  {
-    name:"Priya Singh",role:"Technician",avatar:"PS",
-    thisWeek:{completed:6,target:8,onTime:6,lateCount:0},
-    efficiency:{avgActualVsEstimate:1.05,trend:"Stable"},
-    wosThisWeek:[
-      {id:"WO-4412",asset:"Line 3 Filler",estHrs:3,actualHrs:3.1,onTime:true,status:"Complete"},
-      {id:"WO-4413",asset:"Line 1 Label Applicator",estHrs:1.5,actualHrs:1.6,onTime:true,status:"Complete"},
-      {id:"WO-4414",asset:"Line 1 Mixing Motor",estHrs:0.5,actualHrs:0.5,onTime:true,status:"Complete"},
-      {id:"WO-4424",asset:"Line 1 Label Applicator",estHrs:1.5,actualHrs:0,onTime:null,status:"Open"},
-    ],
-    coachingSuggestions:[
-      {type:"Upskill",note:"Priya is consistently on-time and accurate — recommend expanding certifications to Heat Tunnel to increase coverage flexibility"},
-    ],
-    strengths:["Most on-time technician this week","Filler calibration specialist"],
-  },
-  {
-    name:"James Okafor",role:"Junior Technician",avatar:"JO",
-    thisWeek:{completed:2,target:6,onTime:1,lateCount:1},
-    efficiency:{avgActualVsEstimate:1.72,trend:"Needs Support"},
-    wosThisWeek:[
-      {id:"WO-4410",estHrs:1,actualHrs:1.9,asset:"Line 2 Conveyor",estHrs:1,actualHrs:1.9,onTime:false,status:"Complete"},
-      {id:"WO-4411",estHrs:1,actualHrs:1.6,asset:"Line 1 Conveyor",estHrs:1,actualHrs:1.6,onTime:true,status:"Complete"},
-    ],
-    coachingSuggestions:[
-      {type:"SOP",note:"Averaging 1.72x estimated time — Co-Pilot guided walkthroughs recommended for all assigned WOs until average drops below 1.2x"},
-      {type:"Pairing",note:"Recommend pairing James with Carlos Rivera on next complex WO for on-the-job mentoring"},
-      {type:"Training",note:"Only 2 certifications (Conveyor, General) limits assignment flexibility — suggest Filler or Packaging certification next"},
-    ],
-    strengths:["Improving safety checklist compliance","Proactive in asking for help"],
-  },
-];
-
-// ── ORCHESTRATOR RECS (cross-domain + maintenance-specific) ───────────────────
-const crossDomainMaintRecs = [
-  {id:"cd1",priority:"Critical",domain:"Maintenance",icon:"🌐",lines:["All","Line 3"],title:"Line 3 Sealer Failure Will Halt Production & Miss Friday Customer Order",summary:"Plant Orchestration Agent has identified that the Line 3 sealer failure risk directly threatens SKU 3801 production and conflicts with a maintenance window needed today.",suggestedAction:"Coordinate maintenance window with Scheduler to protect SKU 3801 order — reschedule to Line 1 Thursday before executing sealer repair.",agents:["Asset Health Monitoring Agent","Scheduling Agent","Plant Orchestration Agent"],detail:{issue:"Line 3 heat sealer failure risk (vibration 8.4, threshold 7.0) directly conflicts with SKU 3801 customer order due Friday.",compounding:"SKU 3801 requires the heat sealer. If sealer fails before maintenance window, CO-8820 (6,200 units) cannot be fulfilled.",risk:"Customer order CO-8820 missed. ~$42,000 unplanned downtime cost. Quality escapes on in-process product.",action:"Reschedule SKU 3801 to Line 1 Thursday 1–5pm before executing sealer maintenance. Confirm labor reallocation for Thursday.",steps:[{agent:"Plant Orchestration Agent",domain:"Maintenance",action:"Flag cross-domain conflict: sealer failure risk vs. SKU 3801 production schedule.",status:"complete"},{agent:"Scheduling Agent",domain:"Planning",action:"Reschedule SKU 3801 from Line 3 to Line 1, Thursday 1–5pm.",status:"complete"},{agent:"Maintenance Planning & Scheduling Agent",domain:"Maintenance",action:"Lock in Line 3 maintenance window today 2–4pm after SKU 3801 rescheduled.",status:"pending"},{agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Notify Line 3 supervisor of maintenance window and schedule change.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Carlos Rivera",role:"Maintenance Manager",avatar:"MM"},{name:"Priya Nair",role:"Scheduler",avatar:"SC"}]}},
-  {id:"cd2",priority:"High",domain:"Maintenance",icon:"🌐",lines:["All","Line 2"],title:"Line 2 Heat Tunnel — Safety & Maintenance Risk Flagged Across Two Domains",summary:"Safety Agent and Maintenance Strategy Agent both flagging the Line 2 Heat Tunnel. No PM program despite High criticality and burn risk. 3 operators also have overdue LOTO recertification.",suggestedAction:"Initiate PM program and complete LOTO recertification before first PM is executed.",agents:["Safety Agent","Maintenance Strategy Agent","Plant Orchestration Agent"],detail:{issue:"Line 2 Heat Tunnel has no PM program. Safety Agent flags burn risk. 3 operators have overdue LOTO recertification.",compounding:"Executing the first PM without LOTO-certified operators creates a compliance violation.",risk:"Operator safety incident during maintenance. LOTO audit failure. Heat tunnel failure causing quality escapes.",action:"Complete LOTO recertification by Mar 4. Initiate PM program with first inspection week of Mar 9.",steps:[{agent:"Safety Agent",domain:"Safety",action:"Confirm LOTO recertification status — 3 operators overdue, deadline Mar 4.",status:"complete"},{agent:"Maintenance Strategy Agent",domain:"Maintenance",action:"Define PM program for Line 2 Heat Tunnel — 6-week cycle, starting Mar 9.",status:"pending"},{agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Schedule LOTO recertification session for J. Park, D. Williams, M. Santos.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Carlos Rivera",role:"Maintenance Manager",avatar:"MM"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"}]}},
-];
-
-const maintOnlyRecs = [
-  {id:"m2",priority:"High",domain:"Maintenance",icon:"🔧",lines:["All","Line 2"],title:"Line 2 Heat Tunnel Has No PM Program — Initiate Immediately",summary:"Maintenance Strategy Agent flagged Line 2 Heat Tunnel as reactive with no PM schedule despite High criticality and safety impact. Failure risk is increasing.",suggestedAction:"Assign WO-4422 to Marcus Webb this afternoon and initiate 6-week PM cycle.",agents:["Maintenance Strategy Agent","Maintenance Planning & Scheduling Agent"],detail:{issue:"Line 2 Heat Tunnel has zero PM history. Reactive-only strategy is unacceptable given High criticality and Medium safety impact.",compounding:"Current health score 67 and unknown degradation trend. No baseline data to detect future anomalies.",risk:"Undetected heating element failure. Safety incident. Quality escapes on Line 2 seal integrity.",action:"Raise WO-4422, assign to Marcus Webb today after WO-4425 completes. Initiate 6-week PM cycle.",steps:[{agent:"Maintenance Planning & Scheduling Agent",domain:"Maintenance",action:"Assign WO-4422 to Marcus Webb — heat tunnel certified, available 1pm today.",status:"pending"},{agent:"Technician Co-Pilot",domain:"Maintenance",action:"Pre-load heat tunnel PM checklist (v1.1) for Marcus Webb.",status:"pending"}],approvers:[{name:"Carlos Rivera",role:"Maintenance Manager",avatar:"MM"},{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"}]}},
-  {id:"m3",priority:"High",domain:"Maintenance",icon:"👷",lines:["All"],title:"2 High-Priority Work Orders Unassigned — Technician Reallocation Needed",summary:"WO-4422 and WO-4423 are both unassigned. Priya Singh has 6.5hrs available today. James Okafor is fully unassigned.",suggestedAction:"Assign WO-4423 to Priya Singh now and WO-4422 to Marcus Webb after WO-4425 completes at 1pm.",agents:["Maintenance Planning & Scheduling Agent"],detail:{issue:"WO-4422 (Heat Tunnel PM, High priority, due Mar 3) and WO-4423 (Filler calibration, High priority, due Mar 4) are both unassigned.",compounding:"Overall technician utilization is 27% — capacity exists but is not being allocated to priority work.",risk:"Both work orders miss due dates. Line 2 heat tunnel remains uninspected. Line 3 filler calibration drift continues.",action:"Assign WO-4423 to Priya Singh immediately. Assign WO-4422 to Marcus Webb when WO-4425 completes (~1pm).",steps:[{agent:"Maintenance Planning & Scheduling Agent",domain:"Maintenance",action:"Assign WO-4423 to Priya Singh — filler-certified, 6.5hrs available today.",status:"pending"},{agent:"Maintenance Planning & Scheduling Agent",domain:"Maintenance",action:"Schedule WO-4422 for Marcus Webb post-1pm after WO-4425 completes.",status:"pending"},{agent:"Technician Co-Pilot",domain:"Maintenance",action:"Notify Priya Singh and Marcus Webb of new assignments with WO context.",status:"pending"}],approvers:[{name:"Carlos Rivera",role:"Maintenance Manager",avatar:"MM"}]}},
-  {id:"m4",priority:"Medium",domain:"Maintenance",icon:"📦",lines:["All","Line 3"],title:"2 Parts Stock-Outs Blocking Active Work Orders",summary:"Part #SE-442 (Sealer Temperature Probe) and Part #FC-112 (Filler Calibration Weight Set) are both at zero stock and blocking WO-4421 and WO-4423.",suggestedAction:"Raise emergency PO for Part #FC-112 today. Part #SE-441 PO already in transit.",agents:["Maintenance Planning & Scheduling Agent"],detail:{issue:"SE-442 and FC-112 are both at zero stock. WO-4421 and WO-4423 cannot be fully completed without these parts.",compounding:"Part #SE-441 already has an emergency PO in transit (arriving tomorrow). FC-112 and SE-442 have not been ordered yet.",risk:"WO-4423 cannot proceed. Sealer inspection incomplete without temperature probe.",action:"Raise emergency PO for FC-112 from Supplier C ($130, 1-day delivery). Raise emergency PO for SE-442 from Supplier B ($360, 1-day delivery).",steps:[{agent:"Maintenance Planning & Scheduling Agent",domain:"Maintenance",action:"Raise emergency PO for Part #FC-112 from Supplier C — next-day AM delivery.",status:"pending"},{agent:"Maintenance Planning & Scheduling Agent",domain:"Maintenance",action:"Raise emergency PO for Part #SE-442 from Supplier B — next-day AM delivery.",status:"pending"}],approvers:[{name:"Carlos Rivera",role:"Maintenance Manager",avatar:"MM"},{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"}]}},
-];
-
-// ── PM SCHEDULE DATA ──────────────────────────────────────────────────────────
-const pmSchedule = [
-  {id:"PM-001",asset:"Line 3 Heat Sealer",line:"Line 3",interval:"4 weeks",lastPM:"Jan 15, 2026",nextPM:"Feb 12, 2026",daysOverdue:16,status:"Overdue",woCoverage:"WO-4421 (Corrective)",notes:"Scheduled PM missed — asset now in corrective mode"},
-  {id:"PM-002",asset:"Line 2 Heat Tunnel",line:"Line 2",interval:"None",lastPM:"Never",nextPM:"Not scheduled",daysOverdue:null,status:"No Program",woCoverage:"WO-4422 (First PM pending)",notes:"Strategy Agent recommends initiating 6-week PM cycle"},
-  {id:"PM-003",asset:"Line 3 Packaging Filler",line:"Line 3",interval:"8 weeks",lastPM:"Jan 28, 2026",nextPM:"Mar 25, 2026",daysOverdue:null,status:"Upcoming",woCoverage:"WO-4423 (Preventive)",notes:"Strategy Agent recommends reducing to 5-week cycle"},
-  {id:"PM-004",asset:"Line 1 Label Applicator",line:"Line 1",interval:"8 weeks",lastPM:"Feb 10, 2026",nextPM:"Apr 7, 2026",daysOverdue:null,status:"On Track",woCoverage:null,notes:"Current cycle appropriate"},
-  {id:"PM-005",asset:"Line 2 Conveyor Belt",line:"Line 2",interval:"4 weeks",lastPM:"Feb 20, 2026",nextPM:"Mar 20, 2026",daysOverdue:null,status:"On Track",woCoverage:"WO-4425 (In Progress)",notes:"Strategy Agent recommends extending to 10-week cycle"},
-  {id:"PM-006",asset:"Line 3 Crimping Unit",line:"Line 3",interval:"6 weeks",lastPM:"Feb 5, 2026",nextPM:"Mar 19, 2026",daysOverdue:null,status:"On Track",woCoverage:null,notes:"Continue monitoring"},
-  {id:"PM-007",asset:"Line 1 Mixing Motor",line:"Line 1",interval:"4 weeks",lastPM:"Feb 1, 2026",nextPM:"Mar 1, 2026",daysOverdue:null,status:"Upcoming",woCoverage:"WO-4426 (Consider cancelling)",notes:"Strategy Agent recommends run-to-failure — cancel PM WO"},
-  {id:"PM-008",asset:"Line 2 Heat Tunnel Filters",line:"Line 2",interval:"12 weeks",lastPM:"Nov 20, 2025",nextPM:"Feb 12, 2026",daysOverdue:16,status:"Overdue",woCoverage:null,notes:"No WO raised — needs immediate attention"},
-];
-
-// ── VIEW ALL BUTTON ───────────────────────────────────────────────────────────
-function ViewAllBtn({label,total}){
-  return(
-    <div style={{padding:"12px 20px",borderTop:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-      <span style={{fontSize:11,color:T.gray400}}>{total!=null?`Showing priority items · ${total} total`:"Full view available in production"}</span>
-      <button style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"5px 14px",fontSize:11,fontWeight:700,color:T.gray900,cursor:"pointer"}}>{label||"View All →"}</button>
-    </div>
-  );
-}
-
-// ── COLLAPSIBLE SECTION ───────────────────────────────────────────────────────
-function Section({title,subtitle,icon,count,countColor,defaultOpen=true,children}){
-  const [open,setOpen]=useState(defaultOpen);
-  return(
-    <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",overflow:"hidden"}}>
-      <div onClick={()=>setOpen(o=>!o)} style={{padding:"14px 20px",borderBottom:open?`1px solid ${T.border}`:"none",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",userSelect:"none"}}>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <span style={{fontSize:16}}>{icon}</span>
-          <div>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <span style={{fontSize:13,fontWeight:800,color:T.black}}>{title}</span>
-              {count!=null&&<span style={{background:(countColor||T.negative)+"18",color:countColor||T.negative,border:`1px solid ${(countColor||T.negative)}40`,borderRadius:10,padding:"1px 8px",fontSize:11,fontWeight:700}}>{count}</span>}
-            </div>
-            {subtitle&&<div style={{fontSize:11,color:T.gray900,marginTop:1}}>{subtitle}</div>}
-          </div>
-        </div>
-        <div style={{fontSize:12,color:T.gray400,fontWeight:700}}>{open?"▲":"▼"}</div>
-      </div>
-      {open&&<div>{children}</div>}
-    </div>
-  );
-}
-
-// ── PROMETHEUS INTEGRATION BANNER ────────────────────────────────────────────
-function PrometheusBanner({entity="data"}){
-  return(
-    <div style={{background:"#EEF2FF",border:`1px solid #C7D2FE`,borderRadius:4,padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}>
-      <div style={{display:"flex",alignItems:"center",gap:10}}>
-        <div style={{width:8,height:8,borderRadius:"50%",background:"#4F46E5",boxShadow:"0 0 0 2px #C7D2FE"}}/>
-        <div>
-          <span style={{fontSize:12,fontWeight:700,color:"#3730A3"}}>🔗 Live from Prometheus CMMS</span>
-          <span style={{fontSize:11,color:"#6366F1",marginLeft:8}}>Last synced 7:02am · {entity} pulled directly from your system of record</span>
-        </div>
-      </div>
-      <div style={{display:"flex",alignItems:"center",gap:8}}>
-        <span style={{fontSize:11,color:"#6366F1"}}>Agents read from Prometheus — recommendations surface here</span>
-        <button style={{background:"#4F46E5",color:"#FFFFFF",border:"none",borderRadius:4,padding:"4px 12px",fontSize:11,fontWeight:700,cursor:"pointer"}}>Open Prometheus →</button>
-      </div>
-    </div>
-  );
-}
-
-// ── MAINTENANCE DASHBOARD ─────────────────────────────────────────────────────
-function MaintenanceDashboard({onSelectRec}){
-  const [activeTab,setActiveTab]=useState("overview");
-  const [appliedWOs,setAppliedWOs]=useState({});
-  const [appliedPOs,setAppliedPOs]=useState({});
-  const [pmFilter,setPmFilter]=useState("Action Required");
-  const assignWO=(woId)=>setAppliedWOs(prev=>({...prev,[woId]:true}));
-  const raisePO=(partId)=>setAppliedPOs(prev=>({...prev,[partId]:true}));
-
-  const critColor=(c)=>c==="Critical"?T.negative:c==="High"?T.warning:c==="Medium"?T.info:T.neutral;
-  const healthColor=(s)=>s>=80?T.positive:s>=60?T.warning:T.negative;
-  const recColor=(r)=>r==="Run to Failure"?T.neutral:r==="Increase PM Frequency"?T.negative:r==="Initiate PM Program"?T.negative:r==="Reduce Frequency"?T.positive:T.info;
-  const pmStatusColor=(s)=>s==="Overdue"?T.negative:s==="No Program"?T.negative:s==="Upcoming"?T.warning:T.positive;
-  const effColor=(r)=>r<=1.0?T.positive:r<=1.2?T.warning:T.negative;
-
-  const attentionWOs=maintWorkOrders.filter(wo=>!wo.assignedTo||wo.status==="Overdue"||wo.agentSuggestion);
-  const stockIssues=spareParts.filter(p=>p.status==="Stock-Out"||p.status==="Low Stock"||p.status==="At Min");
-  const changeAssets=maintAssets.filter(a=>a.agentRec!=="Maintain Current");
-  const alertAssets=maintAssets.filter(a=>a.healthScore<80||a.failureRisk==="Critical"||a.failureRisk==="High"||a.trend==="Degrading"||a.trend==="Unknown");
-  const displayPMs=pmFilter==="Action Required"?pmSchedule.filter(p=>p.status==="Overdue"||p.status==="No Program"||p.status==="Upcoming"):pmSchedule;
-
-  const TABS=[
-    {id:"overview",label:"Overview",icon:"▦",alert:crossDomainMaintRecs.length+maintOnlyRecs.length},
-    {id:"workorders",label:"Work Orders",icon:"📋",alert:attentionWOs.length},
-    {id:"technicians",label:"Technicians",icon:"👷",alert:maintTechnicians.filter(t=>t.utilization<30).length},
-    {id:"assets",label:"Asset Health",icon:"📡",alert:alertAssets.length},
-    {id:"parts",label:"Spare Parts",icon:"📦",alert:stockIssues.filter(p=>p.status==="Stock-Out").length},
-    {id:"pm",label:"PM Schedule",icon:"🗓",alert:pmSchedule.filter(p=>p.status==="Overdue"||p.status==="No Program").length},
-    {id:"strategy",label:"Strategy",icon:"⚙️",alert:changeAssets.length},
-    {id:"performance",label:"My Team",icon:"📊",alert:techPerformance.filter(t=>t.coachingSuggestions.length>0).length},
-  ];
-
-  const Tab=({tab})=>{
-    const isActive=activeTab===tab.id;
-    const alertColor=tab.alert>0?(tab.id==="overview"?T.negative:tab.id==="technicians"?T.warning:T.negative):null;
-    return(
-      <button onClick={()=>setActiveTab(tab.id)} style={{display:"flex",alignItems:"center",gap:6,padding:"12px 16px",border:"none",borderBottom:isActive?`2px solid ${T.primary}`:"2px solid transparent",background:"transparent",cursor:"pointer",fontWeight:isActive?800:500,fontSize:12,color:isActive?T.primary:T.gray900,whiteSpace:"nowrap",position:"relative"}}>
-        <span>{tab.icon}</span>
-        <span>{tab.label}</span>
-        {tab.alert>0&&<span style={{background:alertColor||T.negative,color:T.white,borderRadius:10,padding:"1px 6px",fontSize:10,fontWeight:800,minWidth:16,textAlign:"center"}}>{tab.alert}</span>}
-      </button>
-    );
-  };
-
-  return(<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
-    {/* Header */}
-    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px 0",flexShrink:0}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
-        <div>
-          <div style={{fontSize:18,fontWeight:800,color:T.black}}>Maintenance Dashboard</div>
-          <div style={{fontSize:12,color:T.gray900,marginTop:2}}>Austin Plant · Feb 28, 2026 · Good morning, Carlos 👋</div>
-        </div>
-      </div>
-      {/* Tab bar */}
-      <div style={{display:"flex",gap:0,overflowX:"auto"}}>
-        {TABS.map(t=><Tab key={t.id} tab={t}/>)}
-      </div>
-    </div>
-
-    {/* Tab content */}
-    <div style={{flex:1,overflowY:"auto",background:T.gray100}}>
-
-      {/* ── OVERVIEW TAB ── */}
-      {activeTab==="overview"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
-        {/* KPI strip */}
-        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-          {[
-            {label:"Open Work Orders",value:6,sub:"2 unassigned",color:T.negative,tab:"workorders"},
-            {label:"Overdue PMs",value:2,sub:"Line 3 sealer, Line 2 tunnel",color:T.negative,tab:"pm"},
-            {label:"Planned vs Unplanned",value:"58%",sub:"planned · target 80%",color:T.negative,tab:"workorders"},
-            {label:"Avg Technician Utilization",value:"27%",sub:"across 4 technicians",color:T.negative,tab:"technicians"},
-            {label:"Assets at Risk",value:3,sub:"Critical or High failure risk",color:T.negative,tab:"assets"},
-            {label:"Parts Stock-Outs",value:3,sub:"2 blocking active WOs",color:T.negative,tab:"parts"},
-          ].map(k=>(<div key={k.label} onClick={()=>setActiveTab(k.tab)} style={{flex:1,minWidth:120,background:T.white,borderRadius:4,borderLeft:`4px solid ${k.color}`,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",padding:"10px 14px",cursor:"pointer"}}>
-            <div style={{fontSize:10,color:T.gray900,fontWeight:600,marginBottom:4}}>{k.label}</div>
-            <div style={{fontSize:20,fontWeight:800,color:k.color}}>{k.value}</div>
-            <div style={{fontSize:10,color:T.gray400,marginTop:2}}>{k.sub}</div>
-            <div style={{fontSize:10,color:T.primary,marginTop:4,fontWeight:600}}>View details →</div>
-          </div>))}
-        </div>
-        {/* Cross-domain recs */}
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-          <div style={{background:T.primary,padding:"12px 20px",borderRadius:"4px 4px 0 0",display:"flex",alignItems:"center",gap:10}}>
-            <span style={{fontSize:14}}>🌐</span>
-            <div>
-              <div style={{fontSize:13,fontWeight:800,color:T.white}}>Plant Orchestration Agent — Cross-Domain Recommendations</div>
-              <div style={{fontSize:11,color:"#ffffff99",marginTop:1}}>Issues where maintenance intersects with production, quality, planning & scheduling, or safety</div>
-            </div>
-          </div>
-          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:10}}>
-            {crossDomainMaintRecs.map(r=>(<div key={r.id} onClick={()=>onSelectRec(r)} style={{background:T.gray100,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,padding:"12px 16px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
-              <div style={{flex:1}}>
-                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label="Cross-Domain" color={T.primary}/>{r.agents.slice(0,2).map(a=><Badge key={a} label={a} color={T.neutral}/>)}</div>
-                <div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:3}}>{r.title}</div>
-                <div style={{fontSize:12,color:T.gray900}}>{r.summary}</div>
-                <div style={{fontSize:12,color:T.primary,fontWeight:600,marginTop:4}}>💡 {r.suggestedAction}</div>
-              </div>
-              <div style={{fontSize:12,color:T.primary,fontWeight:700,whiteSpace:"nowrap"}}>View Detail →</div>
-            </div>))}
-          </div>
-          <ViewAllBtn label="View All Recommendations →" total={crossDomainMaintRecs.length+maintOnlyRecs.length}/>
-        </div>
-        {/* Maintenance-only recs */}
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-          <div style={{background:"#673AB7",padding:"12px 20px",borderRadius:"4px 4px 0 0",display:"flex",alignItems:"center",gap:10}}>
-            <span style={{fontSize:14}}>⚙️</span>
-            <div>
-              <div style={{fontSize:13,fontWeight:800,color:T.white}}>Maintenance Orchestrator — Maintenance Recommendations</div>
-              <div style={{fontSize:11,color:"#ffffff99",marginTop:1}}>Synthesised from Strategy Agent, Asset Health Agent, and Planning & Scheduling Agent</div>
-            </div>
-          </div>
-          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:10}}>
-            {maintOnlyRecs.map(r=>(<div key={r.id} onClick={()=>onSelectRec(r)} style={{background:T.gray100,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,padding:"12px 16px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
-              <div style={{flex:1}}>
-                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label="Maintenance" color="#673AB7"/>{r.agents.map(a=><Badge key={a} label={a} color={T.neutral}/>)}</div>
-                <div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:3}}>{r.icon} {r.title}</div>
-                <div style={{fontSize:12,color:T.gray900}}>{r.summary}</div>
-                <div style={{fontSize:12,color:"#673AB7",fontWeight:600,marginTop:4}}>💡 {r.suggestedAction}</div>
-              </div>
-              <div style={{fontSize:12,color:"#673AB7",fontWeight:700,whiteSpace:"nowrap"}}>View Detail →</div>
-            </div>))}
-          </div>
-          <ViewAllBtn label="View All Recommendations →" total={crossDomainMaintRecs.length+maintOnlyRecs.length}/>
-        </div>
-      </div>}
-
-      {/* ── WORK ORDERS TAB ── */}
-      {activeTab==="workorders"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <div>
-              <div style={{fontSize:13,fontWeight:800,color:T.black}}>📋 Work Orders — Requiring Attention</div>
-              <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Unassigned, overdue, or agent-flagged · {attentionWOs.length} of {maintWorkOrders.length} total</div>
-            </div>
-          </div>
-          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:10}}>
-            {attentionWOs.map(wo=>(
-              <div key={wo.id} style={{background:T.gray100,borderRadius:4,borderLeft:`4px solid ${wo.priority==="Critical"?T.negative:wo.priority==="High"?T.warning:wo.priority==="Medium"?T.info:T.neutral}`,padding:"12px 16px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
-                  <div style={{flex:1}}>
-                    <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
-                      <span style={{fontSize:12,fontWeight:800,color:T.black}}>{wo.id}</span>
-                      <Badge label={wo.priority} color={wo.priority==="Critical"?T.negative:wo.priority==="High"?T.warning:wo.priority==="Medium"?T.info:T.neutral}/>
-                      <Badge label={wo.type} color={wo.type==="Corrective"?T.negative:T.primary}/>
-                      <Badge label={wo.status} color={statusColor(wo.status)}/>
-                    </div>
-                    <div style={{fontSize:12,fontWeight:700,color:T.black,marginBottom:2}}>{wo.asset} — {wo.line}</div>
-                    <div style={{fontSize:11,color:T.gray900,marginBottom:4}}>{wo.description}</div>
-                    <div style={{display:"flex",gap:12,fontSize:11,color:T.gray900,flexWrap:"wrap",alignItems:"center"}}>
-                      <span>👤 {wo.assignedTo?wo.assignedTo:<span style={{color:T.negative,fontWeight:700}}>⚠ Unassigned</span>}</span>
-                      <span>⏱ Est: {wo.estimatedHrs}h{wo.actualHrs>0?` · Actual: ${wo.actualHrs}h`:""}</span>
-                      <span>📅 Due: {wo.dueDate}</span>
-                      <button style={{background:"none",border:`1px solid #C7D2FE`,borderRadius:3,padding:"2px 8px",fontSize:10,fontWeight:700,color:"#4F46E5",cursor:"pointer"}}>Open in Prometheus →</button>
-                    </div>
-                  </div>
-                </div>
-                {wo.agentSuggestion&&!appliedWOs[wo.id]&&(
-                  <div style={{marginTop:10,background:T.white,border:`1px solid ${T.primary}40`,borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"8px 12px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
-                    <div style={{flex:1}}>
-                      <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:2}}>🧠 Maintenance Planning & Scheduling Agent</div>
-                      <div style={{fontSize:11,color:T.black}}>{wo.agentSuggestion}</div>
-                    </div>
-                    <button onClick={()=>assignWO(wo.id)} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"5px 12px",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>Apply</button>
-                  </div>
-                )}
-                {appliedWOs[wo.id]&&<div style={{marginTop:8,background:"#F0FDF4",border:`1px solid ${T.positive}`,borderRadius:4,padding:"6px 12px"}}><span style={{fontSize:11,fontWeight:700,color:T.positive}}>✅ Assignment applied — synced to Prometheus · technician notified via Co-Pilot</span></div>}
-              </div>
-            ))}
-          </div>
-          <ViewAllBtn label="View All Work Orders in Prometheus →" total={maintWorkOrders.length}/>
-        </div>
-      </div>}
-
-      {/* ── TECHNICIANS TAB ── */}
-      {activeTab==="technicians"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
-            <div style={{fontSize:13,fontWeight:800,color:T.black}}>👷 Technician Load & Assignments</div>
-            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Today's capacity, current jobs, and agent-recommended reallocation · {maintTechnicians.length} technicians on shift</div>
-          </div>
-          <div style={{padding:"16px 20px",display:"flex",gap:12,flexWrap:"wrap"}}>
-            {maintTechnicians.map(t=>{
-              const utilColor=t.utilization>=70?T.positive:t.utilization>=40?T.warning:T.negative;
-              const hasAgentFlag=t.utilization<30;
-              return(<div key={t.name} style={{flex:"1 1 200px",background:T.gray100,borderRadius:4,borderLeft:`4px solid ${utilColor}`,padding:"12px 14px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                  <div><div style={{fontSize:12,fontWeight:800,color:T.black}}>{t.name}</div><div style={{fontSize:10,color:T.gray900}}>{t.role}</div></div>
-                  <Badge label={t.status} color={t.status==="On Job"?T.info:t.status==="Available"?T.positive:T.negative}/>
-                </div>
-                <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:11,color:T.gray900}}>Utilization</span><span style={{fontSize:13,fontWeight:800,color:utilColor}}>{t.utilization}%</span></div>
-                <div style={{height:6,background:T.border,borderRadius:3,marginBottom:8}}><div style={{height:6,width:`${t.utilization}%`,background:utilColor,borderRadius:3}}/></div>
-                <div style={{fontSize:11,color:T.gray900,marginBottom:4}}>{t.allocatedHrs}h allocated · <strong>{t.availableHrs}h free</strong> today</div>
-                <div style={{fontSize:10,color:T.gray400,marginBottom:6}}>Certified: {t.certifications.join(", ")}</div>
-                {t.currentWOs.length>0&&<div style={{fontSize:11,color:T.gray900,marginBottom:4}}>Active: {t.currentWOs.join(", ")}</div>}
-                {hasAgentFlag&&<div style={{background:T.warning+"18",border:`1px solid ${T.warning}40`,borderRadius:3,padding:"4px 8px",fontSize:10,fontWeight:700,color:T.warning}}>⚠ Under-utilised — agent has reallocation suggestion in Overview</div>}
-              </div>);
-            })}
-          </div>
-          <ViewAllBtn label="View Full Technician Schedule in Prometheus →" total={maintTechnicians.length}/>
-        </div>
-      </div>}
-
-      {/* ── ASSET HEALTH TAB ── */}
-      {activeTab==="assets"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
-            <div style={{fontSize:13,fontWeight:800,color:T.black}}>📡 Asset Health Monitoring Agent — Live Degradation Signals</div>
-            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Showing {alertAssets.length} assets with active alerts or degradation signals · Real-time sensor data</div>
-          </div>
-          <div style={{padding:"16px 20px",display:"flex",gap:12,flexWrap:"wrap"}}>
-            {alertAssets.map(a=>(
-              <div key={a.id} style={{flex:"1 1 200px",background:T.gray100,borderRadius:4,borderTop:`4px solid ${healthColor(a.healthScore)}`,padding:"12px 14px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
-                  <div style={{fontSize:12,fontWeight:800,color:T.black,flex:1,paddingRight:8}}>{a.name}</div>
-                  <div style={{textAlign:"right"}}>
-                    <div style={{fontSize:22,fontWeight:900,color:healthColor(a.healthScore),lineHeight:1}}>{a.healthScore}</div>
-                    <div style={{fontSize:9,color:T.gray400}}>Health Score</div>
-                  </div>
-                </div>
-                <div style={{height:4,background:T.border,borderRadius:2,marginBottom:8}}><div style={{height:4,width:`${a.healthScore}%`,background:healthColor(a.healthScore),borderRadius:2}}/></div>
-                <div style={{display:"flex",flexDirection:"column",gap:4}}>
-                  <div style={{display:"flex",justifyContent:"space-between",fontSize:11}}><span style={{color:T.gray900}}>Vibration</span><span style={{fontWeight:700,color:a.vibration>=7?T.negative:a.vibration>=5?T.warning:T.positive}}>{a.vibration}<span style={{color:T.gray400,fontWeight:400}}>/7.0</span></span></div>
-                  <div style={{display:"flex",justifyContent:"space-between",fontSize:11}}><span style={{color:T.gray900}}>Temp Variance</span><span style={{fontWeight:700,color:a.tempVariance>=5?T.negative:a.tempVariance>=3?T.warning:T.positive}}>±{a.tempVariance}°C</span></div>
-                  <div style={{display:"flex",justifyContent:"space-between",fontSize:11}}><span style={{color:T.gray900}}>Next PM</span><span style={{fontWeight:700,color:a.nextPM==="Overdue"||a.nextPM==="Not scheduled"||a.nextPM==="Never"?T.negative:T.gray900}}>{a.nextPM}</span></div>
-                </div>
-                <div style={{marginTop:8,display:"flex",gap:4,flexWrap:"wrap"}}>
-                  <Badge label={a.trend} color={a.trend==="Degrading"?T.negative:a.trend==="Unknown"?T.warning:T.positive}/>
-                  <Badge label={`${a.failureRisk} Risk`} color={a.failureRisk==="Critical"?T.negative:a.failureRisk==="High"?T.warning:T.positive}/>
-                </div>
-              </div>
-            ))}
-          </div>
-          <ViewAllBtn label="View All Assets →" total={maintAssets.length}/>
-        </div>
-      </div>}
-
-      {/* ── SPARE PARTS TAB ── */}
-      {activeTab==="parts"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
-            <div style={{fontSize:13,fontWeight:800,color:T.black}}>📦 Spare Parts — Stock-Outs & Low Stock</div>
-            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Parts at zero or below minimum · Blocked work orders · Agent PO recommendations</div>
-          </div>
-          <div style={{overflowX:"auto"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-              <thead><tr style={{background:T.gray100}}>
-                {["Part","Part No.","Asset / Line","Stock","Status","Blocking WOs","Supplier","Lead Time","Agent Recommendation","Action"].map(h=>(<th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>))}
-              </tr></thead>
-              <tbody>{stockIssues.map((p,i)=>(<tr key={p.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
-                <td style={{padding:"10px 14px",fontWeight:700,color:T.black}}>{p.name}</td>
-                <td style={{padding:"10px 14px",color:T.gray400,fontFamily:"monospace",fontSize:11}}>{p.partNo}</td>
-                <td style={{padding:"10px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{p.asset}<br/><span style={{fontSize:10,color:T.gray400}}>{p.line}</span></td>
-                <td style={{padding:"10px 14px",fontWeight:800,color:p.stock===0?T.negative:T.warning}}>{p.stock} units</td>
-                <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}><Badge label={p.status} color={p.status==="Stock-Out"?T.negative:p.status==="Low Stock"?T.warning:T.info}/></td>
-                <td style={{padding:"10px 14px"}}>{p.blockedWOs.length>0?p.blockedWOs.map(wo=><div key={wo} style={{fontSize:11,color:T.negative,fontWeight:700}}>⚠ {wo}</div>):<span style={{fontSize:11,color:T.gray400}}>None</span>}</td>
-                <td style={{padding:"10px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{p.supplier}</td>
-                <td style={{padding:"10px 14px",color:T.gray900,whiteSpace:"nowrap"}}>
-                  <div style={{fontSize:11}}>Standard: {p.leadTimeDays}d</div>
-                  {p.emergencyLeadTimeDays&&<div style={{fontSize:11,color:T.warning}}>Emergency: {p.emergencyLeadTimeDays}d (${p.emergencyUnitCost}/unit)</div>}
-                </td>
-                <td style={{padding:"10px 14px",fontSize:11,color:T.gray900,maxWidth:200}}>{p.agentRec}</td>
-                <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}>
-                  {p.poRaised||appliedPOs[p.id]?<Badge label="✓ PO Raised" color={T.positive}/>:
-                  p.emergencyLeadTimeDays?<button onClick={()=>raisePO(p.id)} style={{background:T.negative,color:T.white,border:"none",borderRadius:4,padding:"5px 10px",fontSize:11,fontWeight:700,cursor:"pointer"}}>Raise Emergency PO</button>:
-                  <button onClick={()=>raisePO(p.id)} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"5px 10px",fontSize:11,fontWeight:700,cursor:"pointer"}}>Raise PO</button>}
-                </td>
-              </tr>))}</tbody>
-            </table>
-          </div>
-          <ViewAllBtn label="View Full Parts Catalog in Prometheus →" total={spareParts.length}/>
-        </div>
-      </div>}
-
-      {/* ── PM SCHEDULE TAB ── */}
-      {activeTab==="pm"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
-            <div>
-              <div style={{fontSize:13,fontWeight:800,color:T.black}}>🗓 Preventive Maintenance Schedule</div>
-              <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Upcoming, overdue, and program-less assets needing attention</div>
-            </div>
-            <div style={{display:"flex",gap:4}}>
-              {["Action Required","All PMs"].map(f=>(<button key={f} onClick={()=>setPmFilter(f)} style={{padding:"4px 10px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",border:`1px solid ${pmFilter===f?T.primary:T.border}`,background:pmFilter===f?T.primary:T.white,color:pmFilter===f?T.white:T.gray900}}>{f}</button>))}
-            </div>
-          </div>
-          <div style={{overflowX:"auto"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-              <thead><tr style={{background:T.gray100}}>
-                {["Asset","Line","PM Interval","Last PM","Next PM","Status","WO Coverage","Agent Note",""].map(h=>(<th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>))}
-              </tr></thead>
-              <tbody>{displayPMs.map((p,i)=>(<tr key={p.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
-                <td style={{padding:"9px 14px",fontWeight:700,color:T.black,whiteSpace:"nowrap"}}>{p.asset}</td>
-                <td style={{padding:"9px 14px",color:T.gray900}}>{p.line}</td>
-                <td style={{padding:"9px 14px",color:T.gray900}}>{p.interval}</td>
-                <td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{p.lastPM}</td>
-                <td style={{padding:"9px 14px",fontWeight:700,color:p.status==="Overdue"||p.status==="No Program"?T.negative:T.gray900,whiteSpace:"nowrap"}}>{p.nextPM}{p.daysOverdue&&<span style={{color:T.negative,fontSize:10,marginLeft:4}}>({p.daysOverdue}d overdue)</span>}</td>
-                <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}><Badge label={p.status} color={pmStatusColor(p.status)}/></td>
-                <td style={{padding:"9px 14px",fontSize:11,color:p.woCoverage?T.primary:T.gray400}}>{p.woCoverage||"No WO raised"}</td>
-                <td style={{padding:"9px 14px",fontSize:11,color:T.gray900,maxWidth:200}}>{p.notes}</td>
-                <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}><button style={{background:"none",border:`1px solid #C7D2FE`,borderRadius:3,padding:"3px 8px",fontSize:10,fontWeight:700,color:"#4F46E5",cursor:"pointer"}}>Open in Prometheus →</button></td>
-              </tr>))}</tbody>
-            </table>
-          </div>
-          <ViewAllBtn label="View Full PM Schedule in Prometheus →" total={pmSchedule.length}/>
-        </div>
-      </div>}
-
-      {/* ── STRATEGY TAB ── */}
-      {activeTab==="strategy"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
-            <div>
-              <div style={{fontSize:13,fontWeight:800,color:T.black}}>⚙️ Maintenance Strategy Agent — Assets Requiring Strategy Change</div>
-              <div style={{fontSize:11,color:T.gray900,marginTop:2}}>{changeAssets.length} assets where agent recommends a strategy change · Driven by criticality and consequence of failure</div>
-            </div>
-          </div>
-          <div style={{overflowX:"auto"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-              <thead><tr style={{background:T.gray100}}>
-                {["Asset","Line","Criticality","Failure Impact","Current Strategy","Recommended Change","Reason"].map(h=>(<th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>))}
-              </tr></thead>
-              <tbody>{changeAssets.map((a,i)=>(<tr key={a.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
-                <td style={{padding:"10px 14px",fontWeight:700,color:T.black,whiteSpace:"nowrap"}}>{a.name}</td>
-                <td style={{padding:"10px 14px",color:T.gray900}}>{a.line}</td>
-                <td style={{padding:"10px 14px"}}><Badge label={a.criticality} color={critColor(a.criticality)}/></td>
-                <td style={{padding:"10px 14px",fontSize:11,color:T.gray900,lineHeight:1.6}}>
-                  <span style={{color:a.safetyImpact!=="Low"?T.warning:T.gray400}}>Safety: {a.safetyImpact}</span>{" · "}
-                  <span style={{color:a.qualityImpact==="High"?T.negative:T.gray900}}>Quality: {a.qualityImpact}</span>{" · "}
-                  <span style={{color:a.productionImpact==="High"?T.negative:T.gray900}}>Prod: {a.productionImpact}</span>
-                  <div style={{color:T.gray400}}>Failure cost: <strong style={{color:a.failureCost>10000?T.negative:T.gray900}}>${a.failureCost.toLocaleString()}</strong></div>
-                </td>
-                <td style={{padding:"10px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{a.currentStrategy}</td>
-                <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}><Badge label={a.agentRec} color={recColor(a.agentRec)}/></td>
-                <td style={{padding:"10px 14px",maxWidth:240,fontSize:11,color:T.gray900,lineHeight:1.5}}>{a.recReason}</td>
-              </tr>))}</tbody>
-            </table>
-          </div>
-          <ViewAllBtn label="View All Assets →" total={maintAssets.length}/>
-        </div>
-      </div>}
-
-      {/* ── MY TEAM TAB ── */}
-      {activeTab==="performance"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:20}}>
-
-        {/* ── SECTION 1: PERFORMANCE & COACHING ── */}
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
-            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Performance & Coaching</div>
-            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>On-time completion rate, efficiency vs. estimate, and Co-Pilot coaching suggestions</div>
-          </div>
-          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:16}}>
-            {techPerformance.map(t=>(
-              <div key={t.name} style={{background:T.gray100,borderRadius:4,padding:"14px 16px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap",marginBottom:12}}>
-                  <div style={{display:"flex",alignItems:"center",gap:10}}>
-                    <div style={{width:36,height:36,borderRadius:"50%",background:T.primary,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,color:T.white,flexShrink:0}}>{t.avatar}</div>
-                    <div><div style={{fontSize:13,fontWeight:800,color:T.black}}>{t.name}</div><div style={{fontSize:11,color:T.gray900}}>{t.role}</div></div>
-                  </div>
-                  <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
-                    <div style={{textAlign:"center"}}>
-                      <div style={{fontSize:10,color:T.gray900,marginBottom:2}}>WOs Completed</div>
-                      <div style={{fontSize:16,fontWeight:800,color:t.thisWeek.completed>=t.thisWeek.target?T.positive:T.warning}}>{t.thisWeek.completed}<span style={{fontSize:11,color:T.gray400,fontWeight:400}}>/{t.thisWeek.target}</span></div>
-                    </div>
-                    <div style={{textAlign:"center"}}>
-                      <div style={{fontSize:10,color:T.gray900,marginBottom:2}}>On-Time Rate</div>
-                      <div style={{fontSize:16,fontWeight:800,color:t.thisWeek.onTime/Math.max(t.thisWeek.completed,1)>=0.8?T.positive:T.warning}}>{Math.round(t.thisWeek.onTime/Math.max(t.thisWeek.completed,1)*100)}%</div>
-                    </div>
-                    <div style={{textAlign:"center"}}>
-                      <div style={{fontSize:10,color:T.gray900,marginBottom:2}}>Avg Efficiency</div>
-                      <div style={{fontSize:16,fontWeight:800,color:effColor(t.efficiency.avgActualVsEstimate)}}>{t.efficiency.avgActualVsEstimate}x</div>
-                      <div style={{fontSize:9,color:T.gray400}}>actual vs. est.</div>
-                    </div>
-                    <div style={{textAlign:"center"}}>
-                      <div style={{fontSize:10,color:T.gray900,marginBottom:2}}>Trend</div>
-                      <div style={{fontSize:12,fontWeight:700,color:t.efficiency.trend==="Improving"?T.positive:t.efficiency.trend==="Stable"?T.info:T.negative}}>{t.efficiency.trend==="Improving"?"↑ Improving":t.efficiency.trend==="Stable"?"→ Stable":t.efficiency.trend==="Declining"?"↓ Declining":"⚠ Needs Support"}</div>
-                    </div>
-                  </div>
-                </div>
-                <div style={{marginBottom:t.coachingSuggestions.length>0?12:0}}>
-                  <div style={{fontSize:11,fontWeight:700,color:T.gray900,marginBottom:6}}>This Week's Work Orders</div>
-                  <div style={{display:"flex",flexDirection:"column",gap:3}}>
-                    {t.wosThisWeek.map(wo=>(
-                      <div key={wo.id} style={{display:"flex",gap:8,alignItems:"center",fontSize:11,background:T.white,borderRadius:3,padding:"5px 10px"}}>
-                        <span style={{fontWeight:700,color:T.black,minWidth:70}}>{wo.id}</span>
-                        <span style={{flex:1,color:T.gray900}}>{wo.asset}</span>
-                        <span style={{color:T.gray900,minWidth:80}}>Est: {wo.estHrs}h</span>
-                        <span style={{fontWeight:700,color:wo.actualHrs===0?T.gray400:effColor(wo.actualHrs/wo.estHrs),minWidth:80}}>{wo.actualHrs>0?`Actual: ${wo.actualHrs}h`:"In progress"}</span>
-                        <span>{wo.onTime===null?<Badge label="In Progress" color={T.info}/>:wo.onTime?<Badge label="On Time" color={T.positive}/>:<Badge label="Late" color={T.negative}/>}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                {t.coachingSuggestions.length>0&&(
-                  <div style={{background:T.white,borderRadius:4,border:`1px solid ${"#673AB7"}40`,borderLeft:`3px solid ${"#673AB7"}`,padding:"10px 14px"}}>
-                    <div style={{fontSize:11,fontWeight:700,color:"#673AB7",marginBottom:6}}>🤖 Co-Pilot Coaching Suggestions</div>
-                    {t.coachingSuggestions.map((c,i)=>(
-                      <div key={i} style={{display:"flex",gap:8,alignItems:"flex-start",marginBottom:i<t.coachingSuggestions.length-1?6:0}}>
-                        <Badge label={c.type} color={c.type==="SOP"?T.primary:c.type==="Training"?T.info:c.type==="Pairing"?T.warning:"#673AB7"}/>
-                        <span style={{fontSize:11,color:T.gray900,flex:1}}>{c.note}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {t.strengths.length>0&&(
-                  <div style={{marginTop:8,display:"flex",gap:6,flexWrap:"wrap"}}>
-                    {t.strengths.map(s=><span key={s} style={{fontSize:10,color:T.positive,background:T.positive+"12",border:`1px solid ${T.positive}30`,borderRadius:3,padding:"2px 8px"}}>✓ {s}</span>)}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-          <ViewAllBtn label="View Full Performance History →" total={techPerformance.length}/>
-        </div>
-
-        {/* ── SECTION 2: SKILLS MATRIX ── */}
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
-            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Skills Matrix — Certified Competency by Asset Type</div>
-            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Certification status per technician · Agent flags gaps and single points of failure</div>
-          </div>
-          <div style={{overflowX:"auto"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-              <thead>
-                <tr style={{background:T.gray100}}>
-                  <th style={{padding:"10px 16px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,minWidth:160}}>Technician</th>
-                  {["Heat Sealer","Heat Tunnel","Filler / Calibration","Conveyor / Belt","Packaging","Electrical","General Mechanical"].map(skill=>(
-                    <th key={skill} style={{padding:"10px 12px",textAlign:"center",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,minWidth:100,whiteSpace:"nowrap"}}>{skill}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  {name:"Carlos Rivera",role:"Senior Technician",avatar:"CR",skills:{"Heat Sealer":"certified","Heat Tunnel":"in-progress","Filler / Calibration":"certified","Conveyor / Belt":"certified","Packaging":"certified","Electrical":"certified","General Mechanical":"certified"}},
-                  {name:"Marcus Webb",role:"Technician",avatar:"MW",skills:{"Heat Sealer":"none","Heat Tunnel":"certified","Filler / Calibration":"none","Conveyor / Belt":"certified","Packaging":"certified","Electrical":"none","General Mechanical":"certified"}},
-                  {name:"Priya Singh",role:"Technician",avatar:"PS",skills:{"Heat Sealer":"none","Heat Tunnel":"none","Filler / Calibration":"certified","Conveyor / Belt":"in-progress","Packaging":"none","Electrical":"none","General Mechanical":"certified"}},
-                  {name:"James Okafor",role:"Junior Technician",avatar:"JO",skills:{"Heat Sealer":"none","Heat Tunnel":"none","Filler / Calibration":"none","Conveyor / Belt":"certified","Packaging":"none","Electrical":"none","General Mechanical":"certified"}},
-                ].map((tech,i)=>(
-                  <tr key={tech.name} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
-                    <td style={{padding:"10px 16px"}}>
-                      <div style={{display:"flex",alignItems:"center",gap:8}}>
-                        <div style={{width:28,height:28,borderRadius:"50%",background:T.primary,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:T.white,flexShrink:0}}>{tech.avatar}</div>
-                        <div>
-                          <div style={{fontSize:12,fontWeight:700,color:T.black}}>{tech.name}</div>
-                          <div style={{fontSize:10,color:T.gray400}}>{tech.role}</div>
-                        </div>
-                      </div>
-                    </td>
-                    {["Heat Sealer","Heat Tunnel","Filler / Calibration","Conveyor / Belt","Packaging","Electrical","General Mechanical"].map(skill=>{
-                      const status=tech.skills[skill];
-                      return(
-                        <td key={skill} style={{padding:"10px 12px",textAlign:"center"}}>
-                          {status==="certified"&&<div style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:28,height:28,borderRadius:"50%",background:T.positive+"18",border:`2px solid ${T.positive}`}}><span style={{fontSize:13,color:T.positive,fontWeight:800}}>✓</span></div>}
-                          {status==="in-progress"&&<div style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:28,height:28,borderRadius:"50%",background:T.warning+"18",border:`2px solid ${T.warning}`}}><span style={{fontSize:10,color:T.warning,fontWeight:800}}>~</span></div>}
-                          {status==="none"&&<div style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:28,height:28,borderRadius:"50%",background:T.gray100,border:`1px solid ${T.border}`}}><span style={{fontSize:13,color:T.gray400}}>—</span></div>}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {/* Legend */}
-          <div style={{padding:"12px 20px",borderTop:`1px solid ${T.border}`,display:"flex",gap:16,flexWrap:"wrap",alignItems:"center"}}>
-            <span style={{fontSize:11,fontWeight:700,color:T.gray900}}>Legend:</span>
-            {[{color:T.positive,label:"Certified",symbol:"✓"},{color:T.warning,label:"In Training",symbol:"~"},{color:T.gray400,label:"Not Certified",symbol:"—"}].map(l=>(
-              <div key={l.label} style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:T.gray900}}>
-                <div style={{width:20,height:20,borderRadius:"50%",background:l.color+"18",border:`2px solid ${l.color}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:l.color,fontWeight:800}}>{l.symbol}</div>
-                {l.label}
-              </div>
-            ))}
-          </div>
-          {/* Agent gap analysis */}
-          <div style={{padding:"0 20px 20px",display:"flex",flexDirection:"column",gap:8}}>
-            <div style={{fontSize:12,fontWeight:800,color:T.black,marginBottom:4}}>🧠 Skills Gap Analysis — Maintenance Strategy Agent</div>
-            {[
-              {priority:"High",flag:"Single point of failure — Heat Sealer",detail:"Only Carlos Rivera is certified on Heat Sealer. If Carlos is unavailable, no other technician can execute sealer work. Recommend cross-training Marcus Webb as backup.",action:"Initiate Heat Sealer certification for Marcus Webb"},
-              {priority:"High",flag:"Single point of failure — Electrical",detail:"Only Carlos Rivera holds Electrical certification. Critical for fault diagnosis across all lines. Recommend cross-training at least one additional technician.",action:"Identify candidate for Electrical certification — recommend Priya Singh"},
-              {priority:"Medium",flag:"Heat Tunnel coverage — only one certified technician",detail:"Only Marcus Webb is certified on Heat Tunnel. With WO-4422 requiring Heat Tunnel PM, if Marcus is unavailable this WO cannot be assigned. Carlos Rivera is currently in training.",action:"Accelerate Carlos Rivera's Heat Tunnel certification (currently in training)"},
-              {priority:"Medium",flag:"James Okafor — limited certification scope",detail:"Only certified in Conveyor and General Mechanical. Current scope limits assignment flexibility significantly. Structured upskilling plan recommended.",action:"Prioritise Filler / Calibration or Packaging certification next — broadens daily assignment range"},
-            ].map((gap,i)=>(
-              <div key={i} style={{background:T.gray100,borderRadius:4,borderLeft:`4px solid ${gap.priority==="High"?T.negative:T.warning}`,padding:"10px 14px"}}>
-                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
-                  <Badge label={gap.priority} color={gap.priority==="High"?T.negative:T.warning}/>
-                  <span style={{fontSize:12,fontWeight:700,color:T.black}}>{gap.flag}</span>
-                </div>
-                <div style={{fontSize:12,color:T.gray900,marginBottom:6}}>{gap.detail}</div>
-                <div style={{fontSize:11,color:T.primary,fontWeight:600}}>💡 {gap.action}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-      </div>}
-
-    </div>
-  </div>);
-}
-
-
-
-const COPILOT_SYSTEM_PROMPT = `You are the Technician Co-Pilot for Austin Plant. You help maintenance technicians, operators, and supervisors with on-the-job tasks. You are practical, direct, and safety-first. You do NOT do strategic analysis — that's the Scenario Simulation's job. Your job is to help the person in front of you get their work done safely and correctly right now.
-
-You help with:
-- Step-by-step SOP guidance for specific work orders
-- Fault code lookups and troubleshooting
-- LOTO procedures before any maintenance task
-- Tool and parts lists for specific jobs
-- Safe work practices and safety checks
-- Work order context and history
-- Technician assignment questions
-
-PLANT CONTEXT (today, Feb 28, 2026):
-- Line 3 Heat Sealer (A-001): WO-4421 open, Carlos Rivera assigned, vibration 8.4/7.0 threshold, Part #SE-441 out of stock (arriving tomorrow 7am)
-- Line 2 Heat Tunnel (A-006): WO-4422 open, unassigned, first PM ever — Marcus Webb recommended
-- Line 3 Packaging Filler (A-004): WO-4423 open, unassigned, calibration drift — Priya Singh recommended
-- Line 1 Label Applicator (A-002): WO-4424 open, Priya Singh assigned
-- Line 2 Conveyor Belt (A-003): WO-4425 in progress, Marcus Webb assigned
-
-TECHNICIANS ON SHIFT:
-- Carlos Rivera (Senior): On WO-4421, certified Heat Sealer/Filler/Electrical, 4hrs available after current job
-- Marcus Webb: On WO-4425 (done ~1pm), certified Heat Tunnel/Conveyor/Packaging
-- Priya Singh: On WO-4424, certified Filler/Label Applicator/Mixing, 6.5hrs available
-- James Okafor (Junior): Unassigned, certified Conveyor/General only
-
-SOPs AVAILABLE:
-- Heat Sealer Inspection & Replacement SOP v3.2 — covers vibration diagnosis, element replacement, calibration
-- Heat Tunnel PM Checklist v1.1 — covers heating element inspection, safety interlock check, temp calibration
-- Packaging Filler Calibration Procedure v2.4 — covers zero-point calibration, seal weight check
-- LOTO Procedure — All Lines v4.0 — mandatory before ANY maintenance task
-- Emergency Shutdown Protocol v2.1
-
-Always start any maintenance task response with the LOTO step. Be concise. Use numbered steps where helpful. If you don't know something specific, say so clearly.`;
-
-const COPILOT_SUGGESTIONS = [
-  "I'm starting WO-4421 on the Line 3 sealer — walk me through the LOTO steps first",
-  "What tools and parts do I need for the Line 2 heat tunnel PM (WO-4422)?",
-  "The Line 3 sealer is showing fault code E-14 — what does that mean?",
-  "I'm calibrating the Line 3 filler (WO-4423) — what's the zero-point calibration procedure?",
-];
-const COPILOT_SUGGESTION_LABELS = [
-  "🔒 WO-4421 sealer — walk me through LOTO first",
-  "🔧 WO-4422 heat tunnel PM — tools and parts list?",
-  "⚠️ Line 3 sealer fault code E-14 — what is it?",
-  "📋 WO-4423 filler calibration — zero-point procedure",
-];
-
-// ── LINE DATA (same as before) ─────────────────────────────────────────────
-const lineData = {
-  "All":{ oee:75,oeeTarget:85,availability:81,downtimeMins:142,downtimeTarget:60,qualityRate:95,qualityTarget:98,firstPassYield:93,unitsProduced:18400,unitsTarget:21000,scrap:2.8,scrapTarget:1.5,openWorkOrders:7,overdueWorkOrders:2,plannedUnplannedRatio:58,scheduleAdherence:82,scheduleTarget:95,safetyIncidents:0,nearMisses:1,otif:87,otifTarget:95,planStatus:-3.8,
-    shifts:[{shift:"Night (Feb 27)",oee:71,units:5800,target:7000,quality:94,downtime:58,status:"Below Target"},{shift:"Afternoon (Feb 27)",oee:76,units:6200,target:7000,quality:95,downtime:49,status:"Below Target"},{shift:"Day (Feb 27)",oee:79,units:6400,target:7000,quality:96,downtime:35,status:"Below Target"}],
-    alerts:["Line 3 sealer degradation unresolved across all 3 shifts","Labor shortage flagged for afternoon shift","Inbound materials out of spec for SKU 4412"]},
-  "Line 1":{ oee:80,oeeTarget:85,availability:88,downtimeMins:44,downtimeTarget:30,qualityRate:97,qualityTarget:98,firstPassYield:96,unitsProduced:6800,unitsTarget:7000,scrap:1.4,scrapTarget:1.5,openWorkOrders:2,overdueWorkOrders:0,plannedUnplannedRatio:80,scheduleAdherence:91,scheduleTarget:95,safetyIncidents:0,nearMisses:0,otif:93,otifTarget:95,planStatus:-0.7,
-    shifts:[{shift:"Night (Feb 27)",oee:78,units:2180,target:2333,quality:96,downtime:18,status:"Near Target"},{shift:"Afternoon (Feb 27)",oee:80,units:2260,target:2333,quality:97,downtime:15,status:"Near Target"},{shift:"Day (Feb 27)",oee:83,units:2360,target:2333,quality:98,downtime:11,status:"On Target"}],
-    alerts:["Label misalignment recurred on afternoon shift","Inbound seasoning blend out of spec — SKU 4412 at risk"]},
-  "Line 2":{ oee:87,oeeTarget:85,availability:93,downtimeMins:22,downtimeTarget:30,qualityRate:99,qualityTarget:98,firstPassYield:98,unitsProduced:7200,unitsTarget:7000,scrap:0.8,scrapTarget:1.5,openWorkOrders:1,overdueWorkOrders:0,plannedUnplannedRatio:91,scheduleAdherence:97,scheduleTarget:95,safetyIncidents:0,nearMisses:0,otif:98,otifTarget:95,planStatus:0.6,
-    shifts:[{shift:"Night (Feb 27)",oee:86,units:2380,target:2333,quality:99,downtime:8,status:"On Target"},{shift:"Afternoon (Feb 27)",oee:87,units:2400,target:2333,quality:99,downtime:7,status:"On Target"},{shift:"Day (Feb 27)",oee:89,units:2420,target:2333,quality:99,downtime:7,status:"On Target"}],
-    alerts:["3 operators overdue on safety recertification"]},
-  "Line 3":{ oee:55,oeeTarget:85,availability:62,downtimeMins:276,downtimeTarget:60,qualityRate:89,qualityTarget:98,firstPassYield:86,unitsProduced:4400,unitsTarget:7000,scrap:6.1,scrapTarget:1.5,openWorkOrders:4,overdueWorkOrders:2,plannedUnplannedRatio:22,scheduleAdherence:58,scheduleTarget:95,safetyIncidents:0,nearMisses:1,otif:71,otifTarget:95,planStatus:-5.2,
-    shifts:[{shift:"Night (Feb 27)",oee:52,units:1240,target:2333,quality:88,downtime:104,status:"Critical"},{shift:"Afternoon (Feb 27)",oee:55,units:1540,target:2333,quality:89,downtime:92,status:"Critical"},{shift:"Day (Feb 27)",oee:59,units:1620,target:2333,quality:90,downtime:80,status:"Critical"}],
-    alerts:["Sealer temperature instability across all 3 shifts — 9 escalations","Spare part #SE-441 out of stock","Schedule adherence critically low"]},
-};
-
-const domainActions = {
-  "All":{
-    Safety:[{id:"s1",text:"Conduct pre-shift safety briefing — all 3 lines",status:"Complete",owner:"Shift Supervisors"},{id:"s2",text:"LOTO recertification scheduled for J. Park, D. Williams, M. Santos",status:"In Progress",owner:"Tom Kowalski"},{id:"s3",text:"Near miss report filed — Line 3 overnight",status:"Complete",owner:"Safety Lead"}],
-    Quality:[{id:"q1",text:"Inbound materials inspection — Lot #SB-2291 flagged, hold placed",status:"Action Required",owner:"Quality Manager"},{id:"q2",text:"First pass yield review — Line 3 below threshold 3rd consecutive shift",status:"Action Required",owner:"Quality Manager"},{id:"q3",text:"Deviation report submitted for Line 1 label misalignment",status:"Complete",owner:"Line 1 Supervisor"}],
-    Production:[{id:"p1",text:"Shift handover completed — Line 3 sealer issue carried forward",status:"Complete",owner:"Shift Supervisors"},{id:"p2",text:"Afternoon shift coverage gap — 2 operators short",status:"Action Required",owner:"Tom Kowalski"},{id:"p3",text:"Line 2 changeover executed on schedule — no issues",status:"Complete",owner:"Line 2 Supervisor"}],
-    Maintenance:[{id:"m1",text:"Work order raised — Line 3 sealer inspection (WO-4421)",status:"In Progress",owner:"Carlos Rivera"},{id:"m2",text:"Emergency PO initiated — Part #SE-441 from Supplier B",status:"Action Required",owner:"Carlos Rivera"},{id:"m3",text:"PM checks completed on Line 1 and Line 2",status:"Complete",owner:"Maintenance Team"}],
-    Planning:[{id:"pl1",text:"Production plan reviewed — Line 3 shortfall flagged to scheduling",status:"Complete",owner:"Priya Nair"},{id:"pl2",text:"Customer order CO-8821 at risk — SKU 4412 materials issue",status:"Action Required",owner:"Priya Nair"},{id:"pl3",text:"Labor plan updated for afternoon shift — voluntary OT requested",status:"In Progress",owner:"Priya Nair"}],
-  },
-  "Line 1":{Safety:[{id:"s1",text:"Pre-shift safety briefing completed",status:"Complete",owner:"Line 1 Supervisor"},{id:"s2",text:"No incidents or near misses overnight",status:"Complete",owner:"Line 1 Supervisor"}],Quality:[{id:"q1",text:"Label misalignment deviation report filed",status:"Complete",owner:"Quality Lead"},{id:"q2",text:"Inbound seasoning blend Lot #SB-2291 on hold — affects SKU 4412",status:"Action Required",owner:"Quality Manager"}],Production:[{id:"p1",text:"Shift handover completed — no open escalations",status:"Complete",owner:"Line 1 Supervisor"},{id:"p2",text:"3pm changeover requires 2 operators — coverage at risk",status:"Action Required",owner:"Tom Kowalski"}],Maintenance:[{id:"m1",text:"PM checks completed — no issues found",status:"Complete",owner:"Maintenance Team"}],Planning:[{id:"pl1",text:"SKU 4412 volume at risk — plan adjustment needed",status:"Action Required",owner:"Priya Nair"}]},
-  "Line 2":{Safety:[{id:"s1",text:"LOTO recertification overdue — 3 operators flagged",status:"Action Required",owner:"Tom Kowalski"},{id:"s2",text:"Pre-shift briefing completed — no incidents",status:"Complete",owner:"Line 2 Supervisor"}],Quality:[{id:"q1",text:"Quality rate at 99% — no deviations to report",status:"Complete",owner:"Quality Lead"}],Production:[{id:"p1",text:"Best OEE of the week — no escalations",status:"Complete",owner:"Line 2 Supervisor"},{id:"p2",text:"Changeover completed ahead of schedule",status:"Complete",owner:"Line 2 Supervisor"}],Maintenance:[{id:"m1",text:"1 open work order — non-urgent belt inspection",status:"In Progress",owner:"Maintenance Team"}],Planning:[{id:"pl1",text:"Schedule adherence at 97% — on track for Friday orders",status:"Complete",owner:"Priya Nair"}]},
-  "Line 3":{Safety:[{id:"s1",text:"Near miss filed — operator exposure during sealer fault",status:"Complete",owner:"Safety Lead"},{id:"s2",text:"Pre-shift briefing included sealer risk advisory",status:"Complete",owner:"Line 3 Supervisor"}],Quality:[{id:"q1",text:"FPY below 90% — 3rd consecutive shift. Escalated to QM",status:"Action Required",owner:"Quality Manager"},{id:"q2",text:"Scrap rate at 6.1% — root cause linked to sealer instability",status:"Action Required",owner:"Quality Manager"}],Production:[{id:"p1",text:"Sealer issue carried forward from all 3 overnight shifts",status:"Action Required",owner:"Line 3 Supervisor"},{id:"p2",text:"Production 37% below target — schedule impact flagged",status:"Action Required",owner:"Tom Kowalski"}],Maintenance:[{id:"m1",text:"WO-4421 open — sealer inspection in progress",status:"In Progress",owner:"Carlos Rivera"},{id:"m2",text:"Part #SE-441 out of stock — emergency PO raised",status:"Action Required",owner:"Carlos Rivera"},{id:"m3",text:"2 overdue work orders — need immediate review",status:"Action Required",owner:"Carlos Rivera"}],Planning:[{id:"pl1",text:"Schedule adherence at 58% — customer orders at risk",status:"Action Required",owner:"Priya Nair"},{id:"pl2",text:"SKU 3801 run conflicting with maintenance window",status:"Action Required",owner:"Priya Nair"}]},
-};
-
-const domainRecMap = { Safety:[5], Quality:[], Production:[3,4], Maintenance:[1,2], "Planning & Scheduling":[3,4] };
-
-const VALID_AGENTS = ["Asset Health Monitoring Agent","Maintenance Planning & Scheduling Agent","Technician Co-Pilot","Maintenance Strategy Agent","Scheduling Agent","Planning Agent","Supervisor & Operator Co-Pilot","Quality Monitoring Agent","Inbound Materials Agent","Final Quality Agent","Setpoint & Recipe Optimization Agent","Root Cause Analysis Agent","Safety Agent","Plant Orchestration Agent"];
-const VALID_APPROVERS = {"Plant Leader":{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},"Maintenance Manager":{name:"Carlos Rivera",role:"Maintenance Manager",avatar:"MM"},"Scheduler":{name:"Priya Nair",role:"Scheduler",avatar:"SC"},"Production Supervisor":{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"},"Quality Manager":{name:"Quality Manager",role:"Quality Manager",avatar:"QM"}};
-const DOMAIN_ICONS = { Safety:"🦺", Quality:"✅", Production:"⚙️", Maintenance:"🔧", Planning:"📋" };
-
-const initialRecommendations = [
-  {id:1,lines:["All","Line 3"],priority:"Critical",domain:"Maintenance",icon:"🔧",fromChat:false,title:"Line 3 Sealer — Unplanned Failure Risk Within 48hrs",summary:"Asset Health Monitoring Agent detected vibration index 8.4 (threshold 7.0) and temp variance ±6°C on the Line 3 heat sealer. Unplanned failure likely within 48 hours.",agents:["Asset Health Monitoring Agent","Maintenance Planning & Scheduling Agent","Scheduling Agent"],suggestedAction:"Perform planned maintenance during today's 2–4pm changeover window and expedite spare part procurement.",detail:{issue:"Asset Health Monitoring Agent has detected vibration index 8.4 (threshold: 7.0) and temperature variance of ±6°C on the Line 3 heat sealer.",compounding:"Part #SE-441 is out of stock. Emergency procurement from Supplier B can deliver by tomorrow 7am.",risk:"Unplanned failure would result in 4–6 hours unplanned downtime and ~8,000 units of lost output.",action:"Perform planned maintenance during today's 2:00–4:00pm changeover window. Raise emergency PO for Part #SE-441.",steps:[{agent:"Asset Health Monitoring Agent",domain:"Maintenance",action:"Confirm degradation signal — vibration index 8.4, temp variance ±6°C.",status:"complete"},{agent:"Maintenance Planning & Scheduling Agent",domain:"Maintenance",action:"Check Part #SE-441 inventory — out of stock. Raise emergency PO.",status:"complete"},{agent:"Scheduling Agent",domain:"Planning",action:"Identify 2:00–4:00pm changeover slot on Line 3.",status:"complete"},{agent:"Planning Agent",domain:"Planning",action:"Reallocate 1 operator from Line 2 to Line 1 Thursday afternoon.",status:"pending"},{agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Notify supervisors of maintenance window and schedule change.",status:"pending"},{agent:"Technician Co-Pilot",domain:"Maintenance",action:"Pre-load sealer maintenance SOP for technician.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Carlos Rivera",role:"Maintenance Manager",avatar:"MM"},{name:"Priya Nair",role:"Scheduler",avatar:"SC"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"}]}},
-  {id:2,lines:["All","Line 3"],priority:"Critical",domain:"Maintenance",icon:"🔩",fromChat:false,title:"Spare Part Stock-Out — Sealer Heating Element Unavailable",summary:"Part #SE-441 is out of stock. Standard lead time 3 days. Emergency procurement available for next-morning delivery.",agents:["Maintenance Planning & Scheduling Agent","Technician Co-Pilot"],suggestedAction:"Raise emergency PO to approved supplier for next-day delivery.",detail:{issue:"Part #SE-441 has zero inventory. Required for the Line 3 maintenance intervention.",compounding:"Without the part, planned maintenance cannot be completed during today's window.",risk:"If not raised today, earliest arrival is Tuesday — by which time failure is highly likely.",action:"Raise emergency PO to Supplier B ($340/unit). Confirm next-day AM delivery.",steps:[{agent:"Maintenance Planning & Scheduling Agent",domain:"Maintenance",action:"Confirm Part #SE-441 stock — zero units on hand.",status:"complete"},{agent:"Maintenance Planning & Scheduling Agent",domain:"Maintenance",action:"Raise emergency PO to Supplier B — next-day AM delivery confirmed.",status:"pending"},{agent:"Technician Co-Pilot",domain:"Maintenance",action:"Flag part dependency in maintenance work order.",status:"pending"}],approvers:[{name:"Carlos Rivera",role:"Maintenance Manager",avatar:"MM"},{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"}]}},
-  {id:3,lines:["All","Line 3","Line 1"],priority:"High",domain:"Planning",icon:"📋",fromChat:false,title:"Scheduling Conflict — Maintenance Window vs. Friday Customer Order",summary:"Conflict between proposed Line 3 maintenance window and high-priority customer order for SKU 3801 due Friday.",agents:["Scheduling Agent","Planning Agent","Supervisor & Operator Co-Pilot"],suggestedAction:"Shift SKU 3801 run to Line 1 for Thursday afternoon.",detail:{issue:"Line 3 maintenance window conflicts with SKU 3801 order — 6,200 units due Friday.",compounding:"Line 3 capacity already constrained due to sealer issue.",risk:"Either maintenance is missed or customer order is late.",action:"Move SKU 3801 to Line 1, Thursday 1–5pm slot.",steps:[{agent:"Scheduling Agent",domain:"Planning",action:"Model SKU 3801 on Line 1 Thursday — capacity confirmed.",status:"complete"},{agent:"Planning Agent",domain:"Planning",action:"Reallocate operator from Line 2 to Line 1.",status:"pending"},{agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Notify supervisors of schedule change.",status:"pending"}],approvers:[{name:"Priya Nair",role:"Scheduler",avatar:"SC"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"},{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"}]}},
-  {id:4,lines:["All","Line 1","Line 3"],priority:"High",domain:"Planning",icon:"👷",fromChat:false,title:"Labor Shortage — Afternoon Shift Short 2 Operators",summary:"Afternoon shift is short 2 operators. Lines 1 and 3 will have coverage gaps unless resolved before 2pm handover.",agents:["Planning Agent","Supervisor & Operator Co-Pilot"],suggestedAction:"Offer voluntary overtime to 3 identified Day shift operators.",detail:{issue:"Two afternoon shift operators called out — Lines 1 and 3 under-staffed.",compounding:"Labor shortage coincides with planned maintenance window on Line 3.",risk:"Line 1 changeover may be delayed and Line 3 requires minimum 1 operator during maintenance.",action:"Contact 3 Day shift operators for voluntary overtime.",steps:[{agent:"Planning Agent",domain:"Planning",action:"Identify Day shift operators for voluntary overtime — 3 candidates.",status:"complete"},{agent:"Planning Agent",domain:"Planning",action:"Send overtime offer. Response required by 12pm.",status:"pending"},{agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"If declined, activate single-operator protocol on Line 3.",status:"pending"}],approvers:[{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"},{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"}]}},
-  {id:5,lines:["All","Line 2"],priority:"Medium",domain:"Safety",icon:"🦺",fromChat:false,title:"Safety Recertification Overdue — 3 Operators on Line 2",summary:"3 Line 2 operators have overdue LOTO recertification. Policy requires completion within 5 working days.",agents:["Safety Agent","Supervisor & Operator Co-Pilot"],suggestedAction:"Schedule 45-minute recertification session during Line 2 downtime window.",detail:{issue:"J. Park, D. Williams, M. Santos have not completed annual LOTO recertification.",compounding:"Non-compliance creates audit risk on the best-performing line.",risk:"If not completed by Mar 4, operators removed from LOTO-related tasks.",action:"Schedule recertification session Wednesday 10–11am.",steps:[{agent:"Safety Agent",domain:"Safety",action:"Flag 3 overdue LOTO recertifications. Deadline Mar 4.",status:"complete"},{agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Training slot confirmed — Wed 10–11am.",status:"complete"},{agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Book trainer, notify 3 operators.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"}]}},
-];
-
-const actionLog = [
-  {id:"a1",source:"Routine",domain:"Safety",line:"Line 2",description:"LOTO recertification — J. Park, D. Williams, M. Santos",owner:"Tom Kowalski",dueDate:"Mar 4, 2026",status:"In Progress",daysOpen:5},
-  {id:"a2",source:"Routine",domain:"Safety",line:"All",description:"Near miss investigation report — Line 3 overnight incident",owner:"Safety Lead",dueDate:"Mar 1, 2026",status:"In Progress",daysOpen:2},
-  {id:"a3",source:"Routine",domain:"Quality",line:"Line 1",description:"Deviation report closed — label misalignment root cause confirmed",owner:"Quality Lead",dueDate:"Feb 28, 2026",status:"Complete",daysOpen:1},
-  {id:"a4",source:"Routine",domain:"Quality",line:"Line 1",description:"Inbound materials hold — Lot #SB-2291 disposition decision required",owner:"Quality Manager",dueDate:"Feb 28, 2026",status:"Open",daysOpen:1},
-  {id:"a5",source:"Routine",domain:"Production",line:"Line 3",description:"Shift handover — sealer issue formal escalation to maintenance",owner:"Line 3 Supervisor",dueDate:"Feb 28, 2026",status:"Complete",daysOpen:1},
-  {id:"a6",source:"Routine",domain:"Production",line:"All",description:"Afternoon shift coverage gap — voluntary OT offers sent",owner:"Tom Kowalski",dueDate:"Feb 28, 2026",status:"In Progress",daysOpen:1},
-  {id:"a7",source:"Routine",domain:"Maintenance",line:"Line 3",description:"WO-4421 raised — Line 3 sealer inspection initiated",owner:"Carlos Rivera",dueDate:"Feb 28, 2026",status:"In Progress",daysOpen:1},
-  {id:"a8",source:"Routine",domain:"Maintenance",line:"Line 1",description:"PM checks completed — Line 1 and Line 2 signed off",owner:"Maintenance Team",dueDate:"Feb 28, 2026",status:"Complete",daysOpen:1},
-  {id:"a9",source:"Routine",domain:"Planning",line:"Line 3",description:"Customer order CO-8821 at risk — procurement notified",owner:"Priya Nair",dueDate:"Feb 28, 2026",status:"In Progress",daysOpen:1},
-  {id:"a10",source:"Routine",domain:"Planning",line:"All",description:"Labor plan updated — voluntary OT requested for afternoon shift",owner:"Priya Nair",dueDate:"Feb 28, 2026",status:"In Progress",daysOpen:1},
-  {id:"a11",source:"Recommendation",domain:"Maintenance",line:"Line 3",description:"Emergency PO raised — Part #SE-441 from Supplier B",owner:"Carlos Rivera",dueDate:"Mar 1, 2026",status:"In Progress",daysOpen:1},
-  {id:"a12",source:"Recommendation",domain:"Maintenance",line:"Line 3",description:"Planned maintenance window confirmed — Line 3 sealer, today 2–4pm",owner:"Carlos Rivera",dueDate:"Feb 28, 2026",status:"Open",daysOpen:1},
-  {id:"a13",source:"Recommendation",domain:"Planning",line:"Line 3",description:"SKU 3801 rescheduled to Line 1 — Thursday 1–5pm",owner:"Priya Nair",dueDate:"Mar 5, 2026",status:"Open",daysOpen:1},
-  {id:"a14",source:"Recommendation",domain:"Planning",line:"Line 1",description:"Operator reallocation — Line 2 to Line 1 Thursday afternoon",owner:"Tom Kowalski",dueDate:"Mar 5, 2026",status:"Open",daysOpen:1},
-  {id:"a15",source:"Recommendation",domain:"Safety",line:"Line 2",description:"LOTO recertification session booked — Wed 10–11am",owner:"Tom Kowalski",dueDate:"Mar 4, 2026",status:"In Progress",daysOpen:3},
-  {id:"a16",source:"Recommendation",domain:"Maintenance",line:"Line 3",description:"Sealer maintenance SOP pre-loaded for technician",owner:"Maintenance Team",dueDate:"Feb 28, 2026",status:"Open",daysOpen:1},
-  {id:"a17",source:"Recommendation",domain:"Quality",line:"Line 1",description:"SKU swap to 3802 executed — quality checks completed",owner:"Quality Manager",dueDate:"Feb 28, 2026",status:"Complete",daysOpen:1},
-  {id:"a18",source:"Routine",domain:"Safety",line:"All",description:"Monthly safety walk scheduled — all supervisors required",owner:"Safety Lead",dueDate:"Mar 7, 2026",status:"Open",daysOpen:8},
-  {id:"a19",source:"Routine",domain:"Maintenance",line:"Line 2",description:"Quarterly belt inspection overdue — WO to be raised this week",owner:"Carlos Rivera",dueDate:"Mar 3, 2026",status:"Open",daysOpen:4},
-  {id:"a20",source:"Recommendation",domain:"Production",line:"Line 3",description:"Single-operator protocol activated on Line 3 for afternoon shift",owner:"Tom Kowalski",dueDate:"Feb 28, 2026",status:"In Progress",daysOpen:1},
-];
-
-const disruptionAlert = {id:"RT-001",severity:"Critical",time:"07:43am",title:"Inbound Materials Out of Spec — SKU 4412 at Risk",description:"Inbound Materials Agent has flagged that the arriving seasoning blend batch (Lot #SB-2291) for SKU 4412 is out of spec. Sodium content is 14% above acceptable range.",impacts:["Line 1 Day shift production plan cannot proceed as scheduled","Quality Monitoring Agent will reject batch at intake","SKU 4412 volume of 4,200 units at risk for today","Customer order #CO-8821 (due Thursday) may be impacted"],options:[{id:"A",label:"Swap to SKU 3802",description:"SKU 3802 materials confirmed in stock. Feasible with 35-min changeover. Minor OEE impact (~3%). Recommended.",recommended:true,impact:"Low"},{id:"B",label:"Source replacement batch",description:"Emergency same-day delivery. 60% confidence on timing. Line 1 idle 2–3 hours.",recommended:false,impact:"Medium"},{id:"C",label:"Hold Line 1 until tomorrow",description:"Safest quality option but results in full Day shift loss on Line 1.",recommended:false,impact:"High"}],notifyList:["Plant Leader","Production Supervisor","Quality Manager","Scheduler","Procurement Lead"]};
-
-const generateDays=(n,label)=>Array.from({length:n},(_,i)=>{const d=new Date(2026,1,28);d.setDate(d.getDate()-(n-1-i));return label==="24h"?`${String(i*2).padStart(2,"0")}:00`:`${d.getMonth()+1}/${d.getDate()}`;});
-const seed=(base,variance,n)=>Array.from({length:n},()=>Math.round((base+(Math.random()-0.5)*variance*2)*10)/10);
-const buildLinePerf=(n,label)=>({days:generateDays(n,label),oee:{"Line 1":seed(80,5,n),"Line 2":seed(87,4,n),"Line 3":seed(57,8,n)},availability:{"Line 1":seed(88,4,n),"Line 2":seed(93,3,n),"Line 3":seed(63,9,n)},units:{"Line 1":seed(6800,400,n),"Line 2":seed(7200,300,n),"Line 3":seed(4400,600,n)},quality:{"Line 1":seed(97,1.5,n),"Line 2":seed(99,0.8,n),"Line 3":seed(89,2.5,n)},scrap:{"Line 1":seed(1.4,0.4,n),"Line 2":seed(0.8,0.3,n),"Line 3":seed(6.1,1.2,n)},plannedRatio:{"Line 1":seed(80,6,n),"Line 2":seed(91,4,n),"Line 3":seed(22,8,n)},downtime:{"Line 1":seed(44,15,n),"Line 2":seed(22,8,n),"Line 3":seed(276,40,n)},schedAdherence:{"Line 1":seed(91,5,n),"Line 2":seed(97,3,n),"Line 3":seed(58,10,n)},otif:{"Line 1":seed(93,4,n),"Line 2":seed(98,2,n),"Line 3":seed(71,8,n)}});
-const perfDatasets={"24h":buildLinePerf(12,"24h"),"2w":buildLinePerf(14,"2w"),"1m":buildLinePerf(30,"1m")};
-const LINE_COLORS_PERF={"Line 1":T.primary,"Line 2":T.positive,"Line 3":T.negative};
-
-const INIT_ORDERS=[{id:"RUN-1021",line:"Line 1",sku:"SKU 3802",desc:"Original Chips",units:4200,target:4500,start:"Feb 28 06:00",end:"Feb 28 11:30",dueDate:"Feb 28",dc:"DC-East"},{id:"RUN-1022",line:"Line 1",sku:"SKU 4412",desc:"Seasoned Chips",units:4200,target:4500,start:"Feb 28 12:00",end:"Feb 28 17:30",dueDate:"Feb 28",dc:"DC-West",riskReason:"Inbound materials out of spec"},{id:"RUN-1023",line:"Line 1",sku:"SKU 2204",desc:"Crimped Seal Chips",units:3800,target:4000,start:"Mar 1 06:00",end:"Mar 1 11:00",dueDate:"Mar 3",dc:"DC-South"},{id:"RUN-1024",line:"Line 1",sku:"SKU 3801",desc:"Premium Chips",units:6200,target:6200,start:"Mar 1 13:00",end:"Mar 1 18:00",dueDate:"Mar 7",dc:"DC-East",riskReason:"Moved from Line 3 per orchestration rec"},{id:"RUN-1025",line:"Line 1",sku:"SKU 3804",desc:"BBQ Chips",units:5000,target:5000,start:"Mar 2 06:00",end:"Mar 2 12:30",dueDate:"Mar 5",dc:"DC-West"},{id:"RUN-1026",line:"Line 2",sku:"SKU 3802",desc:"Original Chips",units:7000,target:7000,start:"Feb 28 06:00",end:"Feb 28 14:00",dueDate:"Feb 28",dc:"DC-North"},{id:"RUN-1027",line:"Line 2",sku:"SKU 2204",desc:"Crimped Seal Chips",units:6500,target:6500,start:"Mar 1 06:00",end:"Mar 1 13:00",dueDate:"Mar 4",dc:"DC-East"},{id:"RUN-1028",line:"Line 2",sku:"SKU 3804",desc:"BBQ Chips",units:7000,target:7000,start:"Mar 2 06:00",end:"Mar 2 14:00",dueDate:"Mar 6",dc:"DC-South"},{id:"RUN-1029",line:"Line 2",sku:"SKU 3801",desc:"Premium Chips",units:3500,target:3500,start:"Mar 3 08:00",end:"Mar 3 12:30",dueDate:"Mar 7",dc:"DC-West"},{id:"RUN-1030",line:"Line 3",sku:"SKU 2204",desc:"Crimped Seal Chips",units:2800,target:4500,start:"Feb 28 10:00",end:"Feb 28 14:00",dueDate:"Mar 1",dc:"DC-North",riskReason:"Sealer downtime constraining output"},{id:"RUN-1031",line:"Line 3",sku:"SKU 2204",desc:"Crimped Seal Chips",units:4000,target:4000,start:"Mar 1 06:00",end:"Mar 1 14:00",dueDate:"Mar 3",dc:"DC-East"},{id:"RUN-1032",line:"Line 3",sku:"SKU 3804",desc:"BBQ Chips",units:5500,target:5500,start:"Mar 2 08:00",end:"Mar 2 16:00",dueDate:"Mar 5",dc:"DC-South",riskReason:"Dependent on sealer repair"}];
-const schedAgentRecs=[{id:"sa1",priority:"High",title:"Sequence Optimisation — Line 1 Thursday",impact:"Save 45 min changeover",action:"Resequence RUN-1023 → RUN-1025 on Line 1 Thursday",detail:"Grouping RUN-1023 (SKU 2204) and RUN-1025 (SKU 3804) back-to-back on Line 1 Thursday saves an estimated 45 min of changeover time."},{id:"sa2",priority:"Medium",title:"Idle Capacity — Line 2 Friday Afternoon",impact:"~1,800 units buffer stock",action:"Add SKU 2204 buffer run to Line 2, Mar 6 1–3:30pm",detail:"Line 2 has 2.5 hours of unallocated capacity Friday afternoon."},{id:"sa3",priority:"Medium",title:"Changeover Reduction — Line 3 Next Week",impact:"Save ~1.5 hrs changeover",action:"Regroup Line 3 schedule Mar 2–3 by SKU family",detail:"Current Line 3 schedule alternates between incompatible SKU families."}];
-const orchSchedulingRecs=[{id:3,priority:"High",title:"SKU 3801 Rescheduled to Line 1 — Thursday Afternoon",status:"Partially Executed",detail:"SKU 3801 (RUN-1024) moved from Line 3 to Line 1, Thursday 1–5pm due to Line 3 sealer risk."},{id:1,priority:"Critical",title:"Line 3 Maintenance Window — Today 2–4pm",status:"Action Required",detail:"Planned maintenance window approved on Line 3 today 2–4pm. RUN-1030 volume shortfall of ~1,700 units vs DC-North target."}];
-const GANTT_SKUS={"SKU 3802":T.primary,"SKU 4412":T.negative,"SKU 2204":T.positive,"SKU 3801":"#673AB7","SKU 3804":T.warning};
-const GANTT_DAYS=["Feb 28","Mar 1","Mar 2","Mar 3"];
-const GANTT_HOURS=[6,8,10,12,14,16,18];
-const DAY_START=6;const DAY_END=18;
-
-function timeToFrac(str){if(!str)return null;const parts=str.trim().split(" ");if(parts.length<3)return null;const date=parts[0]+" "+parts[1];const time=parts[2];const timeParts=time.split(":");const h=parseInt(timeParts[0],10);const m=timeParts[1]?parseInt(timeParts[1],10):0;const dayIdx=GANTT_DAYS.indexOf(date);if(dayIdx<0)return null;return dayIdx+(h-DAY_START+m/60)/(DAY_END-DAY_START);}
-
-const PERSONA_DOMAINS={plant_leader:["Safety","Quality","Production","Maintenance","Planning & Scheduling"],maint_manager:["Maintenance","Safety"],scheduler:["Planning & Scheduling"],quality_manager:["Quality"],safety_lead:["Safety"]};
-const PERSONA_ROLES={plant_leader:["Plant Leader","Plant Manager"],maint_manager:["Maintenance Manager"],scheduler:["Scheduler","Scheduling Manager"],quality_manager:["Quality Manager"],safety_lead:["Safety Lead"]};
-function recVisibleToPersona(rec,persona){if(persona==="plant_leader")return true;const roles=PERSONA_ROLES[persona]||[];const domains=PERSONA_DOMAINS[persona]||[];const isApprover=(rec.detail?.approvers||[]).some(a=>roles.includes(a.role));const domainMatch=domains.includes(rec.domain);const stepMatch=(rec.detail?.steps||[]).some(s=>domains.includes(s.domain));const agentMatch=(rec.agents||[]).some(a=>domains.some(d=>a.toLowerCase().includes(d.toLowerCase())));return isApprover||domainMatch||stepMatch||agentMatch;}
-
-const SCENARIO_SYSTEM_PROMPT=`You are the Plant Orchestration Agent for Austin Plant, a snack food manufacturing facility with 3 production lines. You have full visibility across Safety, Quality, Production, Maintenance, and Planning & Scheduling.
-PLANT DATA: ${JSON.stringify(lineData).substring(0,2000)}
-TODAY: Friday Feb 28, 2026 — 7:00am DDS. Be direct, concise, use lean manufacturing language.
-AVAILABLE AGENTS: Asset Health Monitoring Agent, Maintenance Planning & Scheduling Agent, Technician Co-Pilot, Maintenance Strategy Agent, Scheduling Agent, Planning Agent, Supervisor & Operator Co-Pilot, Quality Monitoring Agent, Inbound Materials Agent, Safety Agent, Plant Orchestration Agent
-When you reach a clear actionable conclusion, output BOTH blocks EXACTLY:
----RECOMMENDATION---
-TITLE: [short title]
-PRIORITY: [Critical / High / Medium]
-DOMAIN: [Safety / Quality / Production / Maintenance / Planning]
-LINES: [All / Line 1 / Line 2 / Line 3]
-ACTION: [one sentence recommended action]
-AGENTS: [comma-separated]
-SUMMARY: [2-3 sentences]
----END---
----STEPS---
-[{"agent":"Agent Name","domain":"Domain","action":"Specific action","status":"pending"},...]
----ENDSTEPS---
----APPROVERS---
-[{"role":"Role Name"},...]
----ENDAPPROVERS---`;
-
-// ── SHARED COMPONENTS ─────────────────────────────────────────────────────────
-
-function DetailPage({rec,onBack}){
-  const d=rec.detail||{};
-  const [approverState,setApproverState]=useState((d.approvers||[]).map(a=>({...a,status:"pending"})));
-  const [executed,setExecuted]=useState(false);const [executing,setExecuting]=useState(false);
-  const allApproved=approverState.length>0&&approverState.every(a=>a.status==="approved");
-  const approve=i=>{const u=[...approverState];u[i].status="approved";setApproverState(u);};
-  const execute=()=>{setExecuting(true);setTimeout(()=>{setExecuting(false);setExecuted(true);},2000);};
-  return(<div>
-    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
-      <button onClick={onBack} style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"6px 12px",fontSize:12,cursor:"pointer",color:T.gray900,fontWeight:700}}>← Back</button>
-      <div style={{flex:1}}><div style={{fontSize:16,fontWeight:800,color:T.black}}>{rec.icon} {rec.title}</div><div style={{fontSize:12,color:T.gray900,marginTop:2}}>Recommendation Detail & Orchestrated Response Plan</div></div>
-      <Badge label={rec.priority} color={PriorityColor(rec.priority)}/>
-    </div>
-    <div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16,background:T.gray100}}>
-      {executed&&<div style={{background:"#F0FDF4",border:`2px solid ${T.positive}`,borderRadius:4,padding:"14px 18px"}}><div style={{fontSize:14,fontWeight:800,color:T.positive}}>✅ Orchestrated Response Executed</div><div style={{fontSize:12,color:T.black,marginTop:4}}>All agent actions dispatched. Relevant supervisors and managers notified.</div></div>}
-      <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",overflow:"hidden"}}>
-        <div style={{background:PriorityColor(rec.priority),padding:"10px 18px",display:"flex",gap:10,alignItems:"center"}}><Badge label={rec.priority} color={T.white}/><span style={{fontSize:13,fontWeight:800,color:T.white}}>{rec.domain}</span></div>
-        <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:12}}>
-          {[["ISSUE",d.issue],["COMPOUNDING FACTOR",d.compounding],["RISK IF NOT ACTED ON",d.risk]].filter(([,v])=>v).map(([lbl,txt])=>(<div key={lbl}><div style={{fontSize:11,fontWeight:700,color:T.gray900,marginBottom:3}}>{lbl}</div><div style={{fontSize:12,color:T.black,lineHeight:1.6}}>{txt}</div></div>))}
-          {!d.issue&&<div style={{fontSize:12,color:T.black,lineHeight:1.6}}>{rec.summary}</div>}
-          <div style={{background:T.primary+"10",borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"10px 14px"}}><div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:3}}>RECOMMENDED ACTION</div><div style={{fontSize:12,color:T.black,lineHeight:1.6}}>{d.action||rec.suggestedAction}</div></div>
-        </div>
-      </div>
-      {(d.steps||[]).length>0&&<div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-        <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>🌐 Orchestrated Agent Response Plan</div></div>
-        <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:8}}>
-          {d.steps.map((s,i)=>(<div key={i} style={{display:"flex",gap:12,alignItems:"flex-start",padding:"10px 14px",background:T.gray100,borderRadius:4}}>
-            <div style={{width:24,height:24,borderRadius:"50%",background:executed||s.status==="complete"?T.positive:T.gray400,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:T.white,fontWeight:800,flexShrink:0}}>{executed||s.status==="complete"?"✓":i+1}</div>
-            <div style={{flex:1}}><div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:3}}><Badge label={s.agent} color={T.primary}/><Badge label={s.domain} color={T.neutral}/></div><div style={{fontSize:12,color:T.black}}>{s.action}</div></div>
-            <Badge label={executed?"dispatched":s.status} color={executed||s.status==="complete"?T.positive:T.warning}/>
-          </div>))}
-        </div>
-      </div>}
-      {approverState.length>0&&<div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-        <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>✍️ Approval Required Before Execution</div></div>
-        <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:8}}>
-          {approverState.map((a,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:T.gray100,borderRadius:4,gap:8,flexWrap:"wrap"}}>
-            <div style={{display:"flex",alignItems:"center",gap:10}}><div style={{width:32,height:32,borderRadius:"50%",background:T.primary,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:T.white,fontWeight:800}}>{a.avatar}</div><div><div style={{fontSize:13,fontWeight:700,color:T.black}}>{a.name}</div><div style={{fontSize:11,color:T.gray900}}>{a.role}</div></div></div>
-            {a.status==="approved"||executed?<Badge label="✓ Approved" color={T.positive}/>:<button onClick={()=>approve(i)} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Approve</button>}
-          </div>))}
-        </div>
-        <div style={{padding:"0 20px 20px"}}><button onClick={execute} disabled={!allApproved||executed||executing} style={{width:"100%",padding:"12px",background:allApproved&&!executed?T.primary:T.gray400,color:T.white,border:"none",borderRadius:4,fontSize:14,fontWeight:800,cursor:allApproved&&!executed?"pointer":"not-allowed"}}>{executing?"⏳ Dispatching...":executed?"✅ Response Executed":allApproved?"🚀 Execute Orchestrated Response":`Waiting for approvals (${approverState.filter(a=>a.status==="approved").length}/${approverState.length})`}</button></div>
-      </div>}
-    </div>
-  </div>);
-}
-
-function DomainColumn({domain,icon,metrics,actions,recCount,onScrollToRecs}){
-  const [expanded,setExpanded]=useState(false);
-  const actionRequired=actions.filter(a=>a.status==="Action Required").length;
-  return(<div style={{flex:1,minWidth:130,display:"flex",flexDirection:"column",gap:6}}>
-    <div style={{fontSize:11,fontWeight:800,color:T.gray900,borderBottom:`2px solid ${T.border}`,paddingBottom:6,marginBottom:2}}>{icon} {domain}</div>
-    {metrics.map(m=>(<div key={m.label} style={{padding:"10px 12px",background:T.gray100,borderRadius:4,borderLeft:`3px solid ${m.bad?T.negative:m.good?T.positive:T.warning}`}}><Metric {...m}/></div>))}
-    <div style={{marginTop:4}}>
-      <button onClick={()=>setExpanded(e=>!e)} style={{width:"100%",background:actionRequired>0?"#FEF2F2":T.gray100,border:`1px solid ${actionRequired>0?T.negative+"40":T.border}`,borderRadius:4,padding:"6px 10px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:4}}>
-        <span style={{fontSize:11,fontWeight:700,color:actionRequired>0?T.negative:T.gray900}}>{actionRequired>0?`⚠ ${actionRequired} Action Required`:`📋 ${actions.length} Actions`}</span>
-        <span style={{fontSize:10,color:T.gray400}}>{expanded?"▲":"▼"}</span>
-      </button>
-      {expanded&&<div style={{display:"flex",flexDirection:"column",gap:4,marginTop:4}}>{actions.map(a=>(<div key={a.id} style={{background:T.white,borderRadius:4,padding:"8px 10px",borderLeft:`3px solid ${statusColor(a.status)}`,fontSize:11}}><div style={{color:T.black,marginBottom:3,lineHeight:1.4}}>{a.text}</div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:4}}><span style={{color:T.gray900,fontSize:10}}>{a.owner}</span><Badge label={a.status} color={statusColor(a.status)}/></div></div>))}</div>}
-    </div>
-    {recCount>0&&<button onClick={onScrollToRecs} style={{marginTop:2,background:T.primary+"10",border:`1px solid ${T.primary}40`,borderRadius:4,padding:"6px 10px",cursor:"pointer",textAlign:"left",width:"100%"}}><span style={{fontSize:11,fontWeight:700,color:T.primary}}>🧠 {recCount} recommendation{recCount>1?"s":""} below ↓</span></button>}
-  </div>);
-}
-
-
-// ── DASHBOARD ─────────────────────────────────────────────────────────────────
-function Dashboard({recs,onSelectRec,onShowDisruption,disruptionActive,persona}){
-  const [lineFilter,setLineFilter]=useState("All");
-  const recsRef=useRef();
-  const d=lineData[lineFilter];const actions=domainActions[lineFilter]||domainActions["All"];
-  const pct=(v,t)=>v>=t;const inv=(v,t)=>v<=t;
-  const personaDomains=PERSONA_DOMAINS[persona]||PERSONA_DOMAINS.plant_leader;
-  const filteredRecs=recs.filter(r=>r.lines.includes(lineFilter)).filter(r=>recVisibleToPersona(r,persona));
-  const chatRecs=filteredRecs.filter(r=>r.fromChat);
-  const disruptionRecs=filteredRecs.filter(r=>r.fromDisruption);
-  const standardRecs=filteredRecs.filter(r=>!r.fromChat&&!r.fromDisruption);
-  const scrollToRecs=()=>recsRef.current?.scrollIntoView({behavior:"smooth",block:"start"});
-  const allDomainColumns=[
-    {domain:"Safety",icon:"🦺",metrics:[{label:"Safety Incidents",value:d.safetyIncidents,target:0,unit:"",good:d.safetyIncidents===0,bad:d.safetyIncidents>0},{label:"Near Misses",value:d.nearMisses,target:0,unit:"",good:d.nearMisses===0,bad:d.nearMisses>1}],actions:actions.Safety||[]},
-    {domain:"Quality",icon:"✅",metrics:[{label:"Quality Rate",value:d.qualityRate,target:d.qualityTarget,unit:"%",good:pct(d.qualityRate,d.qualityTarget),bad:!pct(d.qualityRate,d.qualityTarget)},{label:"First Pass Yield",value:d.firstPassYield,target:95,unit:"%",good:pct(d.firstPassYield,95),bad:!pct(d.firstPassYield,95)}],actions:actions.Quality||[]},
-    {domain:"Production",icon:"⚙️",metrics:[{label:"Units Produced",value:d.unitsProduced.toLocaleString(),target:d.unitsTarget.toLocaleString(),unit:"",good:pct(d.unitsProduced,d.unitsTarget),bad:!pct(d.unitsProduced,d.unitsTarget)},{label:"OEE",value:d.oee,target:d.oeeTarget,unit:"%",good:pct(d.oee,d.oeeTarget),bad:!pct(d.oee,d.oeeTarget)},{label:"Availability",value:d.availability,target:85,unit:"%",good:pct(d.availability,85),bad:!pct(d.availability,85)},{label:"Downtime",value:d.downtimeMins,target:d.downtimeTarget,unit:" min",good:inv(d.downtimeMins,d.downtimeTarget),bad:!inv(d.downtimeMins,d.downtimeTarget)},{label:"Scrap / Waste",value:d.scrap,target:d.scrapTarget,unit:"%",good:inv(d.scrap,d.scrapTarget),bad:!inv(d.scrap,d.scrapTarget)}],actions:actions.Production||[]},
-    {domain:"Maintenance",icon:"🔧",metrics:[{label:"Planned/Unplanned",value:`${d.plannedUnplannedRatio}% / ${100-d.plannedUnplannedRatio}%`,target:null,unit:"",good:d.plannedUnplannedRatio>=80,bad:d.plannedUnplannedRatio<60},{label:"Open Work Orders",value:d.openWorkOrders,target:null,unit:"",good:d.openWorkOrders<=2,bad:d.openWorkOrders>4},{label:"Overdue WOs",value:d.overdueWorkOrders,target:0,unit:"",good:d.overdueWorkOrders===0,bad:d.overdueWorkOrders>0}],actions:actions.Maintenance||[]},
-    {domain:"Planning & Scheduling",icon:"📋",metrics:[{label:"Plan Status",value:d.planStatus>0?`${d.planStatus} hrs ahead`:`${Math.abs(d.planStatus)} hrs behind`,target:null,unit:"",good:d.planStatus>=0,bad:d.planStatus<-2},{label:"Sched. Adherence",value:d.scheduleAdherence,target:d.scheduleTarget,unit:"%",good:pct(d.scheduleAdherence,d.scheduleTarget),bad:!pct(d.scheduleAdherence,d.scheduleTarget)},{label:"OTIF",value:d.otif,target:d.otifTarget,unit:"%",good:pct(d.otif,d.otifTarget),bad:!pct(d.otif,d.otifTarget)}],actions:actions.Planning||[]},
-  ];
-  const visibleDomainColumns=allDomainColumns.map(col=>({...col,actions:personaDomains.includes(col.domain)?col.actions:[]}));
-  return(<div>
-    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
-      <div><div style={{fontSize:18,fontWeight:800,color:T.black}}>Good morning, Austin Plant 👋</div><div style={{fontSize:12,color:T.gray900,marginTop:2}}>Daily Direction Setting · Friday Feb 28, 2026 · 7:00am · Prior 24 hours</div></div>
-      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{["All","Line 1","Line 2","Line 3"].map(l=>(<button key={l} onClick={()=>setLineFilter(l)} style={{padding:"6px 14px",borderRadius:4,fontSize:12,fontWeight:700,cursor:"pointer",border:`1px solid ${lineFilter===l?T.primary:T.border}`,background:lineFilter===l?T.primary:T.white,color:lineFilter===l?T.white:T.gray900}}>{l}</button>))}</div>
-    </div>
-    <div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:20,background:T.gray100}}>
-      {disruptionActive&&persona==="plant_leader"&&<div onClick={onShowDisruption} style={{background:"#FEF2F2",border:`2px solid ${T.negative}`,borderRadius:4,padding:"12px 18px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}>
-        <div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:18}}>🚨</span><div><div style={{fontSize:13,fontWeight:800,color:T.negative}}>REAL-TIME DISRUPTION · {disruptionAlert.time}</div><div style={{fontSize:12,color:T.black,marginTop:2}}>{disruptionAlert.title}</div></div></div>
-        <Badge label="View & Respond →" color={T.negative}/>
-      </div>}
-      <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-        <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:8}}>
-          <div><div style={{fontSize:13,fontWeight:800,color:T.black}}>Performance Scorecard — {lineFilter==="All"?"All Lines":lineFilter}</div><div style={{fontSize:11,color:T.gray900,marginTop:2}}>Prior 24 hours · 3 shifts</div></div>
-          {lineFilter!=="All"&&d.alerts.length>0&&<div style={{display:"flex",flexDirection:"column",gap:4}}>{d.alerts.map((a,i)=><div key={i} style={{fontSize:11,color:T.negative,fontWeight:600}}>⚠ {a}</div>)}</div>}
-        </div>
-        <div style={{padding:"16px 20px",overflowX:"auto"}}><div style={{display:"flex",gap:12,minWidth:500}}>{visibleDomainColumns.map(col=>{const recIds=domainRecMap[col.domain]||[];const colRecCount=standardRecs.filter(r=>recIds.includes(r.id)).length;return(<DomainColumn key={col.domain} {...col} recCount={colRecCount} onScrollToRecs={scrollToRecs}/>);})}</div></div>
-        <div style={{borderTop:`1px solid ${T.border}`,padding:"14px 20px"}}>
-          <div style={{fontSize:12,fontWeight:700,color:T.gray900,marginBottom:10}}>Shift Breakdown</div>
-          <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-            <thead><tr style={{background:T.gray100}}>{["Shift","OEE","Units","Target","Quality","Downtime","Status"].map(h=>(<th key={h} style={{padding:"7px 12px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>))}</tr></thead>
-            <tbody>{d.shifts.map((s,i)=>(<tr key={i} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
-              <td style={{padding:"8px 12px",fontWeight:700,color:T.black,whiteSpace:"nowrap"}}>{s.shift}</td>
-              <td style={{padding:"8px 12px",fontWeight:700,color:s.oee>=85?T.positive:s.oee>=75?T.warning:T.negative}}>{s.oee}%</td>
-              <td style={{padding:"8px 12px",color:T.black}}>{s.units.toLocaleString()}</td>
-              <td style={{padding:"8px 12px",color:T.gray900}}>{s.target.toLocaleString()}</td>
-              <td style={{padding:"8px 12px",color:s.quality>=98?T.positive:s.quality>=95?T.warning:T.negative}}>{s.quality}%</td>
-              <td style={{padding:"8px 12px",color:s.downtime>60?T.negative:T.gray900}}>{s.downtime} min</td>
-              <td style={{padding:"8px 12px"}}><Badge label={s.status} color={s.status==="On Target"?T.positive:s.status==="Near Target"||s.status==="Below Target"?T.warning:T.negative}/></td>
-            </tr>))}</tbody>
-          </table></div>
-        </div>
-      </div>
-      <div ref={recsRef}>
-        {disruptionRecs.length>0&&<div style={{marginBottom:16}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>🚨 From Disruption Response</div><Badge label={`${disruptionRecs.length} active`} color={T.negative}/></div><div style={{display:"flex",flexDirection:"column",gap:8}}>{disruptionRecs.map(r=>(<div key={r.id} onClick={()=>onSelectRec(r)} style={{background:T.white,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,boxShadow:`0 0 0 2px ${T.negative}22`,padding:"14px 18px",cursor:"pointer"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}><div style={{flex:1}}><div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label={r.domain} color={T.primary}/><Badge label="🚨 Disruption" color={T.negative}/></div><div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:4}}>{r.icon} {r.title}</div><div style={{fontSize:12,color:T.gray900}}>{r.summary}</div><div style={{fontSize:12,color:T.primary,fontWeight:600,marginTop:6}}>💡 {r.suggestedAction}</div></div><div style={{fontSize:12,color:T.primary,fontWeight:700}}>View Detail →</div></div></div>))}</div></div>}
-        {chatRecs.length>0&&<div style={{marginBottom:16}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>✦ From Scenario Simulation</div><Badge label={`${chatRecs.length} new`} color={T.info}/></div><div style={{display:"flex",flexDirection:"column",gap:8}}>{chatRecs.map(r=>(<div key={r.id} onClick={()=>onSelectRec(r)} style={{background:T.white,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,boxShadow:`0 0 0 2px ${T.info}22`,padding:"14px 18px",cursor:"pointer"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}><div style={{flex:1}}><div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label={r.domain} color={T.primary}/><Badge label="✦ From Chat" color={T.info}/></div><div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:4}}>{r.icon} {r.title}</div><div style={{fontSize:12,color:T.gray900}}>{r.summary}</div><div style={{fontSize:12,color:T.primary,fontWeight:600,marginTop:6}}>💡 {r.suggestedAction}</div></div><div style={{fontSize:12,color:T.primary,fontWeight:700}}>View Detail →</div></div></div>))}</div></div>}
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4,flexWrap:"wrap",gap:8}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>🧠 Orchestration Agent — Recommendations</div>{persona!=="plant_leader"&&<Badge label={`Filtered for your role · ${standardRecs.length} relevant`} color={T.primary}/>}</div>
-        <div style={{fontSize:11,color:T.gray900,marginBottom:12}}>{persona==="plant_leader"?"Synthesized across all domain agents · Ranked by urgency and cross-domain impact":"Showing recommendations where you are tagged as an approver or your domain is impacted"}</div>
-        {standardRecs.length===0&&<div style={{background:T.white,borderRadius:4,padding:"20px",textAlign:"center",color:T.gray400,fontSize:13,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>No recommendations currently require your attention.</div>}
-        <div style={{display:"flex",flexDirection:"column",gap:10}}>{standardRecs.map(r=>(<div key={r.id} onClick={()=>onSelectRec(r)} style={{background:T.white,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",padding:"14px 18px",cursor:"pointer"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}><div style={{flex:1}}><div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label={r.domain} color={T.primary}/>{r.agents.slice(0,2).map(a=><Badge key={a} label={a} color={T.neutral}/>)}{r.agents.length>2&&<Badge label={`+${r.agents.length-2} more`} color={T.neutral}/>}</div><div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:4}}>{r.icon} {r.title}</div><div style={{fontSize:12,color:T.gray900}}>{r.summary}</div><div style={{fontSize:12,color:T.primary,fontWeight:600,marginTop:6}}>💡 {r.suggestedAction}</div></div><div style={{fontSize:12,color:T.primary,fontWeight:700}}>View Detail →</div></div></div>))}</div>
-      </div>
-    </div>
-  </div>);
-}
-
-// ── ACTION LOG ────────────────────────────────────────────────────────────────
-function ActionLog(){
-  const [filterDomain,setFilterDomain]=useState("All");const [filterSource,setFilterSource]=useState("All");const [filterStatus,setFilterStatus]=useState("Open & In Progress");const [filterLine,setFilterLine]=useState("All");
-  const [localActions,setLocalActions]=useState(actionLog);
-  const filtered=localActions.filter(a=>{if(filterDomain!=="All"&&a.domain!==filterDomain)return false;if(filterSource!=="All"&&a.source!==filterSource)return false;if(filterLine!=="All"&&a.line!==filterLine&&a.line!=="All")return false;if(filterStatus==="Open & In Progress")return a.status==="Open"||a.status==="In Progress";if(filterStatus!=="All"&&a.status!==filterStatus)return false;return true;});
-  const cycleStatus=id=>setLocalActions(prev=>prev.map(a=>{if(a.id!==id)return a;const next=a.status==="Open"?"In Progress":a.status==="In Progress"?"Complete":"Open";return{...a,status:next};}));
-  const FB=({label,value,current,onChange})=>(<button onClick={()=>onChange(value)} style={{padding:"5px 12px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",border:`1px solid ${current===value?T.primary:T.border}`,background:current===value?T.primary:T.white,color:current===value?T.white:T.gray900}}>{label}</button>);
-  return(<div>
-    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
-      <div><div style={{fontSize:18,fontWeight:800,color:T.black}}>Action Log</div><div style={{fontSize:12,color:T.gray900,marginTop:2}}>All open actions across domains · Austin Plant</div></div>
-      <div style={{display:"flex",gap:12,fontSize:12}}><span style={{color:T.negative,fontWeight:700}}>● {localActions.filter(a=>a.status==="Open").length} Open</span><span style={{color:T.info,fontWeight:700}}>● {localActions.filter(a=>a.status==="In Progress").length} In Progress</span><span style={{color:T.positive,fontWeight:700}}>● {localActions.filter(a=>a.status==="Complete").length} Complete</span></div>
-    </div>
-    <div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16,background:T.gray100}}>
-      <div style={{background:T.white,borderRadius:4,padding:"14px 16px",boxShadow:"0 1px 3px rgba(0,0,0,0.07)",display:"flex",flexDirection:"column",gap:10}}>
-        {[{opts:["All","Open & In Progress","Open","In Progress","Complete"],cur:filterStatus,setter:setFilterStatus,lbl:"STATUS"},{opts:["All","Safety","Quality","Production","Maintenance","Planning & Scheduling"],cur:filterDomain,setter:setFilterDomain,lbl:"DOMAIN"},{opts:["All","Routine","Recommendation"],cur:filterSource,setter:setFilterSource,lbl:"SOURCE"},{opts:["All","Line 1","Line 2","Line 3"],cur:filterLine,setter:setFilterLine,lbl:"LINE"}].map(({opts,cur,setter,lbl})=>(
-          <div key={lbl} style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}><span style={{fontSize:11,fontWeight:700,color:T.gray900,width:60}}>{lbl}</span>{opts.map(o=><FB key={o} label={o} value={o} current={cur} onChange={setter}/>)}</div>
-        ))}
-      </div>
-      <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",overflow:"hidden"}}>
-        <div style={{padding:"12px 20px",borderBottom:`1px solid ${T.border}`,fontSize:12,color:T.gray900,fontWeight:600}}>Showing {filtered.length} of {localActions.length} actions</div>
-        <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-          <thead><tr style={{background:T.gray100}}>{["Action","Domain","Line","Owner","Source","Due Date","Days Open","Status"].map(h=>(<th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>))}</tr></thead>
-          <tbody>{filtered.length===0&&<tr><td colSpan={8} style={{padding:"24px",textAlign:"center",color:T.gray400}}>No actions match current filters</td></tr>}{filtered.map((a,i)=>(<tr key={a.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
-            <td style={{padding:"10px 14px",color:T.black,maxWidth:280,lineHeight:1.5}}>{a.description}</td>
-            <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}><Badge label={a.domain} color={a.domain==="Safety"?T.warning:a.domain==="Quality"?T.positive:a.domain==="Production"?T.info:a.domain==="Maintenance"?"#673AB7":T.primary}/></td>
-            <td style={{padding:"10px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{a.line}</td>
-            <td style={{padding:"10px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{a.owner}</td>
-            <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}><span style={{fontSize:11,fontWeight:700,color:a.source==="Recommendation"?T.primary:T.neutral}}>{a.source==="Recommendation"?"🧠 Rec":"📋 Routine"}</span></td>
-            <td style={{padding:"10px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{a.dueDate}</td>
-            <td style={{padding:"10px 14px",fontWeight:700,color:a.daysOpen>=5?T.negative:a.daysOpen>=3?T.warning:T.gray900,whiteSpace:"nowrap"}}>{a.daysOpen}d</td>
-            <td style={{padding:"10px 14px"}}><button onClick={()=>cycleStatus(a.id)} style={{background:statusColor(a.status)+"18",color:statusColor(a.status),border:`1px solid ${statusColor(a.status)}40`,borderRadius:3,padding:"3px 10px",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>{a.status}</button></td>
-          </tr>))}</tbody>
-        </table></div>
-      </div>
-    </div>
-  </div>);
-}
-
-// ── LINE PERFORMANCE ──────────────────────────────────────────────────────────
-function MiniLineChart({data,lines,yMin=0,yMax=100,height=80,target}){
-  const w=320,h=height,pad=4;
-  const targetY=target!=null?h-pad-((target-yMin)/(yMax-yMin))*(h-pad*2):null;
-  return(<svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height,display:"block"}}>
-    {targetY!=null&&<line x1={pad} y1={targetY} x2={w-pad} y2={targetY} stroke={T.gray400} strokeWidth={1} strokeDasharray="4,3"/>}
-    {lines.map(line=>{const vals=data[line]||[];const n=vals.length;const color=LINE_COLORS_PERF[line]||T.neutral;const d=vals.map((v,i)=>{const x=pad+(i/(n-1||1))*(w-pad*2);const y=h-pad-((v-yMin)/(yMax-yMin))*(h-pad*2);return`${i===0?"M":"L"}${x.toFixed(1)},${y.toFixed(1)}`;}).join(" ");const lx=n>0?pad+((n-1)/(n-1||1))*(w-pad*2):0;const ly=n>0?h-pad-((vals[n-1]-yMin)/(yMax-yMin))*(h-pad*2):0;return(<g key={line}><path d={d} stroke={color} strokeWidth={2} fill="none" strokeLinejoin="round" strokeLinecap="round"/>{n>0&&<circle cx={lx} cy={ly} r={3} fill={color}/>}</g>);})}
-  </svg>);
-}
-function MiniBarChart({data,lines,yMax=100,height=80,target}){
-  const w=320,h=height,pad=4;const n=data[lines[0]]?.length||1;const barW=Math.max(2,(w-pad*2)/n/lines.length-1);const groupW=(w-pad*2)/n;const targetY=target!=null?h-pad-(target/yMax)*(h-pad*2):null;const rects=[];
-  if(targetY!=null)rects.push(<line key="tgt" x1={pad} y1={targetY} x2={w-pad} y2={targetY} stroke={T.gray400} strokeWidth={1} strokeDasharray="4,3"/>);
-  lines.forEach((line,li)=>{const vals=data[line]||[];const color=LINE_COLORS_PERF[line]||T.neutral;vals.forEach((v,i)=>{const bh=Math.max(1,(v/yMax)*(h-pad*2));const x=pad+i*groupW+li*(barW+1);rects.push(<rect key={`${line}-${i}`} x={x} y={h-pad-bh} width={barW} height={bh} fill={color} opacity={0.85} rx={1}/>);});});
-  return(<svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height,display:"block"}}>{rects}</svg>);
-}
-function MiniStackedBar({data,height=80}){
-  const w=320,h=height,pad=4;const lines=["Line 1","Line 2","Line 3"];const n=data[lines[0]]?.length||1;const barW=Math.max(2,(w-pad*2)/n/lines.length-1);const groupW=(w-pad*2)/n;const rects=[];
-  lines.forEach((line,li)=>{const vals=data[line]||[];vals.forEach((v,i)=>{const planned=v/100*(h-pad*2);const x=pad+i*groupW+li*(barW+1);rects.push(<rect key={`p-${line}-${i}`} x={x} y={h-pad-planned} width={barW} height={Math.max(1,planned)} fill={LINE_COLORS_PERF[line]} opacity={0.85} rx={1}/>);rects.push(<rect key={`u-${line}-${i}`} x={x} y={pad} width={barW} height={Math.max(1,(h-pad*2)-planned)} fill={LINE_COLORS_PERF[line]} opacity={0.25} rx={1}/>);});});
-  return(<svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height,display:"block"}}>{rects}</svg>);
-}
-function ChartCard({title,subtitle,children,legend,lines}){
-  return(<div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",padding:"14px 16px",display:"flex",flexDirection:"column",gap:8}}>
-    <div><div style={{fontSize:12,fontWeight:800,color:T.black}}>{title}</div>{subtitle&&<div style={{fontSize:10,color:T.gray900,marginTop:1}}>{subtitle}</div>}</div>
-    {children}
-    {legend&&<div style={{display:"flex",gap:12,flexWrap:"wrap"}}>{lines.map(l=>(<div key={l} style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:T.gray900}}><span style={{width:16,height:3,background:LINE_COLORS_PERF[l],display:"inline-block",borderRadius:2}}/>{l}</div>))}</div>}
-  </div>);
-}
-function LinePerformanceView(){
-  const [timeframe,setTimeframe]=useState("2w");const [selLines,setSelLines]=useState(["Line 1","Line 2","Line 3"]);const [startDate,setStartDate]=useState("2026-02-14");const [endDate,setEndDate]=useState("2026-02-28");const [useCustom,setUseCustom]=useState(false);
-  const allLines=["Line 1","Line 2","Line 3"];
-  const toggleLine=l=>setSelLines(prev=>prev.includes(l)?prev.length>1?prev.filter(x=>x!==l):prev:[...prev,l]);
-  const tfLabels={"24h":"Last 24 Hours","2w":"Last 2 Weeks","1m":"Last Month"};
-  const customDays=Math.max(1,Math.round((new Date(endDate)-new Date(startDate))/(1000*60*60*24))+1);
-  const perf=useCustom?buildLinePerf(Math.min(customDays,30),"2w"):perfDatasets[timeframe];
-  const displayLabel=useCustom?`${startDate} → ${endDate}`:tfLabels[timeframe];
-  const avg=(metric,line)=>{const v=perf[metric][line];return v?Math.round(v.reduce((a,b)=>a+b,0)/v.length*10)/10:0;};
-  const kpis=selLines.map(l=>({line:l,oee:avg("oee",l),quality:avg("quality",l),downtime:Math.round(avg("downtime",l)),otif:avg("otif",l)}));
-  return(<div>
-    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
-      <div><div style={{fontSize:18,fontWeight:800,color:T.black}}>Line Performance</div><div style={{fontSize:12,color:T.gray900,marginTop:2}}>Historical trends · Austin Plant · {displayLabel}</div></div>
-      <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-        <div style={{display:"flex",gap:4}}>{allLines.map(l=>(<button key={l} onClick={()=>toggleLine(l)} style={{padding:"5px 12px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",border:`1px solid ${selLines.includes(l)?LINE_COLORS_PERF[l]:T.border}`,background:selLines.includes(l)?LINE_COLORS_PERF[l]+"15":T.white,color:selLines.includes(l)?LINE_COLORS_PERF[l]:T.gray900}}>{l}</button>))}</div>
-        <div style={{display:"flex",gap:4}}>{[["24h","24 hrs"],["2w","2 wks"],["1m","1 mo"]].map(([v,lbl])=>(<button key={v} onClick={()=>{setTimeframe(v);setUseCustom(false);}} style={{padding:"5px 12px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",border:`1px solid ${!useCustom&&timeframe===v?T.primary:T.border}`,background:!useCustom&&timeframe===v?T.primary:T.white,color:!useCustom&&timeframe===v?T.white:T.gray900}}>{lbl}</button>))}</div>
-        <div style={{display:"flex",alignItems:"center",gap:6,background:useCustom?T.primary+"10":T.white,border:`1px solid ${useCustom?T.primary:T.border}`,borderRadius:4,padding:"4px 10px"}}>
-          <span style={{fontSize:11,fontWeight:700,color:useCustom?T.primary:T.gray900}}>Custom</span>
-          <input type="date" value={startDate} onChange={e=>{setStartDate(e.target.value);setUseCustom(true);}} style={{border:"none",outline:"none",fontSize:11,color:T.black,background:"transparent",cursor:"pointer"}}/>
-          <span style={{fontSize:11,color:T.gray400}}>→</span>
-          <input type="date" value={endDate} onChange={e=>{setEndDate(e.target.value);setUseCustom(true);}} style={{border:"none",outline:"none",fontSize:11,color:T.black,background:"transparent",cursor:"pointer"}}/>
-        </div>
-      </div>
-    </div>
-    <div style={{padding:"20px 24px",background:T.gray100,display:"flex",flexDirection:"column",gap:16}}>
-      <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>{kpis.map(k=>(<div key={k.line} style={{flex:1,minWidth:140,background:T.white,borderRadius:4,borderLeft:`4px solid ${LINE_COLORS_PERF[k.line]}`,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",padding:"12px 14px"}}><div style={{fontSize:11,fontWeight:800,color:LINE_COLORS_PERF[k.line],marginBottom:6}}>{k.line}</div><div style={{display:"flex",gap:16,flexWrap:"wrap"}}><div><div style={{fontSize:10,color:T.gray900}}>Avg OEE</div><div style={{fontSize:18,fontWeight:800,color:k.oee>=80?T.positive:T.negative}}>{k.oee}%</div></div><div><div style={{fontSize:10,color:T.gray900}}>Avg Quality</div><div style={{fontSize:18,fontWeight:800,color:k.quality>=97?T.positive:T.warning}}>{k.quality}%</div></div><div><div style={{fontSize:10,color:T.gray900}}>Avg Downtime</div><div style={{fontSize:18,fontWeight:800,color:k.downtime>60?T.negative:T.gray900}}>{k.downtime}m</div></div><div><div style={{fontSize:10,color:T.gray900}}>Avg OTIF</div><div style={{fontSize:18,fontWeight:800,color:k.otif>=95?T.positive:T.warning}}>{k.otif}%</div></div></div></div>))}</div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
-        <ChartCard title="OEE Trend" subtitle="Overall Equipment Effectiveness %" legend lines={selLines}><MiniLineChart data={perf.oee} lines={selLines} yMin={40} yMax={100} target={85}/></ChartCard>
-        <ChartCard title="Availability Trend" subtitle="% scheduled time running" legend lines={selLines}><MiniLineChart data={perf.availability} lines={selLines} yMin={40} yMax={100} target={90}/></ChartCard>
-        <ChartCard title="Units Produced vs Target" subtitle="Daily units produced" legend lines={selLines}><MiniBarChart data={perf.units} lines={selLines} yMax={8500} target={7000}/></ChartCard>
-        <ChartCard title="Quality Rate / FPY" subtitle="% product meeting spec" legend lines={selLines}><MiniLineChart data={perf.quality} lines={selLines} yMin={75} yMax={100} target={98}/></ChartCard>
-        <ChartCard title="Scrap & Waste %" subtitle="% of output scrapped" legend lines={selLines}><MiniLineChart data={perf.scrap} lines={selLines} yMin={0} yMax={10} target={1.5}/></ChartCard>
-        <ChartCard title="Downtime Minutes" subtitle="Unplanned downtime per period" legend lines={selLines}><MiniBarChart data={perf.downtime} lines={selLines} yMax={350} target={60}/></ChartCard>
-        <ChartCard title="Planned vs Unplanned Maintenance" subtitle="Solid = planned, faded = unplanned" legend lines={selLines}><MiniStackedBar data={perf.plannedRatio}/></ChartCard>
-        <ChartCard title="Schedule Adherence" subtitle="% of schedule executed as planned" legend lines={selLines}><MiniLineChart data={perf.schedAdherence} lines={selLines} yMin={40} yMax={100} target={95}/></ChartCard>
-        <ChartCard title="OTIF" subtitle="On Time In Full %" legend lines={selLines}><MiniLineChart data={perf.otif} lines={selLines} yMin={50} yMax={100} target={95}/></ChartCard>
-      </div>
-    </div>
-  </div>);
-}
-
-// ── GANTT & SCHEDULE ──────────────────────────────────────────────────────────
-function GanttChart({filterLine,orders}){
-  const lines=filterLine==="All"?["Line 1","Line 2","Line 3"]:[filterLine];const totalCols=GANTT_DAYS.length;
-  const buildBlocks=(lineOrders)=>{const blocks=[];GANTT_DAYS.forEach((day,di)=>{const dayOrders=lineOrders.filter(o=>o.start.startsWith(day)).sort((a,b)=>timeToFrac(a.start)-timeToFrac(b.start));const dayEnd=di+1;let cursor=di;dayOrders.forEach(o=>{const s=timeToFrac(o.start);const e=timeToFrac(o.end);if(s===null||e===null)return;if(s>cursor+0.005)blocks.push({type:"gap",start:cursor,end:s});blocks.push({type:"order",order:o,start:s,end:e});cursor=e;});if(cursor<dayEnd-0.005)blocks.push({type:"gap",start:cursor,end:dayEnd});});return blocks;};
-  return(<div style={{overflowX:"auto"}}><div style={{minWidth:700}}>
-    <div style={{display:"flex",marginLeft:80,marginBottom:4}}>{GANTT_DAYS.map(d=>(<div key={d} style={{flex:1,textAlign:"center",fontSize:11,fontWeight:700,color:T.gray900,borderLeft:`1px solid ${T.border}`,paddingLeft:4}}>{d}</div>))}</div>
-    <div style={{display:"flex",marginLeft:80,marginBottom:8}}>{GANTT_DAYS.map(d=>(<div key={d} style={{flex:1,display:"flex",justifyContent:"space-between"}}>{GANTT_HOURS.map(h=><span key={h} style={{fontSize:9,color:T.gray400}}>{h}:00</span>)}</div>))}</div>
-    {lines.map(line=>{const lineOrders=orders.filter(o=>o.line===line);const blocks=buildBlocks(lineOrders);const ms=line==="Line 3"?timeToFrac("Feb 28 14:00"):null;const me=line==="Line 3"?timeToFrac("Feb 28 16:00"):null;const showMaint=line==="Line 3"&&ms!==null&&me!==null;const ml=showMaint?(ms/totalCols)*100:0;const mw=showMaint?((me-ms)/totalCols)*100:0;return(<div key={line} style={{display:"flex",alignItems:"center",marginBottom:8}}><div style={{width:80,fontSize:11,fontWeight:800,color:T.black,flexShrink:0}}>{line}</div><div style={{flex:1,height:36,background:T.gray100,borderRadius:4,position:"relative",border:`1px solid ${T.border}`}}>{GANTT_DAYS.map((_,i)=>(<div key={i} style={{position:"absolute",left:`${(i/totalCols)*100}%`,top:0,bottom:0,borderLeft:`1px dashed ${T.border}40`,zIndex:0}}/>))}{showMaint&&<div key="maint" style={{position:"absolute",left:`${ml}%`,width:`${mw}%`,top:0,bottom:0,background:"#ef444430",borderLeft:`2px dashed ${T.negative}`,borderRight:`2px dashed ${T.negative}`,zIndex:4,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:8,color:T.negative,fontWeight:800,whiteSpace:"nowrap"}}>MAINT</span></div>}{blocks.map((b,bi)=>{const left=(b.start/totalCols)*100;const width=((b.end-b.start)/totalCols)*100;if(b.type==="gap")return(<div key={bi} title="Changeover / Sanitation" style={{position:"absolute",left:`${left}%`,width:`${width}%`,top:3,bottom:3,background:"#cbd5e1",borderRadius:3,zIndex:1,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>{width>2&&<span style={{fontSize:8,color:"#64748b",fontWeight:600}}>⟳</span>}</div>);const o=b.order;const color=GANTT_SKUS[o.sku]||T.neutral;return(<div key={bi} title={`${o.id} · ${o.sku} · ${o.units.toLocaleString()} units${o.riskReason?"\n"+o.riskReason:""}`} style={{position:"absolute",left:`${left}%`,width:`${width}%`,top:3,bottom:3,background:color,borderRadius:3,opacity:0.88,zIndex:2,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}><span style={{fontSize:9,color:T.white,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",padding:"0 3px"}}>{o.sku}</span></div>);})}
-    </div></div>);})}
-    <div style={{display:"flex",gap:12,marginLeft:80,marginTop:8,flexWrap:"wrap"}}>{Object.entries(GANTT_SKUS).map(([sku,color])=>(<div key={sku} style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:T.gray900}}><span style={{width:12,height:12,borderRadius:2,background:color,display:"inline-block"}}/>{sku}</div>))}<div style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:T.gray900}}><span style={{width:12,height:12,borderRadius:2,background:"#cbd5e1",display:"inline-block"}}/>Changeover</div><div style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:T.gray900}}><span style={{width:12,height:12,borderRadius:2,background:"#ef444430",border:`1px dashed ${T.negative}`,display:"inline-block"}}/>Maintenance Window</div></div>
-  </div></div>);
-}
-
-function ProductionScheduleView({onViewDashboardRec}){
-  const [filterLine,setFilterLine]=useState("All");const [expandedOrch,setExpandedOrch]=useState(null);const [expandedSched,setExpandedSched]=useState(null);const [appliedRecs,setAppliedRecs]=useState([]);const [orders,setOrders]=useState(INIT_ORDERS);
-  const filteredOrders=filterLine==="All"?orders:orders.filter(o=>o.line===filterLine);
-  const applyRec=(id)=>{setAppliedRecs(prev=>[...prev,id]);setExpandedSched(null);if(id==="sa1"){setOrders(prev=>prev.map(o=>{if(o.id==="RUN-1023")return{...o,start:"Mar 1 13:00",end:"Mar 1 18:00",desc:"Crimped Seal Chips (resequenced)"};if(o.id==="RUN-1025")return{...o,start:"Mar 1 06:00",end:"Mar 1 12:00",desc:"BBQ Chips (resequenced)"};return o;}));}if(id==="sa2"){setOrders(prev=>[...prev,{id:"RUN-1033",line:"Line 2",sku:"SKU 2204",desc:"Buffer Run (added)",units:1800,target:1800,start:"Mar 3 13:00",end:"Mar 3 15:30",dueDate:"Mar 10",dc:"DC-East Buffer"}]);}if(id==="sa3"){setOrders(prev=>prev.map(o=>{if(o.id==="RUN-1032")return{...o,start:"Mar 3 06:00",end:"Mar 3 14:00",desc:"BBQ Chips (regrouped)"};return o;}));}};
-  return(<div>
-    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
-      <div><div style={{fontSize:18,fontWeight:800,color:T.black}}>Production Schedule</div><div style={{fontSize:12,color:T.gray900,marginTop:2}}>Feb 28 – Mar 3, 2026 · Austin Plant</div></div>
-      <div style={{display:"flex",gap:6}}>{["All","Line 1","Line 2","Line 3"].map(l=>(<button key={l} onClick={()=>setFilterLine(l)} style={{padding:"6px 14px",borderRadius:4,fontSize:12,fontWeight:700,cursor:"pointer",border:`1px solid ${filterLine===l?T.primary:T.border}`,background:filterLine===l?T.primary:T.white,color:filterLine===l?T.white:T.gray900}}>{l}</button>))}</div>
-    </div>
-    <div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16,background:T.gray100}}>
-      <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>{[{label:"Total Units Today",value:"18,400",sub:"vs 21,000 target",good:false},{label:"Total Units This Week",value:"85,400",sub:"vs 105,000 target",good:false},{label:"Total Changeover Today",value:"3 hrs 20 min",sub:"across all lines",good:null},{label:"Overall Schedule Adherence",value:"82%",sub:"vs 95% target",good:false},{label:"Overall OTIF",value:"87%",sub:"vs 95% target",good:false}].map(k=>(<div key={k.label} style={{flex:1,minWidth:130,background:T.white,borderRadius:4,borderLeft:`4px solid ${k.good===true?T.positive:k.good===false?T.negative:T.warning}`,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",padding:"10px 14px"}}><div style={{fontSize:10,color:T.gray900,fontWeight:600,marginBottom:4}}>{k.label}</div><div style={{fontSize:18,fontWeight:800,color:k.good===true?T.positive:k.good===false?T.negative:T.warning}}>{k.value}</div><div style={{fontSize:10,color:T.gray400,marginTop:2}}>{k.sub}</div></div>))}</div>
-      <div style={{display:"flex",flexDirection:"column",gap:8}}><div style={{fontSize:12,fontWeight:800,color:T.black}}>🌐 From Plant Orchestration Agent</div>{orchSchedulingRecs.map(r=>(<div key={r.id} style={{background:T.white,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",overflow:"hidden"}}><div style={{padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap",cursor:"pointer"}} onClick={()=>setExpandedOrch(expandedOrch===r.id?null:r.id)}><div style={{display:"flex",gap:8,alignItems:"center",flex:1,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label="🌐 Orchestration" color={T.info}/><Badge label={r.status} color={r.status==="Action Required"?T.negative:T.warning}/><span style={{fontSize:13,fontWeight:700,color:T.black}}>{r.title}</span></div><span style={{fontSize:11,color:T.gray400}}>{expandedOrch===r.id?"▲":"▼"}</span></div>{expandedOrch===r.id&&<div style={{padding:"12px 16px 14px",borderTop:`1px solid ${T.border}`}}><div style={{fontSize:12,color:T.black,lineHeight:1.6,marginBottom:10}}>{r.detail}</div><button onClick={()=>onViewDashboardRec(r.id)} style={{background:T.info,color:T.white,border:"none",borderRadius:4,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>View in Dashboard →</button></div>}</div>))}</div>
-      <div style={{display:"flex",flexDirection:"column",gap:8}}><div style={{fontSize:12,fontWeight:800,color:T.black}}>🗓 Scheduling Agent — Optimisation Opportunities</div>{schedAgentRecs.map(r=>(<div key={r.id} style={{background:T.white,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",overflow:"hidden",opacity:appliedRecs.includes(r.id)?0.6:1}}><div style={{padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap",cursor:"pointer"}} onClick={()=>!appliedRecs.includes(r.id)&&setExpandedSched(expandedSched===r.id?null:r.id)}><div style={{display:"flex",gap:8,alignItems:"center",flex:1,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label="🗓 Scheduling Agent" color={T.primary}/><Badge label={r.impact} color={T.positive}/>{appliedRecs.includes(r.id)&&<Badge label="✓ Applied" color={T.positive}/>}<span style={{fontSize:13,fontWeight:700,color:T.black}}>{r.title}</span></div>{!appliedRecs.includes(r.id)&&<span style={{fontSize:11,color:T.gray400}}>{expandedSched===r.id?"▲":"▼"}</span>}</div>{expandedSched===r.id&&!appliedRecs.includes(r.id)&&<div style={{padding:"12px 16px 14px",borderTop:`1px solid ${T.border}`}}><div style={{fontSize:12,color:T.black,lineHeight:1.6,marginBottom:6}}>{r.detail}</div><div style={{background:T.primary+"10",borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"8px 12px",marginBottom:10}}><div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:2}}>RECOMMENDED ACTION</div><div style={{fontSize:12,color:T.black}}>{r.action}</div></div><div style={{display:"flex",gap:8}}><button onClick={()=>applyRec(r.id)} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>✓ Apply to Schedule</button><button onClick={()=>setExpandedSched(null)} style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"6px 14px",fontSize:12,fontWeight:600,cursor:"pointer",color:T.gray900}}>Dismiss</button></div></div>}</div>))}</div>
-      {appliedRecs.length>0&&<div style={{background:"#F0FDF4",border:`2px solid ${T.positive}`,borderRadius:4,padding:"12px 16px",display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:16}}>✅</span><div><div style={{fontSize:13,fontWeight:800,color:T.positive}}>Schedule Updated</div><div style={{fontSize:12,color:T.black,marginTop:2}}>{appliedRecs.length} optimisation{appliedRecs.length>1?"s":""} applied.</div></div></div>}
-      <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}><div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>Production Schedule — Gantt View</div></div><div style={{padding:"16px 20px"}}><GanttChart filterLine={filterLine} orders={orders}/></div></div>
-      <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}><div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>Production Run Schedule</div><div style={{fontSize:11,color:T.gray900,marginTop:2}}>{filteredOrders.length} runs scheduled</div></div><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}><thead><tr style={{background:T.gray100}}>{["Run","Line","SKU","Description","Units","Target","% vs Target","Start","End","DC","Notes"].map(h=>(<th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>))}</tr></thead><tbody>{filteredOrders.map((o,i)=>{const pct=o.target?Math.round(o.units/o.target*100):100;const volColor=pct>=100?T.positive:pct>=85?T.warning:T.negative;return(<tr key={o.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}><td style={{padding:"9px 14px",fontWeight:700,color:T.black}}>{o.id}</td><td style={{padding:"9px 14px"}}><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{width:8,height:8,borderRadius:"50%",background:LINE_COLORS_PERF[o.line],display:"inline-block"}}/>{o.line}</div></td><td style={{padding:"9px 14px"}}><span style={{background:(GANTT_SKUS[o.sku]||T.neutral)+"20",color:GANTT_SKUS[o.sku]||T.neutral,border:`1px solid ${(GANTT_SKUS[o.sku]||T.neutral)}40`,borderRadius:3,padding:"2px 7px",fontSize:11,fontWeight:700}}>{o.sku}</span></td><td style={{padding:"9px 14px",color:T.gray900}}>{o.desc}</td><td style={{padding:"9px 14px",fontWeight:700,color:T.black}}>{o.units.toLocaleString()}</td><td style={{padding:"9px 14px",color:T.gray400}}>{o.target?o.target.toLocaleString():"-"}</td><td style={{padding:"9px 14px",fontWeight:700,color:volColor}}>{pct}%</td><td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{o.start}</td><td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{o.end}</td><td style={{padding:"9px 14px",color:T.gray900}}>{o.dc||"-"}</td><td style={{padding:"9px 14px"}}>{o.riskReason&&<div style={{fontSize:10,color:T.negative}}>⚠ {o.riskReason}</div>}</td></tr>);})}</tbody></table></div></div>
-    </div>
-  </div>);
-}
-
-// ── SCENARIO SIMULATION CHAT ──────────────────────────────────────────────────
-function parseRec(text){
-  if(!text.includes("---RECOMMENDATION---"))return null;
-  try{const block=text.split("---RECOMMENDATION---")[1].split("---END---")[0];const get=key=>{const m=block.match(new RegExp(`${key}:\\s*(.+)`));return m?m[1].trim():"";};const ls=get("LINES").split(",").map(l=>l.trim()).filter(Boolean);if(!ls.includes("All"))ls.push("All");const domain=get("DOMAIN")||"Production";const agents=get("AGENTS").split(",").map(a=>a.trim()).filter(a=>VALID_AGENTS.includes(a));let steps=[];if(text.includes("---STEPS---")){try{const stepsRaw=text.split("---STEPS---")[1].split("---ENDSTEPS---")[0].trim();const parsed=JSON.parse(stepsRaw);steps=parsed.map(s=>({agent:VALID_AGENTS.includes(s.agent)?s.agent:(agents[0]||"Supervisor & Operator Co-Pilot"),domain:s.domain||domain,action:s.action||"Review and execute recommended action.",status:"pending"}));}catch(e){steps=[];}}if(steps.length===0&&agents.length>0){steps=agents.map(agent=>({agent,domain,action:`Review recommendation and execute assigned action within ${domain} domain.`,status:"pending"}));}let approvers=[];if(text.includes("---APPROVERS---")){try{const appRaw=text.split("---APPROVERS---")[1].split("---ENDAPPROVERS---")[0].trim();const parsed=JSON.parse(appRaw);approvers=parsed.map(a=>VALID_APPROVERS[a.role]).filter(Boolean);}catch(e){approvers=[];}}if(approvers.length===0){const defaultRoles={Safety:["Plant Leader","Production Supervisor"],Quality:["Plant Leader","Quality Manager"],Production:["Plant Leader","Production Supervisor"],Maintenance:["Plant Leader","Maintenance Manager"],Planning:["Plant Leader","Scheduler"]};approvers=(defaultRoles[domain]||["Plant Leader"]).map(r=>VALID_APPROVERS[r]).filter(Boolean);}return{id:Date.now(),fromChat:true,title:get("TITLE"),priority:get("PRIORITY"),domain,icon:DOMAIN_ICONS[domain]||"🧠",lines:ls,agents,suggestedAction:get("ACTION"),summary:get("SUMMARY"),detail:{issue:get("SUMMARY"),action:get("ACTION"),steps,approvers}};}catch{return null;}}
-const stripRec=text=>text.replace(/---RECOMMENDATION---[\s\S]*?---END---/,"").replace(/---STEPS---[\s\S]*?---ENDSTEPS---/,"").replace(/---APPROVERS---[\s\S]*?---ENDAPPROVERS---/,"").trim();
-
-const SCENARIO_SUGGESTIONS=["The Line 3 heat sealer has just failed completely and cannot be repaired until tomorrow morning. SKU 3801 requires the sealer. We have SKU 2204 which uses a crimped seal. What do I do with Line 3 for the rest of the day?","If I take Line 3 offline today, what's the impact on Friday's orders?","How should I prioritize the afternoon shift labor shortage?","What's the fastest path to resolving the sealer issue?"];
-const SCENARIO_LABELS=["🔧 Line 3 sealer failed — swap to SKU 2204?","📋 Take Line 3 offline — Friday order impact?","👷 How to handle afternoon labor shortage?","⚡ Fastest path to fix the sealer?"];
-
-function ScenarioChat({recs,onAddRec}){
-  const [msgs,setMsgs]=useState([{role:"assistant",content:"👋 I'm the Plant Orchestration Agent. I have full visibility across all domains.\n\nAsk me anything — scenario simulations, trade-off analysis, or what to prioritize. When I reach a clear recommendation, I'll ask if you want to add it to the dashboard."}]);
-  const [input,setInput]=useState("");const [loading,setLoading]=useState(false);const [pendingRec,setPendingRec]=useState(null);
-  const bottomRef=useRef();
-  useEffect(()=>bottomRef.current?.scrollIntoView({behavior:"smooth"}),[msgs]);
-  const send=async(text)=>{
-    const q=(text||input).trim();if(!q||loading)return;
-    const userMsg={role:"user",content:q};setMsgs(prev=>[...prev,userMsg]);setInput("");setLoading(true);setPendingRec(null);
-    try{
-      const history=[...msgs.slice(1),userMsg].map(m=>({role:m.role,content:m.content}));
-      const sys=SCENARIO_SYSTEM_PROMPT+`\nACTIVE RECOMMENDATIONS: ${JSON.stringify(recs.map(r=>({id:r.id,title:r.title,priority:r.priority})))}`;
-      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1500,system:sys,messages:history})});
-      const data=await res.json();const raw=data.content?.[0]?.text||"No response.";const rec=parseRec(raw);
-      setMsgs(prev=>[...prev,{role:"assistant",content:stripRec(raw)}]);if(rec)setPendingRec(rec);
-    }catch{setMsgs(prev=>[...prev,{role:"assistant",content:"⚠️ Connection error. Please try again."}]);}
-    setLoading(false);
-  };
-  const confirmAdd=()=>{if(pendingRec){onAddRec(pendingRec);setPendingRec(null);setMsgs(prev=>[...prev,{role:"assistant",content:"✅ Recommendation added to the dashboard."}]);}};
-  return(<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
-    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px"}}><div style={{fontSize:18,fontWeight:800,color:T.black}}>Scenario Simulation</div><div style={{fontSize:12,color:T.gray900,marginTop:2}}>Ask the Plant Orchestration Agent to model any scenario or trade-off</div></div>
-    <div style={{flex:1,padding:"20px 24px",display:"flex",flexDirection:"column",gap:16,background:T.gray100,overflow:"hidden"}}>
-      {msgs.length<=1&&<div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{SCENARIO_LABELS.map((label,i)=><button key={i} onClick={()=>send(SCENARIO_SUGGESTIONS[i])} style={{background:T.white,border:`1px solid ${T.border}`,borderRadius:4,padding:"7px 12px",fontSize:11,color:T.gray900,cursor:"pointer",fontWeight:600}}>{label}</button>)}</div>}
-      <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:12}}>
-        {msgs.map((m,i)=>(<div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
-          {m.role==="assistant"&&<div style={{width:28,height:28,borderRadius:"50%",background:T.primary,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:T.white,fontWeight:800,flexShrink:0,marginRight:8,marginTop:2}}>POA</div>}
-          <div style={{maxWidth:"75%",padding:"11px 15px",borderRadius:4,fontSize:13,lineHeight:1.65,whiteSpace:"pre-wrap",background:m.role==="user"?T.primary:T.white,color:m.role==="user"?T.white:T.black,boxShadow:"0 1px 3px rgba(0,0,0,0.08)",borderLeft:m.role==="assistant"?`3px solid ${T.primary}`:"none"}}>{m.content}</div>
-        </div>))}
-        {loading&&<div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:28,height:28,borderRadius:"50%",background:T.primary,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:T.white,fontWeight:800,flexShrink:0}}>POA</div><div style={{background:T.white,borderRadius:4,padding:"11px 15px",fontSize:13,color:T.gray900,borderLeft:`3px solid ${T.primary}`,boxShadow:"0 1px 3px rgba(0,0,0,0.08)"}}>Modelling scenario across all domains...</div></div>}
-        {pendingRec&&!loading&&<div style={{background:T.white,border:`2px solid ${T.info}`,borderRadius:4,padding:"14px 16px"}}>
-          <div style={{fontSize:12,fontWeight:800,color:T.info,marginBottom:8}}>✦ Recommendation Ready — Add to Dashboard?</div>
-          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:6}}><Badge label={pendingRec.priority} color={PriorityColor(pendingRec.priority)}/><Badge label={pendingRec.domain} color={T.primary}/></div>
-          <div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:4}}>{pendingRec.icon} {pendingRec.title}</div>
-          <div style={{fontSize:12,color:T.gray900,marginBottom:10}}>{pendingRec.summary}</div>
-          <div style={{display:"flex",gap:8}}><button onClick={confirmAdd} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"8px 18px",fontSize:13,fontWeight:700,cursor:"pointer"}}>✦ Add to Dashboard</button><button onClick={()=>setPendingRec(null)} style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"8px 18px",fontSize:13,fontWeight:600,cursor:"pointer",color:T.gray900}}>Dismiss</button></div>
-        </div>}
-        <div ref={bottomRef}/>
-      </div>
-      <div style={{display:"flex",gap:8,background:T.white,border:`1px solid ${T.border}`,borderRadius:4,padding:"8px 12px"}}>
-        <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="Describe a scenario or ask a what-if question..." style={{flex:1,border:"none",outline:"none",fontSize:13,color:T.black,background:"transparent"}}/>
-        <button onClick={()=>send()} disabled={loading||!input.trim()} style={{background:loading||!input.trim()?T.gray400:T.primary,color:T.white,border:"none",borderRadius:4,padding:"7px 16px",fontWeight:700,cursor:loading||!input.trim()?"not-allowed":"pointer",fontSize:13}}>Send</button>
-      </div>
-    </div>
-  </div>);
-}
-
-// ── CO-PILOT CHAT ─────────────────────────────────────────────────────────────
-function CoPilotChat({activeTab}){
-  const contextLabel = activeTab==="maintenance"?"🔧 Technician Co-Pilot":activeTab==="lineperf"||activeTab==="dashboard"?"👷 Supervisor Co-Pilot":"🤖 Co-Pilot";
-  const introMsg = activeTab==="maintenance"
-    ? "👋 I'm your Technician Co-Pilot. I can walk you through SOPs, help with LOTO procedures, look up fault codes, give you tools and parts lists for your work orders, and troubleshoot equipment issues.\n\nTell me what you're working on and I'll help you get it done safely."
-    : "👋 I'm your Co-Pilot. Tell me what you're working on and I'll help.";
-  const [msgs,setMsgs]=useState([{role:"assistant",content:introMsg}]);
-  const [input,setInput]=useState("");const [loading,setLoading]=useState(false);
-  const bottomRef=useRef();
-  useEffect(()=>bottomRef.current?.scrollIntoView({behavior:"smooth"}),[msgs]);
-  const send=async(text)=>{
-    const q=(text||input).trim();if(!q||loading)return;
-    const userMsg={role:"user",content:q};setMsgs(prev=>[...prev,userMsg]);setInput("");setLoading(true);
-    try{
-      const history=[...msgs.slice(1),userMsg].map(m=>({role:m.role,content:m.content}));
-      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:COPILOT_SYSTEM_PROMPT,messages:history})});
-      const data=await res.json();const raw=data.content?.[0]?.text||"No response.";
-      setMsgs(prev=>[...prev,{role:"assistant",content:raw}]);
-    }catch{setMsgs(prev=>[...prev,{role:"assistant",content:"⚠️ Connection error. Please try again."}]);}
-    setLoading(false);
-  };
-  return(<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
-    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px"}}><div style={{fontSize:18,fontWeight:800,color:T.black}}>{contextLabel}</div><div style={{fontSize:12,color:T.gray900,marginTop:2}}>SOP guidance · LOTO procedures · Fault code lookup · Work order help · Parts lists</div></div>
-    <div style={{flex:1,padding:"20px 24px",display:"flex",flexDirection:"column",gap:16,background:T.gray100,overflow:"hidden"}}>
-      {msgs.length<=1&&<div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{COPILOT_SUGGESTION_LABELS.map((label,i)=><button key={i} onClick={()=>send(COPILOT_SUGGESTIONS[i])} style={{background:T.white,border:`1px solid ${T.border}`,borderRadius:4,padding:"7px 12px",fontSize:11,color:T.gray900,cursor:"pointer",fontWeight:600}}>{label}</button>)}</div>}
-      <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:12}}>
-        {msgs.map((m,i)=>(<div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
-          {m.role==="assistant"&&<div style={{width:28,height:28,borderRadius:"50%",background:"#673AB7",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:T.white,fontWeight:800,flexShrink:0,marginRight:8,marginTop:2}}>CP</div>}
-          <div style={{maxWidth:"75%",padding:"11px 15px",borderRadius:4,fontSize:13,lineHeight:1.65,whiteSpace:"pre-wrap",background:m.role==="user"?"#673AB7":T.white,color:m.role==="user"?T.white:T.black,boxShadow:"0 1px 3px rgba(0,0,0,0.08)",borderLeft:m.role==="assistant"?"3px solid #673AB7":"none"}}>{m.content}</div>
-        </div>))}
-        {loading&&<div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:28,height:28,borderRadius:"50%",background:"#673AB7",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:T.white,fontWeight:800,flexShrink:0}}>CP</div><div style={{background:T.white,borderRadius:4,padding:"11px 15px",fontSize:13,color:T.gray900,borderLeft:"3px solid #673AB7",boxShadow:"0 1px 3px rgba(0,0,0,0.08)"}}>Looking up guidance...</div></div>}
-        <div ref={bottomRef}/>
-      </div>
-      <div style={{display:"flex",gap:8,background:T.white,border:`1px solid ${T.border}`,borderRadius:4,padding:"8px 12px"}}>
-        <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="Ask for guidance, SOP help, or troubleshooting..." style={{flex:1,border:"none",outline:"none",fontSize:13,color:T.black,background:"transparent"}}/>
-        <button onClick={()=>send()} disabled={loading||!input.trim()} style={{background:loading||!input.trim()?T.gray400:"#673AB7",color:T.white,border:"none",borderRadius:4,padding:"7px 16px",fontWeight:700,cursor:loading||!input.trim()?"not-allowed":"pointer",fontSize:13}}>Send</button>
-      </div>
-    </div>
-  </div>);
-}
-
-// ── TECHNICIAN DASHBOARD DATA ─────────────────────────────────────────────────
-const TECH_WOS = [
-  {id:"WO-4421",asset:"Line 3 Heat Sealer",assetId:"A-001",line:"Line 3",location:"Line 3 — Zone B",type:"Corrective",priority:"Critical",status:"In Execution",estimatedHrs:4,actualHrs:1.5,startedAt:"07:15am",dueDate:"Today",description:"Sealer inspection — vibration index 8.4 exceeds threshold (7.0), temp variance ±6°C. Full component check required. Part #SE-441 in transit (arriving tomorrow 7am).",safetyFlags:["LOTO required before any work","PPE: heat-resistant gloves, safety glasses","Burn risk — allow sealer to cool 15 min before touching elements"],partsKitting:[{part:"Sealer Heating Element",partNo:"SE-441",qty:1,status:"In Stock",eta:null},{part:"Sealer Temperature Probe",partNo:"SE-442",qty:1,status:"In Stock",eta:null}],toolKitting:[{tool:"Digital multimeter",required:true,available:true},{tool:"Torque wrench (20–100 Nm)",required:true,available:true},{tool:"Infrared thermometer",required:true,available:true},{tool:"Insulated screwdriver set",required:true,available:true}],sopSteps:[{phase:"Pre-Execution",step:"Complete LOTO procedure — Line 3 sealer (LOTO SOP v4.0)",done:true},{phase:"Pre-Execution",step:"Allow sealer to cool for minimum 15 minutes",done:true},{phase:"Execution",step:"Inspect heating element for visible damage or discolouration",done:false},{phase:"Execution",step:"Check thermocouple connections — fault code E-14 indicates thermocouple fault",done:false},{phase:"Execution",step:"Measure element resistance — spec: 8–12 Ω",done:false},{phase:"Execution",step:"Inspect sealing jaw alignment — check for wear marks",done:false},{phase:"Execution",step:"Test temperature uniformity across sealing bar",done:false},{phase:"Execution",step:"Re-calibrate temperature controller to ±2°C tolerance",done:false},{phase:"Post-Execution",step:"Run test seals on scrap material and inspect seal integrity",done:false},{phase:"Post-Execution",step:"Remove LOTO and restore to service — notify supervisor",done:false}],assetHistory:{lastPM:"Jan 15, 2026",lastFailure:"Nov 3, 2025 — element replacement",openIssues:"Vibration trend increasing since Jan 20",healthScore:34,mtbf:"6.2 months"},agentNote:"Part #SE-441 is in transit — arriving tomorrow 7am. Complete inspection steps 1–6 today to prepare. Do not attempt element replacement until part arrives.",followUpNeeded:false},
-  {id:"WO-4425",asset:"Line 2 Conveyor Belt",assetId:"A-003",line:"Line 2",location:"Line 2 — Zone A",type:"Preventive",priority:"Low",status:"In Execution",estimatedHrs:1,actualHrs:0.5,startedAt:"06:00am",dueDate:"Today",description:"Routine belt inspection — tension check, wear assessment, lubrication.",safetyFlags:["LOTO required before tension adjustment","PPE: safety glasses"],partsKitting:[{part:"Belt Lubricant",partNo:"LUB-012",qty:1,status:"In Stock",eta:null}],toolKitting:[{tool:"Belt tension gauge",required:true,available:true},{tool:"Torque wrench (10–50 Nm)",required:true,available:true},{tool:"Lubricant applicator",required:true,available:true}],sopSteps:[{phase:"Pre-Execution",step:"Complete LOTO procedure if adjusting tension",done:true},{phase:"Pre-Execution",step:"Inspect belt surface for cracks, fraying, or wear",done:true},{phase:"Execution",step:"Check belt tension — spec: 15–20 N/mm",done:true},{phase:"Execution",step:"Apply lubricant to rollers per schedule",done:false},{phase:"Execution",step:"Check roller alignment — all rollers must spin freely",done:false},{phase:"Execution",step:"Inspect belt tracking — should run centred within 5mm",done:false},{phase:"Post-Execution",step:"Remove LOTO and run belt at slow speed for 2 minutes to verify",done:false}],assetHistory:{lastPM:"Feb 20, 2026",lastFailure:"None in 12 months",openIssues:"None",healthScore:81,mtbf:"Not applicable — no failures recorded"},agentNote:"Routine inspection — no anomalies flagged. Current PM cycle appropriate. Strategy Agent recommends extending to 10-week cycle at next review.",followUpNeeded:false},
-  {id:"WO-4422",asset:"Line 2 Heat Tunnel",assetId:"A-006",line:"Line 2",location:"Line 2 — Zone C",type:"Preventive",priority:"High",status:"Pre-Work",estimatedHrs:2,actualHrs:0,startedAt:null,dueDate:"Mar 3",description:"Initiate first PM cycle — inspect heating elements, check safety interlocks, calibrate temp controls.",safetyFlags:["LOTO required","PPE: heat-resistant gloves, safety glasses, face shield","Burn risk — high voltage heating elements"],partsKitting:[{part:"Heat Tunnel Igniter",partNo:"HT-209",qty:1,status:"Low Stock",eta:null}],toolKitting:[{tool:"Multimeter",required:true,available:true},{tool:"Thermocouple calibrator",required:true,available:false},{tool:"Infrared thermometer",required:true,available:true},{tool:"Safety interlock test kit",required:true,available:true}],sopSteps:[{phase:"Pre-Execution",step:"Complete LOTO procedure — Line 2 heat tunnel (LOTO SOP v4.0)",done:false},{phase:"Pre-Execution",step:"Allow tunnel to cool — minimum 20 minutes",done:false},{phase:"Execution",step:"Inspect heating elements for damage or corrosion",done:false},{phase:"Execution",step:"Check all safety interlock switches — must trip at 280°C",done:false},{phase:"Execution",step:"Inspect igniter — check for carbon deposits",done:false},{phase:"Execution",step:"Calibrate temperature controller — set points: 220°C / 240°C / 220°C",done:false},{phase:"Execution",step:"Check conveyor belt tracking through tunnel",done:false},{phase:"Post-Execution",step:"Remove LOTO and run empty at 50% speed for 5 minutes",done:false},{phase:"Post-Execution",step:"Verify temperature uniformity — max variance ±5°C",done:false}],assetHistory:{lastPM:"Never",lastFailure:"No recorded failures",openIssues:"No PM program previously — this is first inspection",healthScore:67,mtbf:"Unknown"},agentNote:"This is the first PM ever on this asset. Take extra time on steps 3–5 to establish a baseline condition report. Note any anomalies for the PM program record.",followUpNeeded:false},
-];
-
-const TECH_SUB_WOS = [
-  {id:"SUB-201",asset:"Line 3 Cooling System",priority:"High",status:"In Progress",contractor:"Apex Refrigeration Ltd",onSiteDate:"Feb 28, 2026",supervisor:"Carlos Rivera",description:"Annual refrigerant recharge and compressor inspection — specialist contractor required.",permitNo:"PTW-2026-041"},
-  {id:"SUB-202",asset:"Plant HVAC — Roof Units",priority:"Medium",status:"Not Started",contractor:"BuildAir Services",onSiteDate:"Mar 2, 2026",supervisor:"James Okafor",description:"Quarterly filter replacement and duct inspection.",permitNo:"PTW-2026-042"},
-];
-
-const TECH_COPILOT_PROMPTS = {
-  "WO-4421":{
-    suggestions:["Walk me through the LOTO procedure for the Line 3 sealer","What does fault code E-14 mean on the sealer?","How do I measure element resistance correctly?","What do I do if the thermocouple connection looks damaged?"],
-    labels:["🔒 LOTO procedure for Line 3 sealer","⚠️ Fault code E-14 — what is it?","🔧 How to measure element resistance","❓ Damaged thermocouple — what next?"],
-    context:"You are helping a technician with WO-4421 — Line 3 Heat Sealer inspection. The sealer has vibration index 8.4 (threshold 7.0) and fault code E-14 (thermocouple fault). Part #SE-441 is in transit. The technician has completed LOTO and cooling steps.",
-  },
-  "WO-4425":{
-    suggestions:["What's the correct belt tension spec for Line 2?","How do I apply lubricant to the rollers?","What should I look for when checking belt tracking?","How do I know if the belt needs replacing?"],
-    labels:["📏 Belt tension spec for Line 2","🛢️ How to lubricate the rollers","👁️ Checking belt tracking — what to look for","🔄 Does the belt need replacing?"],
-    context:"You are helping a technician with WO-4425 — Line 2 Conveyor Belt routine PM inspection. The belt is in good condition with health score 81. This is a standard preventive inspection.",
-  },
-  "WO-4422":{
-    suggestions:["Walk me through the LOTO procedure for the Line 2 heat tunnel","What are the correct temperature set points for the tunnel?","How do I check the safety interlock switches?","What should I note for the first-ever PM record?"],
-    labels:["🔒 LOTO procedure for Line 2 heat tunnel","🌡️ Correct temperature set points","⚡ How to check safety interlocks","📋 What to record for first PM"],
-    context:"You are helping a technician with WO-4422 — Line 2 Heat Tunnel first-ever PM inspection. There is no PM history on this asset. The technician needs to establish a baseline condition report.",
-  },
-};
-
-// ── TECHNICIAN DASHBOARD ─────────────────────────────────────────────────────
-// Daily schedule data
-const TECH_DAILY_SCHEDULE = [
-  {time:"06:00",label:"Shift Start & Safety Check",type:"routine",desc:"Review overnight alerts, check PPE, sign in"},
-  {time:"06:15",label:"Maintenance Team Huddle",type:"meeting",desc:"15-min standup — review day's WOs, parts status, any safety flags"},
-  {time:"06:30",label:"Join Line 3 Production Huddle",type:"meeting",desc:"Align with Line 3 supervisor on sealer issue and maintenance window"},
-  {time:"07:00",label:"Work Orders Block",type:"work",desc:"Execute assigned WOs — WO-4421 (sealer inspection) priority, then WO-4425 (belt PM)"},
-  {time:"13:00",label:"Lunch & Parts Check",type:"routine",desc:"Confirm Part #SE-441 delivery status for tomorrow's sealer repair"},
-  {time:"13:30",label:"Work Orders Block (cont.)",type:"work",desc:"Continue WOs — WO-4422 (heat tunnel PM) if time permits"},
-  {time:"15:45",label:"WO Documentation & Close-out",type:"routine",desc:"Update SAP PM with WO progress, log findings, raise any follow-ups"},
-  {time:"16:00",label:"Handover to Night Shift Tech",type:"handover",desc:"Brief incoming technician on WO-4421 status, Part #SE-441 ETA, and any open items"},
-];
-
-// All WOs (full history + current)
-const ALL_WOS = [
-  {id:"WO-4421",asset:"Line 3 Heat Sealer",line:"Line 3",type:"Corrective",priority:"Critical",status:"In Execution",assignedTo:"You",estHrs:4,actualHrs:1.5,dueDate:"Feb 28, 2026",description:"Sealer inspection — vibration and temp variance above threshold."},
-  {id:"WO-4425",asset:"Line 2 Conveyor Belt",line:"Line 2",type:"Preventive",priority:"Low",status:"In Execution",assignedTo:"You",estHrs:1,actualHrs:0.5,dueDate:"Feb 28, 2026",description:"Routine belt inspection — tension check, wear assessment."},
-  {id:"WO-4422",asset:"Line 2 Heat Tunnel",line:"Line 2",type:"Preventive",priority:"High",status:"Pre-Work",assignedTo:"You",estHrs:2,actualHrs:0,dueDate:"Mar 3, 2026",description:"Initiate first PM cycle — inspect heating elements."},
-  {id:"WO-4418",estHrs:2,actualHrs:1.8,asset:"Line 1 Conveyor",line:"Line 1",type:"Preventive",priority:"Low",status:"Complete",assignedTo:"You",dueDate:"Feb 25, 2026",description:"Quarterly conveyor belt inspection and lubrication."},
-  {id:"WO-4419",estHrs:3,actualHrs:2.7,asset:"Line 2 Filler",line:"Line 2",type:"Preventive",priority:"Medium",status:"Complete",assignedTo:"You",dueDate:"Feb 24, 2026",description:"Filler calibration check — no issues found."},
-  {id:"WO-4420",estHrs:1.5,actualHrs:1.6,asset:"Line 3 Crimping Unit",line:"Line 3",type:"Corrective",priority:"Medium",status:"Complete",assignedTo:"You",dueDate:"Feb 22, 2026",description:"Crimping jaw alignment — minor adjustment made."},
-  {id:"WO-4415",estHrs:2,actualHrs:3.1,asset:"Line 2 Heat Tunnel",line:"Line 2",type:"Preventive",priority:"High",status:"Complete",assignedTo:"You",dueDate:"Feb 18, 2026",description:"Heating element visual inspection."},
-  {id:"WO-4410",estHrs:1,actualHrs:1.9,asset:"Line 2 Conveyor",line:"Line 2",type:"Preventive",priority:"Low",status:"Complete",assignedTo:"You",dueDate:"Feb 14, 2026",description:"Belt tension and tracking check."},
-];
-
-function TechnicianDashboard(){
-  const [activeTab,setActiveTab]=useState("myday");
-  const [selectedWO,setSelectedWO]=useState(null);
-  const [wos,setWos]=useState(TECH_WOS);
-  const [showFollowUp,setShowFollowUp]=useState(false);
-  const [followUpForm,setFollowUpForm]=useState({asset:"",description:"",priority:"Medium",type:"Corrective"});
-  const [followUpSubmitted,setFollowUpSubmitted]=useState({});
-  const [showCompletionModal,setShowCompletionModal]=useState(false);
-  const [completionWO,setCompletionWO]=useState(null);
-  const [completionForm,setCompletionForm]=useState({notes:"",notifyOperator:true,photoAttached:false});
-  const [completionSubmitted,setCompletionSubmitted]=useState({});
-  const [woFilter,setWoFilter]=useState("All");
-
-  const toggleStep=(woId,stepIdx)=>{
-    setWos(prev=>prev.map(w=>w.id!==woId?w:{...w,sopSteps:w.sopSteps.map((s,i)=>i!==stepIdx?s:{...s,done:!s.done})}));
-    if(selectedWO?.id===woId)setSelectedWO(prev=>({...prev,sopSteps:prev.sopSteps.map((s,i)=>i!==stepIdx?s:{...s,done:!s.done})}));
-  };
-  const markStatus=(woId,status)=>{
-    if(status==="Complete"){
-      const wo=wos.find(w=>w.id===woId);
-      setCompletionWO(wo);setCompletionForm({notes:"",notifyOperator:true,photoAttached:false});setShowCompletionModal(true);
-      return;
-    }
-    setWos(prev=>prev.map(w=>w.id!==woId?w:{...w,status}));
-    if(selectedWO?.id===woId)setSelectedWO(prev=>({...prev,status}));
-  };
-  const submitCompletion=()=>{
-    if(!completionWO)return;
-    setWos(prev=>prev.map(w=>w.id!==completionWO.id?w:{...w,status:"Complete"}));
-    if(selectedWO?.id===completionWO.id)setSelectedWO(prev=>({...prev,status:"Complete"}));
-    setCompletionSubmitted(prev=>({...prev,[completionWO.id]:completionForm}));
-    setShowCompletionModal(false);setCompletionWO(null);
-  };
-  const submitFollowUp=()=>{setFollowUpSubmitted(prev=>({...prev,[selectedWO?.id]:followUpForm}));setShowFollowUp(false);};
-  const openWOPrep=(wo)=>{setSelectedWO(wo);setActiveTab("woprep");};
-
-  const priorityColor=p=>p==="Critical"?T.negative:p==="High"?T.warning:p==="Medium"?T.info:T.neutral;
-  const woStatusColor=s=>s==="Complete"?T.positive:s==="In Execution"?T.info:s==="Closing Out"?T.warning:s==="Pre-Work"?T.neutral:s==="Not Started"?T.neutral:T.negative;
-  const effColor=r=>r<=1.0?T.positive:r<=1.2?T.warning:T.negative;
-  const completedJobs=wos.filter(w=>w.status==="Complete").length;
-  const inProgressJobs=wos.filter(w=>["Pre-Work","In Execution","Closing Out"].includes(w.status)).length;
-  const totalHrsRemaining=wos.filter(w=>w.status!=="Complete").reduce((a,w)=>a+(w.estimatedHrs-(w.actualHrs||0)),0);
-  const blockedParts=wos.filter(w=>(w.partsKitting||w.partsRequired||[]).some(p=>p.status==="Stock-Out")).length;
-
-  const schedTypeColor=t=>t==="meeting"?T.info:t==="work"?T.primary:t==="handover"?"#673AB7":T.gray400;
-  const schedTypeLabel=t=>t==="meeting"?"Meeting":t==="work"?"Work Block":t==="handover"?"Handover":"Routine";
-
-  const filteredAllWOs=woFilter==="All"?ALL_WOS:ALL_WOS.filter(w=>w.status===woFilter);
-
-  const TABS=[
-    {id:"myday",label:"My Day",built:true},
-    {id:"woprep",label:"WO Prep",built:true},
-    {id:"allwos",label:"All Work Orders",built:true},
-    {id:"subcontractor",label:"Subcontractor WOs",built:true},
-    {id:"spareparts",label:"Spare Parts",built:false},
-  ];
-
-  const TechTab=({tab})=>{
-    const isActive=activeTab===tab.id;
-    return(<button onClick={()=>setActiveTab(tab.id)} style={{display:"flex",alignItems:"center",gap:5,padding:"12px 16px",border:"none",borderBottom:isActive?`2px solid ${T.primary}`:"2px solid transparent",background:"transparent",cursor:"pointer",fontWeight:isActive?800:500,fontSize:12,color:isActive?T.primary:tab.built?T.gray900:T.gray400,whiteSpace:"nowrap"}}>
-      {!tab.built&&<span style={{fontSize:10,opacity:0.7}}>🔒</span>}
-      <span>{tab.label}</span>
-    </button>);
-  };
-
-  const ComingSoonPlaceholder=({title,desc,items})=>(
-    <div style={{padding:"40px 24px",display:"flex",flexDirection:"column",alignItems:"center",gap:16,textAlign:"center"}}>
-      <div style={{fontSize:32}}>🔒</div>
-      <div style={{fontSize:16,fontWeight:800,color:T.black}}>{title}</div>
-      <div style={{fontSize:13,color:T.gray900,maxWidth:500,lineHeight:1.6}}>{desc}</div>
-      <div style={{display:"flex",flexDirection:"column",gap:8,width:"100%",maxWidth:500}}>
-        {items.map((item,i)=><div key={i} style={{background:T.white,borderRadius:4,padding:"12px 16px",textAlign:"left",border:`1px solid ${T.border}`}}>
-          <div style={{fontSize:13,fontWeight:700,color:T.black,marginBottom:3}}>{item.title}</div>
-          <div style={{fontSize:12,color:T.gray900}}>{item.desc}</div>
-        </div>)}
-      </div>
-    </div>
-  );
-
-  const WOCard=({wo,showPrep=true})=>(
-    <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",borderLeft:`4px solid ${priorityColor(wo.priority)}`,padding:"14px 18px"}}>
-      <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}>
-        <span style={{fontSize:13,fontWeight:800,color:T.black}}>{wo.id}</span>
-        <Badge label={wo.priority} color={priorityColor(wo.priority)}/>
-        <Badge label={wo.type} color={wo.type==="Corrective"?T.negative:T.primary}/>
-        <Badge label={wo.status} color={woStatusColor(wo.status)}/>
-      </div>
-      <div style={{fontSize:14,fontWeight:700,color:T.black,marginBottom:2}}>{wo.asset}</div>
-      <div style={{fontSize:12,color:T.gray900,marginBottom:6}}>{wo.location||wo.line} · Est: {wo.estimatedHrs}h{wo.actualHrs>0?` · Actual: ${wo.actualHrs}h`:""} · Due: {wo.dueDate}</div>
-      <div style={{fontSize:12,color:T.gray900,marginBottom:wo.safetyFlags?.length>0||wo.agentNote?8:0}}>{wo.description}</div>
-      {wo.safetyFlags?.length>0&&<div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:6}}>
-        {wo.safetyFlags.slice(0,2).map((f,i)=><span key={i} style={{fontSize:10,color:T.warning,background:T.warning+"15",border:`1px solid ${T.warning}30`,borderRadius:3,padding:"2px 8px"}}>⚠ {f}</span>)}
-      </div>}
-      {wo.partsRequired?.some(p=>p.status==="Stock-Out")||wo.partsKitting?.some(p=>p.status==="Stock-Out")?<div style={{background:"#FEF2F2",border:`1px solid ${T.negative}30`,borderRadius:3,padding:"4px 10px",fontSize:11,color:T.negative,fontWeight:700,marginBottom:6}}>⚠ Part stock-out — job may be blocked. Check WO Prep.</div>:null}
-      {wo.sopSteps?.length>0&&<div style={{marginBottom:8}}>
-        <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:T.gray900,marginBottom:3}}>
-          <span>SOP Progress</span>
-          <span style={{fontWeight:700,color:wo.sopSteps.every(s=>s.done)?T.positive:T.gray900}}>{wo.sopSteps.filter(s=>s.done).length}/{wo.sopSteps.length} steps</span>
-        </div>
-        <div style={{height:5,background:T.border,borderRadius:3}}><div style={{height:5,width:`${(wo.sopSteps.filter(s=>s.done).length/wo.sopSteps.length)*100}%`,background:T.positive,borderRadius:3,transition:"width 0.3s"}}/></div>
-      </div>}
-      {wo.agentNote&&<div style={{background:T.primary+"10",borderLeft:`3px solid ${T.primary}`,borderRadius:3,padding:"6px 10px",fontSize:11,color:T.primary,marginBottom:8}}>🧠 {wo.agentNote}</div>}
-      {showPrep&&<div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:4}}>
-        <button onClick={()=>openWOPrep(wo)} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Open WO Prep →</button>
-        {wo.status==="Not Started"&&<button onClick={()=>markStatus(wo.id,"Pre-Work")} style={{background:"none",border:`1px solid ${T.neutral}`,borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer",color:T.gray900}}>Begin Pre-Work</button>}
-        {wo.status==="Pre-Work"&&<button onClick={()=>markStatus(wo.id,"In Execution")} style={{background:"none",border:`1px solid ${T.primary}`,borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer",color:T.primary}}>Start Execution</button>}
-        {wo.status==="In Execution"&&<button onClick={()=>markStatus(wo.id,"Closing Out")} style={{background:"none",border:`1px solid ${T.warning}`,borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer",color:T.warning}}>Move to Closure</button>}
-        {wo.status==="Closing Out"&&<button onClick={()=>markStatus(wo.id,"Complete")} style={{background:"none",border:`1px solid ${T.positive}`,borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer",color:T.positive}}>Mark Complete</button>}
-        {completionSubmitted[wo.id]&&<Badge label="📷 Completion photo attached" color={T.positive}/>}
-        {!followUpSubmitted[wo.id]&&<button onClick={()=>{setSelectedWO(wo);setShowFollowUp(true);}} style={{background:"none",border:`1px dashed ${T.border}`,borderRadius:4,padding:"7px 12px",fontSize:12,cursor:"pointer",color:T.gray900}}>+ Follow-up WO</button>}
-        {followUpSubmitted[wo.id]&&<Badge label="Follow-up WO raised" color={T.positive}/>}
-      </div>}
-      {showFollowUp&&selectedWO?.id===wo.id&&<div style={{marginTop:12,background:T.gray100,borderRadius:4,padding:"14px 16px",border:`1px solid ${T.border}`}}>
-        <div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:10}}>Raise Follow-up Work Order</div>
-        <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          <input value={followUpForm.asset} onChange={e=>setFollowUpForm(p=>({...p,asset:e.target.value}))} placeholder="Asset / description of work needed..." style={{border:`1px solid ${T.border}`,borderRadius:4,padding:"8px 10px",fontSize:12}}/>
-          <textarea value={followUpForm.description} onChange={e=>setFollowUpForm(p=>({...p,description:e.target.value}))} placeholder="What was found and what needs to be done..." rows={2} style={{border:`1px solid ${T.border}`,borderRadius:4,padding:"8px 10px",fontSize:12,resize:"vertical"}}/>
-          <div style={{display:"flex",gap:8}}>
-            <select value={followUpForm.priority} onChange={e=>setFollowUpForm(p=>({...p,priority:e.target.value}))} style={{flex:1,border:`1px solid ${T.border}`,borderRadius:4,padding:"7px 10px",fontSize:12}}>
-              {["Critical","High","Medium","Low"].map(p=><option key={p}>{p}</option>)}
-            </select>
-            <select value={followUpForm.type} onChange={e=>setFollowUpForm(p=>({...p,type:e.target.value}))} style={{flex:1,border:`1px solid ${T.border}`,borderRadius:4,padding:"7px 10px",fontSize:12}}>
-              {["Corrective","Preventive","Inspection"].map(t=><option key={t}>{t}</option>)}
-            </select>
-          </div>
-          <div style={{display:"flex",gap:8}}>
-            <button onClick={submitFollowUp} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"7px 16px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Submit WO</button>
-            <button onClick={()=>setShowFollowUp(false)} style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"7px 14px",fontSize:12,cursor:"pointer",color:T.gray900}}>Cancel</button>
-          </div>
-        </div>
-      </div>}
-    </div>
-  );
-
-  return(<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
-    {/* Header */}
-    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px 0",flexShrink:0}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12,flexWrap:"wrap",gap:8}}>
-        <div>
-          <div style={{fontSize:18,fontWeight:800,color:T.black}}>Technician Dashboard</div>
-          <div style={{fontSize:12,color:T.gray900,marginTop:2}}>Day Shift · Friday Feb 28, 2026 · Austin Plant</div>
-        </div>
-        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-          {[
-            {label:"WOs Today",value:wos.length,color:T.black},
-            {label:"In Progress",value:inProgressJobs,color:T.info},
-            {label:"Complete",value:completedJobs,color:T.positive},
-            {label:"Hrs Remaining",value:`${Math.max(0,totalHrsRemaining).toFixed(1)}h`,color:T.gray900},
-            {label:"Parts Blocked",value:blockedParts,color:blockedParts>0?T.negative:T.positive},
-          ].map(k=>(
-            <div key={k.label} style={{textAlign:"center",padding:"6px 14px",background:T.gray100,borderRadius:4}}>
-              <div style={{fontSize:16,fontWeight:800,color:k.color}}>{k.value}</div>
-              <div style={{fontSize:10,color:T.gray400}}>{k.label}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div style={{display:"flex",gap:0,overflowX:"auto"}}>
-        {TABS.map(t=><TechTab key={t.id} tab={t}/>)}
-      </div>
-    </div>
-
-    <div style={{flex:1,overflowY:"auto",background:T.gray100}}>
-
-      {/* ── MY DAY ── */}
-      {activeTab==="myday"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:20}}>
-
-        {/* Daily Schedule */}
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
-            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Today's Schedule</div>
-            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Day shift · 06:00 – 16:00 · Feb 28, 2026</div>
-          </div>
-          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:0}}>
-            {TECH_DAILY_SCHEDULE.map((item,i)=>(
-              <div key={i} style={{display:"flex",gap:0,alignItems:"stretch"}}>
-                {/* Time */}
-                <div style={{width:52,flexShrink:0,paddingTop:2}}>
-                  <span style={{fontSize:11,fontWeight:700,color:T.gray400}}>{item.time}</span>
-                </div>
-                {/* Line + dot */}
-                <div style={{width:24,flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center"}}>
-                  <div style={{width:10,height:10,borderRadius:"50%",background:schedTypeColor(item.type),flexShrink:0,marginTop:3}}/>
-                  {i<TECH_DAILY_SCHEDULE.length-1&&<div style={{width:2,flex:1,background:T.border,marginTop:2,marginBottom:0,minHeight:28}}/>}
-                </div>
-                {/* Content */}
-                <div style={{flex:1,paddingBottom:i<TECH_DAILY_SCHEDULE.length-1?16:0,paddingLeft:10}}>
-                  <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:2,flexWrap:"wrap"}}>
-                    <span style={{fontSize:12,fontWeight:700,color:T.black}}>{item.label}</span>
-                    <span style={{background:schedTypeColor(item.type)+"18",color:schedTypeColor(item.type),border:`1px solid ${schedTypeColor(item.type)}40`,borderRadius:3,padding:"1px 7px",fontSize:10,fontWeight:700}}>{schedTypeLabel(item.type)}</span>
-                  </div>
-                  <div style={{fontSize:11,color:T.gray900}}>{item.desc}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* My Work Orders */}
-        <div style={{display:"flex",flexDirection:"column",gap:10}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <div style={{fontSize:13,fontWeight:800,color:T.black}}>My Work Orders</div>
-            <button onClick={()=>setActiveTab("allwos")} style={{fontSize:11,color:T.primary,fontWeight:700,background:"none",border:"none",cursor:"pointer"}}>View all WOs →</button>
-          </div>
-          {wos.map(wo=><WOCard key={wo.id} wo={wo}/>)}
-        </div>
-
-      </div>}
-
-      {/* ── WO PREP ── */}
-      {activeTab==="woprep"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
-        {/* WO selector */}
-        <div style={{background:T.white,borderRadius:4,padding:"12px 16px",boxShadow:"0 1px 3px rgba(0,0,0,0.07)",display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-          <span style={{fontSize:12,fontWeight:700,color:T.gray900}}>Preparing:</span>
-          {wos.filter(w=>w.status!=="Complete").map(w=>(
-            <button key={w.id} onClick={()=>setSelectedWO(w)} style={{padding:"5px 12px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",border:`1px solid ${selectedWO?.id===w.id?T.primary:T.border}`,background:selectedWO?.id===w.id?T.primary:T.white,color:selectedWO?.id===w.id?T.white:T.gray900}}>{w.id} — {w.asset}</button>
-          ))}
-          {!selectedWO&&<span style={{fontSize:11,color:T.gray400}}>Select a job above or click "Open WO Prep" from My Day</span>}
-        </div>
-
-        {selectedWO&&<>
-          {/* WO Header */}
-          <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",borderLeft:`4px solid ${priorityColor(selectedWO.priority)}`,padding:"16px 20px"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap",marginBottom:6}}>
-              <div>
-                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
-                  <span style={{fontSize:14,fontWeight:800,color:T.black}}>{selectedWO.id}</span>
-                  <Badge label={selectedWO.priority} color={priorityColor(selectedWO.priority)}/>
-                  <Badge label={selectedWO.type} color={selectedWO.type==="Corrective"?T.negative:T.primary}/>
-                  <Badge label={selectedWO.status} color={woStatusColor(selectedWO.status)}/>
-                </div>
-                <div style={{fontSize:16,fontWeight:800,color:T.black}}>{selectedWO.asset}</div>
-                <div style={{fontSize:12,color:T.gray900}}>{selectedWO.location} · Est: {selectedWO.estimatedHrs}h · Due: {selectedWO.dueDate}</div>
-              </div>
-              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                {selectedWO.status==="Not Started"&&<button onClick={()=>markStatus(selectedWO.id,"Pre-Work")} style={{background:T.gray400,color:T.white,border:"none",borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Begin Pre-Work</button>}
-                {selectedWO.status==="Pre-Work"&&<button onClick={()=>markStatus(selectedWO.id,"In Execution")} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Start Execution</button>}
-                {selectedWO.status==="In Execution"&&<button onClick={()=>markStatus(selectedWO.id,"Closing Out")} style={{background:T.warning,color:T.white,border:"none",borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Move to Closure</button>}
-                {selectedWO.status==="Closing Out"&&<button onClick={()=>markStatus(selectedWO.id,"Complete")} style={{background:T.positive,color:T.white,border:"none",borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Mark Complete</button>}
-                <button style={{background:"none",border:`1px solid #C7D2FE`,borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,color:"#4F46E5",cursor:"pointer"}}>Open in SAP PM →</button>
-              </div>
-            </div>
-            <div style={{fontSize:12,color:T.gray900}}>{selectedWO.description}</div>
-          </div>
-
-          {/* Safety */}
-          {selectedWO.safetyFlags.length>0&&<div style={{background:"#FFFBEB",border:`1px solid ${T.warning}`,borderRadius:4,padding:"12px 16px"}}>
-            <div style={{fontSize:12,fontWeight:800,color:T.warning,marginBottom:8}}>⚠️ Safety Requirements — Complete Before Starting</div>
-            {selectedWO.safetyFlags.map((f,i)=><div key={i} style={{fontSize:12,color:T.black,marginBottom:4}}>• {f}</div>)}
-          </div>}
-
-          {/* Defect Photo — only on WO-4421 */}
-          {selectedWO.id==="WO-4421"&&<div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",overflow:"hidden"}}>
-            <div style={{padding:"12px 18px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <div style={{fontSize:13,fontWeight:800,color:T.black}}>Defect Photo — Original Issue</div>
-              <span style={{fontSize:11,color:T.gray400}}>Reported by Line 3 Operator · Feb 14, 2026</span>
-            </div>
-            <div style={{padding:"16px 18px",display:"flex",gap:16,flexWrap:"wrap",alignItems:"flex-start"}}>
-              <div style={{position:"relative",flexShrink:0}}>
-                <svg width="280" height="180" viewBox="0 0 280 180" xmlns="http://www.w3.org/2000/svg" style={{borderRadius:4,border:`1px solid ${T.border}`,display:"block"}}>
-                  {/* Machine body */}
-                  <rect width="280" height="180" fill="#2D2D2D"/>
-                  <rect x="20" y="30" width="240" height="120" rx="6" fill="#3D3D3D"/>
-                  {/* Sealing bar */}
-                  <rect x="40" y="70" width="200" height="18" rx="3" fill="#555"/>
-                  <rect x="40" y="92" width="200" height="18" rx="3" fill="#555"/>
-                  {/* Heating elements */}
-                  <rect x="50" y="73" width="30" height="12" rx="2" fill="#888"/>
-                  <rect x="90" y="73" width="30" height="12" rx="2" fill="#888"/>
-                  <rect x="130" y="73" width="30" height="12" rx="2" fill="#CC4400" opacity="0.9"/>
-                  <rect x="170" y="73" width="30" height="12" rx="2" fill="#888"/>
-                  <rect x="210" y="73" width="30" height="12" rx="2" fill="#888"/>
-                  {/* Discolouration on element 3 */}
-                  <rect x="130" y="73" width="30" height="12" rx="2" fill="#FF6600" opacity="0.6"/>
-                  {/* Label */}
-                  <text x="20" y="20" fill="#aaa" fontSize="9" fontFamily="monospace">LINE 3 HEAT SEALER · SN-4421-B</text>
-                  {/* Annotation circle — squiggly highlight */}
-                  <ellipse cx="145" cy="79" rx="28" ry="16" fill="none" stroke="#FF3333" strokeWidth="2.5" strokeDasharray="4 2" opacity="0.9"/>
-                  {/* Arrow */}
-                  <line x1="180" y1="60" x2="162" y2="72" stroke="#FF3333" strokeWidth="2" markerEnd="url(#arr)"/>
-                  <defs><marker id="arr" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#FF3333"/></marker></defs>
-                  {/* Annotation label */}
-                  <rect x="175" y="46" width="88" height="16" rx="3" fill="#FF3333" opacity="0.85"/>
-                  <text x="180" y="57" fill="white" fontSize="9" fontFamily="Arial" fontWeight="bold">Element 3 — discoloured</text>
-                </svg>
-              </div>
-              <div style={{flex:1,minWidth:160}}>
-                <div style={{fontSize:12,fontWeight:700,color:T.black,marginBottom:6}}>Operator Notes</div>
-                <div style={{fontSize:12,color:T.gray900,lineHeight:1.6,marginBottom:10}}>"Sealer bar element 3 showing visible discolouration and inconsistent seal temperature. Seal quality dropping on SKU 3801 bags — rejecting approximately 1 in 8 seals at QC."</div>
-                <div style={{display:"flex",flexDirection:"column",gap:4}}>
-                  <div style={{fontSize:11,color:T.gray400}}>Reported: Feb 14, 2026 · 09:32am</div>
-                  <div style={{fontSize:11,color:T.gray400}}>Reported by: Line 3 Operator (J. Park)</div>
-                  <div style={{fontSize:11,color:T.gray400}}>WO raised: Feb 14, 2026 · Auto-generated by Asset Health Agent</div>
-                </div>
-              </div>
-            </div>
-          </div>}
-
-
-          {/* SOP + Parts + History */}
-          <div style={{display:"flex",gap:16,flexWrap:"wrap",alignItems:"flex-start"}}>
-            {/* Phased SOP Checklist */}
-            <div style={{flex:"2 1 300px",background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-              <div style={{padding:"12px 18px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <div style={{fontSize:13,fontWeight:800,color:T.black}}>SOP Checklist</div>
-                <span style={{fontSize:11,color:T.gray900,fontWeight:600}}>{selectedWO.sopSteps.filter(s=>s.done).length}/{selectedWO.sopSteps.length} complete</span>
-              </div>
-              <div style={{padding:"12px 18px",display:"flex",flexDirection:"column",gap:0}}>
-                {["Pre-Execution","Execution","Post-Execution"].map(phase=>{
-                  const phaseSteps=selectedWO.sopSteps.map((s,i)=>({...s,idx:i})).filter(s=>s.phase===phase);
-                  if(phaseSteps.length===0)return null;
-                  const phaseColor=phase==="Pre-Execution"?T.warning:phase==="Execution"?T.primary:"#673AB7";
-                  const phaseDone=phaseSteps.filter(s=>s.done).length;
-                  return(
-                    <div key={phase} style={{marginBottom:12}}>
-                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
-                        <div style={{width:4,height:36,background:phaseColor,borderRadius:2,flexShrink:0}}/>
-                        <div>
-                          <div style={{fontSize:11,fontWeight:800,color:phaseColor,textTransform:"uppercase",letterSpacing:"0.05em"}}>{phase}</div>
-                          <div style={{fontSize:10,color:T.gray400}}>{phaseDone}/{phaseSteps.length} complete</div>
-                        </div>
-                      </div>
-                      <div style={{display:"flex",flexDirection:"column",gap:5,paddingLeft:12}}>
-                        {phaseSteps.map((s)=>(
-                          <div key={s.idx} onClick={()=>toggleStep(selectedWO.id,s.idx)} style={{display:"flex",gap:10,alignItems:"flex-start",padding:"8px 10px",borderRadius:4,background:s.done?T.positive+"10":T.gray100,cursor:"pointer",border:`1px solid ${s.done?T.positive+"30":T.border}`}}>
-                            <div style={{width:18,height:18,borderRadius:3,border:`2px solid ${s.done?T.positive:T.gray400}`,background:s.done?T.positive:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>
-                              {s.done&&<span style={{fontSize:10,color:T.white,fontWeight:800}}>✓</span>}
-                            </div>
-                            <span style={{fontSize:12,color:s.done?T.gray400:T.black,textDecoration:s.done?"line-through":"none",lineHeight:1.5}}>{s.step}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div style={{flex:"1 1 220px",display:"flex",flexDirection:"column",gap:12}}>
-              {/* Parts Kitting */}
-              <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-                <div style={{padding:"12px 18px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>Parts Kitting</div></div>
-                <div style={{padding:"12px 18px",display:"flex",flexDirection:"column",gap:8}}>
-                  {(selectedWO.partsKitting||selectedWO.partsRequired||[]).map((p,i)=>(
-                    <div key={i} style={{padding:"8px 10px",background:T.gray100,borderRadius:4,borderLeft:`3px solid ${p.status==="In Stock"?T.positive:p.status==="In Transit"?T.info:T.negative}`}}>
-                      <div style={{fontSize:12,fontWeight:700,color:T.black}}>{p.part}</div>
-                      <div style={{fontSize:10,color:T.gray400,marginBottom:4}}>{p.partNo} · Qty: {p.qty}</div>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                        <Badge label={p.status} color={p.status==="In Stock"?T.positive:p.status==="In Transit"?T.info:p.status==="Low Stock"?T.warning:T.negative}/>
-                        {p.eta&&<span style={{fontSize:10,color:T.gray900}}>ETA: {p.eta}</span>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Tool Kitting */}
-              {selectedWO.toolKitting&&<div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-                <div style={{padding:"12px 18px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>Tool Kitting</div></div>
-                <div style={{padding:"12px 18px",display:"flex",flexDirection:"column",gap:6}}>
-                  {selectedWO.toolKitting.map((t,i)=>(
-                    <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 10px",background:T.gray100,borderRadius:4,borderLeft:`3px solid ${t.available?T.positive:T.negative}`}}>
-                      <span style={{fontSize:12,color:T.black}}>{t.tool}</span>
-                      <Badge label={t.available?"Available":"Not Available"} color={t.available?T.positive:T.negative}/>
-                    </div>
-                  ))}
-                </div>
-              </div>}
-
-              {/* Asset History */}
-              <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-                <div style={{padding:"12px 18px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>Asset History</div></div>
-                <div style={{padding:"12px 18px",display:"flex",flexDirection:"column",gap:6}}>
-                  {[["Last PM",selectedWO.assetHistory.lastPM],["Last Failure",selectedWO.assetHistory.lastFailure],["Open Issues",selectedWO.assetHistory.openIssues],["Health Score",`${selectedWO.assetHistory.healthScore}/100`],["MTBF",selectedWO.assetHistory.mtbf]].map(([lbl,val])=>(
-                    <div key={lbl} style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",fontSize:11,gap:8}}>
-                      <span style={{color:T.gray400,flexShrink:0}}>{lbl}</span>
-                      <span style={{color:T.black,fontWeight:600,textAlign:"right"}}>{val}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {selectedWO.agentNote&&<div style={{background:T.primary+"10",border:`1px solid ${T.primary}30`,borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"12px 16px"}}>
-            <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>🧠 Maintenance Planning Agent — Pre-Job Note</div>
-            <div style={{fontSize:12,color:T.black}}>{selectedWO.agentNote}</div>
-          </div>}
-
-          {!followUpSubmitted[selectedWO.id]&&!showFollowUp&&<button onClick={()=>setShowFollowUp(true)} style={{background:"none",border:`1px dashed ${T.border}`,borderRadius:4,padding:"10px 16px",fontSize:12,fontWeight:600,color:T.gray900,cursor:"pointer",textAlign:"left"}}>+ Raise Follow-up Work Order</button>}
-          {showFollowUp&&!followUpSubmitted[selectedWO.id]&&<div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",padding:"16px 20px"}}>
-            <div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:12}}>Raise Follow-up Work Order</div>
-            <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              <input value={followUpForm.asset} onChange={e=>setFollowUpForm(p=>({...p,asset:e.target.value}))} placeholder="Asset / description of work needed..." style={{border:`1px solid ${T.border}`,borderRadius:4,padding:"8px 10px",fontSize:12}}/>
-              <textarea value={followUpForm.description} onChange={e=>setFollowUpForm(p=>({...p,description:e.target.value}))} placeholder="What was found and what needs to be done..." rows={3} style={{border:`1px solid ${T.border}`,borderRadius:4,padding:"8px 10px",fontSize:12,resize:"vertical"}}/>
-              <div style={{display:"flex",gap:8}}>
-                <select value={followUpForm.priority} onChange={e=>setFollowUpForm(p=>({...p,priority:e.target.value}))} style={{flex:1,border:`1px solid ${T.border}`,borderRadius:4,padding:"7px 10px",fontSize:12}}>
-                  {["Critical","High","Medium","Low"].map(p=><option key={p}>{p}</option>)}
-                </select>
-                <select value={followUpForm.type} onChange={e=>setFollowUpForm(p=>({...p,type:e.target.value}))} style={{flex:1,border:`1px solid ${T.border}`,borderRadius:4,padding:"7px 10px",fontSize:12}}>
-                  {["Corrective","Preventive","Inspection"].map(t=><option key={t}>{t}</option>)}
-                </select>
-              </div>
-              <div style={{display:"flex",gap:8}}>
-                <button onClick={submitFollowUp} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"8px 18px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Submit WO</button>
-                <button onClick={()=>setShowFollowUp(false)} style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"8px 16px",fontSize:12,cursor:"pointer",color:T.gray900}}>Cancel</button>
-              </div>
-            </div>
-          </div>}
-          {followUpSubmitted[selectedWO.id]&&<div style={{background:"#F0FDF4",border:`1px solid ${T.positive}`,borderRadius:4,padding:"12px 16px"}}>
-            <div style={{fontSize:12,fontWeight:800,color:T.positive,marginBottom:4}}>Follow-up WO Raised</div>
-            <div style={{fontSize:12,color:T.black}}>{followUpSubmitted[selectedWO.id].asset} — {followUpSubmitted[selectedWO.id].description}</div>
-          </div>}
-        </>}
-      </div>}
-
-      {/* ── ALL WORK ORDERS ── */}
-      {activeTab==="allwos"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
-            <div>
-              <div style={{fontSize:13,fontWeight:800,color:T.black}}>All Work Orders</div>
-              <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Your full WO history — current and completed · {ALL_WOS.length} total</div>
-            </div>
-            <div style={{display:"flex",gap:4}}>
-              {["All","In Progress","Not Started","Complete"].map(f=>(
-                <button key={f} onClick={()=>setWoFilter(f)} style={{padding:"4px 10px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",border:`1px solid ${woFilter===f?T.primary:T.border}`,background:woFilter===f?T.primary:T.white,color:woFilter===f?T.white:T.gray900}}>{f}</button>
-              ))}
-            </div>
-          </div>
-          <div style={{overflowX:"auto"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-              <thead><tr style={{background:T.gray100}}>
-                {["WO","Asset","Line","Type","Priority","Status","Assigned","Est. Hrs","Actual Hrs","Due Date","Description",""].map(h=>(
-                  <th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>
-                ))}
-              </tr></thead>
-              <tbody>{filteredAllWOs.map((wo,i)=>{
-                const effRatio=wo.estHrs&&wo.actualHrs>0?wo.actualHrs/wo.estHrs:null;
-                return(<tr key={wo.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
-                  <td style={{padding:"9px 14px",fontWeight:700,color:T.black,whiteSpace:"nowrap"}}>{wo.id}</td>
-                  <td style={{padding:"9px 14px",fontWeight:600,color:T.black,whiteSpace:"nowrap"}}>{wo.asset}</td>
-                  <td style={{padding:"9px 14px",color:T.gray900}}>{wo.line}</td>
-                  <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}><Badge label={wo.type} color={wo.type==="Corrective"?T.negative:T.primary}/></td>
-                  <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}><Badge label={wo.priority} color={priorityColor(wo.priority)}/></td>
-                  <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}><Badge label={wo.status} color={woStatusColor(wo.status)}/></td>
-                  <td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{wo.assignedTo}</td>
-                  <td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{wo.estHrs?`${wo.estHrs}h`:"—"}</td>
-                  <td style={{padding:"9px 14px",whiteSpace:"nowrap",fontWeight:effRatio?700:400,color:effRatio?effColor(effRatio):T.gray400}}>{wo.actualHrs>0?`${wo.actualHrs}h`:"—"}{effRatio&&<span style={{fontSize:10,marginLeft:4,color:effColor(effRatio)}}>({effRatio.toFixed(1)}x)</span>}</td>
-                  <td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{wo.dueDate}</td>
-                  <td style={{padding:"9px 14px",color:T.gray900,maxWidth:180}}>{wo.description}</td>
-                  <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}><button style={{background:"none",border:`1px solid #C7D2FE`,borderRadius:3,padding:"3px 8px",fontSize:10,fontWeight:700,color:"#4F46E5",cursor:"pointer"}}>Open in SAP PM →</button></td>
-                </tr>);
-              })}</tbody>
-            </table>
-          </div>
-        </div>
-      </div>}
-
-      {/* ── SUBCONTRACTOR WOs ── */}
-      {activeTab==="subcontractor"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
-            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Subcontractor Work Orders</div>
-            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>External contractor work on site — separate handling, permits, and sign-off required · {TECH_SUB_WOS.length} active</div>
-          </div>
-          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:10}}>
-            {TECH_SUB_WOS.map(wo=>(
-              <div key={wo.id} style={{background:T.gray100,borderRadius:4,borderLeft:`4px solid ${T.neutral}`,padding:"14px 16px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap",marginBottom:8}}>
-                  <div style={{flex:1}}>
-                    <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}>
-                      <span style={{fontSize:13,fontWeight:800,color:T.black}}>{wo.id}</span>
-                      <Badge label="Subcontractor" color={T.neutral}/>
-                      <Badge label={wo.status} color={woStatusColor(wo.status)}/>
-                      <Badge label={wo.priority} color={priorityColor(wo.priority)}/>
-                    </div>
-                    <div style={{fontSize:14,fontWeight:700,color:T.black,marginBottom:4}}>{wo.asset}</div>
-                    <div style={{fontSize:12,color:T.gray900,marginBottom:6}}>{wo.description}</div>
-                    <div style={{display:"flex",gap:16,flexWrap:"wrap",fontSize:12,color:T.gray900}}>
-                      <span>🏢 <strong>Contractor:</strong> {wo.contractor}</span>
-                      <span>📅 <strong>On-site:</strong> {wo.onSiteDate}</span>
-                      <span>👤 <strong>Supervisor:</strong> {wo.supervisor}</span>
-                      <span>📋 <strong>Permit:</strong> {wo.permitNo}</span>
-                    </div>
-                  </div>
-                </div>
-                <div style={{background:T.white,borderRadius:4,border:`1px solid ${T.border}`,padding:"10px 14px",marginBottom:10}}>
-                  <div style={{fontSize:11,fontWeight:700,color:T.gray900,marginBottom:6,textTransform:"uppercase",letterSpacing:"0.04em"}}>Checklist</div>
-                  <div style={{display:"flex",flexDirection:"column",gap:4}}>
-                    {[
-                      {label:"Permit to Work issued and signed",done:wo.status!=="Not Started"},
-                      {label:"Contractor induction completed",done:wo.status!=="Not Started"},
-                      {label:"Site access badge issued",done:wo.status!=="Not Started"},
-                      {label:"Work completed and inspected",done:wo.status==="Complete"},
-                      {label:"Formal sign-off and WO closure",done:wo.status==="Complete"},
-                    ].map((item,i)=>(
-                      <div key={i} style={{display:"flex",gap:8,alignItems:"center",fontSize:12}}>
-                        <div style={{width:16,height:16,borderRadius:3,border:`2px solid ${item.done?T.positive:T.gray400}`,background:item.done?T.positive:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                          {item.done&&<span style={{fontSize:9,color:T.white,fontWeight:800}}>✓</span>}
-                        </div>
-                        <span style={{color:item.done?T.gray400:T.black,textDecoration:item.done?"line-through":"none"}}>{item.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                  <button style={{background:"none",border:`1px solid #C7D2FE`,borderRadius:4,padding:"6px 12px",fontSize:11,fontWeight:700,color:"#4F46E5",cursor:"pointer"}}>Open in SAP PM →</button>
-                  {wo.status==="In Progress"&&<button style={{background:T.positive,color:T.white,border:"none",borderRadius:4,padding:"6px 12px",fontSize:11,fontWeight:700,cursor:"pointer"}}>Sign Off & Close WO</button>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>}
-
-      {/* ── SPARE PARTS ── */}
-      {activeTab==="spareparts"&&<ComingSoonPlaceholder
-        title="Spare Parts"
-        desc="Real-time parts availability from your ERP. Raise a PO directly from a WO, get notified when parts arrive, and see full stock history — without leaving the dashboard."
-        items={[
-          {title:"Live stock levels from ERP",desc:"Parts availability updated in real time — no more checking a separate system."},
-          {title:"Raise PO directly from a WO",desc:"If a part is out of stock, raise an emergency or standard PO in one click."},
-          {title:"Parts arrival notifications",desc:"Get notified when a part you need arrives so you can reschedule the WO immediately."},
-          {title:"Parts usage history per asset",desc:"See what parts have been used on each asset over time."},
-        ]}
-      />}
-
-    </div>
-
-    {/* ── COMPLETION MODAL ── */}
-    {showCompletionModal&&completionWO&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-      <div style={{background:T.white,borderRadius:6,width:"100%",maxWidth:520,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.3)",overflow:"hidden"}}>
-        <div style={{background:T.positive,padding:"14px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div>
-            <div style={{fontSize:11,fontWeight:700,color:"#ffffff99",marginBottom:2}}>MARK COMPLETE · {completionWO.id}</div>
-            <div style={{fontSize:15,fontWeight:800,color:T.white}}>{completionWO.asset}</div>
-          </div>
-          <button onClick={()=>setShowCompletionModal(false)} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:4,padding:"6px 12px",color:T.white,cursor:"pointer",fontWeight:700,fontSize:12}}>✕</button>
-        </div>
-        <div style={{padding:"20px",display:"flex",flexDirection:"column",gap:14}}>
-          {/* Completion photo */}
-          <div>
-            <div style={{fontSize:12,fontWeight:700,color:T.black,marginBottom:8}}>Completion Photo</div>
-            {!completionForm.photoAttached
-              ?<div onClick={()=>setCompletionForm(p=>({...p,photoAttached:true}))} style={{border:`2px dashed ${T.border}`,borderRadius:4,padding:"24px",textAlign:"center",cursor:"pointer",background:T.gray100}}>
-                <div style={{fontSize:28,marginBottom:6}}>📷</div>
-                <div style={{fontSize:12,fontWeight:700,color:T.gray900}}>Tap to attach completion photo</div>
-                <div style={{fontSize:11,color:T.gray400,marginTop:2}}>Shows proof of repair for operator and supervisor</div>
-              </div>
-              :<div style={{position:"relative",borderRadius:4,overflow:"hidden",border:`2px solid ${T.positive}`}}>
-                <svg width="100%" height="150" viewBox="0 0 480 150" xmlns="http://www.w3.org/2000/svg">
-                  <rect width="480" height="150" fill="#1A2A1A"/>
-                  <rect x="20" y="20" width="440" height="110" rx="6" fill="#2A3A2A"/>
-                  <rect x="40" y="50" width="400" height="18" rx="3" fill="#4A6A4A"/>
-                  <rect x="40" y="72" width="400" height="18" rx="3" fill="#4A6A4A"/>
-                  <rect x="50" y="53" width="30" height="12" rx="2" fill="#6A9A6A"/>
-                  <rect x="90" y="53" width="30" height="12" rx="2" fill="#6A9A6A"/>
-                  <rect x="130" y="53" width="30" height="12" rx="2" fill="#6A9A6A"/>
-                  <rect x="170" y="53" width="30" height="12" rx="2" fill="#6A9A6A"/>
-                  <rect x="210" y="53" width="30" height="12" rx="2" fill="#6A9A6A"/>
-                  <text x="20" y="14" fill="#6A9A6A" fontSize="9" fontFamily="monospace">LINE 3 HEAT SEALER · SN-4421-B · REPAIR COMPLETE</text>
-                  <text x="240" y="138" fill="#44BB44" fontSize="10" fontFamily="Arial" fontWeight="bold" textAnchor="middle">✓ Element 3 replaced — sealer restored, test seals passed QC</text>
-                </svg>
-                <div style={{position:"absolute",top:8,right:8,background:T.positive,borderRadius:3,padding:"2px 8px",fontSize:10,fontWeight:800,color:T.white}}>✓ Photo attached</div>
-              </div>
-            }
-          </div>
-          {/* Notes */}
-          <div>
-            <div style={{fontSize:12,fontWeight:700,color:T.black,marginBottom:6}}>Completion Notes</div>
-            <textarea value={completionForm.notes} onChange={e=>setCompletionForm(p=>({...p,notes:e.target.value}))} placeholder="What was done and how was it fixed? Any observations for future reference..." rows={3} style={{width:"100%",border:`1px solid ${T.border}`,borderRadius:4,padding:"8px 10px",fontSize:12,boxSizing:"border-box",resize:"vertical"}}/>
-          </div>
-          {/* Notify operator */}
-          <div onClick={()=>setCompletionForm(p=>({...p,notifyOperator:!p.notifyOperator}))} style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",padding:"10px 14px",background:completionForm.notifyOperator?T.positive+"12":T.gray100,border:`1px solid ${completionForm.notifyOperator?T.positive:T.border}`,borderRadius:4}}>
-            <div style={{width:20,height:20,borderRadius:4,border:`2px solid ${completionForm.notifyOperator?T.positive:T.gray400}`,background:completionForm.notifyOperator?T.positive:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-              {completionForm.notifyOperator&&<span style={{fontSize:11,color:T.white,fontWeight:800}}>✓</span>}
-            </div>
-            <div>
-              <div style={{fontSize:12,fontWeight:700,color:T.black}}>Notify Line Operator & Supervisor</div>
-              <div style={{fontSize:11,color:T.gray900}}>Sends completion summary and photo — closes the loop with the team</div>
-            </div>
-          </div>
-          {/* Actions */}
-          <div style={{display:"flex",gap:8}}>
-            <button onClick={submitCompletion} style={{flex:1,background:T.positive,color:T.white,border:"none",borderRadius:4,padding:"10px",fontSize:13,fontWeight:700,cursor:"pointer"}}>Mark Complete & Close WO</button>
-            <button onClick={()=>setShowCompletionModal(false)} style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"10px 16px",fontSize:12,cursor:"pointer",color:T.gray900}}>Cancel</button>
-          </div>
-        </div>
-      </div>
-    </div>}
-
-  </div>);
-}
-
-
-// ── SHUTDOWN DASHBOARD DATA ───────────────────────────────────────────────────
-const SHUTDOWN = {
-  name:"Line 3 Annual Shutdown",
-  asset:"Line 3 — Full Line",
-  dates:"Mar 14–16, 2026",
-  daysOut:14,
-  duration:"2.5 days",
-  status:"Planning",
-  budget:142000,
-  budgetSpent:18400,
-  jobsTotal:6,
-  jobsReady:3,
-  partsReadiness:72,
-  contractorsConfirmed:2,
-  contractorsPending:1,
-};
-
-const SHUTDOWN_JOBS = [
-  {id:"SJ-001",title:"Heat Sealer — Element Replacement & Jaw Rebuild",type:"Corrective",priority:"Critical",assignedTo:"Carlos Rivera",contractor:null,estDays:0.5,minHrs:4,maxHrs:4,certainty:"High",status:"Ready",partsReady:true,toolsReady:true,prereqs:[],blockedBy:[],day:1,startHr:8,color:"#D64454",note:"Triggered by Feb 28 degradation signal. Parts confirmed in stock."},
-  {id:"SJ-002",title:"Conveyor Drivetrain Overhaul",type:"Preventive",priority:"High",assignedTo:"Marcus Webb",contractor:null,estDays:1,minHrs:7,maxHrs:9,certainty:"Medium",status:"Ready",partsReady:true,toolsReady:true,prereqs:["SJ-001"],blockedBy:[],day:1,startHr:13,color:"#1565C0",note:"Can begin once sealer work complete. Belt tension tools confirmed."},
-  {id:"SJ-003",title:"Filler Head Replacement — 5-Year Lifecycle",type:"Preventive",priority:"High",assignedTo:"Priya Singh",contractor:null,estDays:0.75,minHrs:5,maxHrs:6,certainty:"High",status:"Ready",partsReady:true,toolsReady:false,prereqs:[],blockedBy:["SJ-004"],day:1,startHr:8,color:"#1565C0",note:"Filler head confirmed in stock. Awaiting calibration tools from supplier."},
-  {id:"SJ-004",title:"Electrical Panel Rewire — Zone B",type:"Corrective",priority:"High",assignedTo:null,contractor:"PowerGrid Services",estDays:1,minHrs:8,maxHrs:10,certainty:"Medium",status:"Contractor Pending",partsReady:true,toolsReady:true,prereqs:[],blockedBy:[],day:1,startHr:8,color:"#673AB7",note:"PowerGrid Services confirmed on-site Mar 14. 10-hr minimum shift. LOTO coordination required with internal team."},
-  {id:"SJ-005",title:"Structural Weld Inspection & Repair",type:"Inspection",priority:"Medium",assignedTo:null,contractor:"SteelWeld Specialists",estDays:null,minHrs:4,maxHrs:16,certainty:"Low",status:"Scope Uncertain",partsReady:false,toolsReady:true,prereqs:["SJ-004"],blockedBy:[],day:2,startHr:8,color:"#E65100",note:"Cannot diagnose until line is open. Best case: 4hrs (welds clean). Worst case: 16hrs (cracks found, full re-weld required). Schedule holds buffer."},
-  {id:"SJ-006",title:"Cooling System Recharge — Apex Refrigeration",type:"Preventive",priority:"Medium",assignedTo:null,contractor:"Apex Refrigeration",estDays:0.25,minHrs:2,maxHrs:2,certainty:"High",status:"Ready",partsReady:true,toolsReady:true,prereqs:[],blockedBy:[],day:3,startHr:8,color:"#197A56",note:"Apex on-site from subcontractor WO. 2hr job, can run in parallel with closure activities."},
-];
-
-const SHUTDOWN_PARTS = [
-  {part:"Sealer Heating Element",partNo:"SE-441",job:"SJ-001",qty:2,leadWeeks:1,status:"In Stock",supplier:"ThermoTech",cost:340,eta:null},
-  {part:"Sealer Jaw Assembly",partNo:"SJ-204",job:"SJ-001",qty:1,leadWeeks:3,status:"In Stock",supplier:"ThermoTech",cost:1200,eta:null},
-  {part:"Conveyor Drive Belt (HD)",partNo:"CB-880",job:"SJ-002",qty:1,leadWeeks:2,status:"In Stock",supplier:"BeltCo",cost:420,eta:null},
-  {part:"Drive Sprocket Set",partNo:"DS-112",job:"SJ-002",qty:1,leadWeeks:4,status:"In Stock",supplier:"BeltCo",cost:780,eta:null},
-  {part:"Filler Head Assembly (5yr)",partNo:"FH-500",job:"SJ-003",qty:1,leadWeeks:8,status:"In Stock",supplier:"FillerTech",cost:8400,eta:null},
-  {part:"Filler Calibration Kit",partNo:"FK-022",job:"SJ-003",qty:1,leadWeeks:2,status:"On Order",supplier:"FillerTech",cost:240,eta:"Mar 7"},
-  {part:"Electrical Cable Bundle (Zone B)",partNo:"EC-440",job:"SJ-004",qty:1,leadWeeks:1,status:"In Stock",supplier:"ElecSupply",cost:1100,eta:null},
-  {part:"Circuit Breaker Set",partNo:"CB-220",job:"SJ-004",qty:6,leadWeeks:2,status:"In Stock",supplier:"ElecSupply",cost:900,eta:null},
-  {part:"Weld Rod Set (structural)",partNo:"WR-S80",job:"SJ-005",qty:null,leadWeeks:1,status:"Conditional",supplier:"SteelWeld",cost:null,eta:"On-site with contractor — quantity TBD post-diagnosis"},
-  {part:"Refrigerant R-404A",partNo:"REF-404",job:"SJ-006",qty:1,leadWeeks:0,status:"In Stock",supplier:"Apex Refrigeration",cost:380,eta:null},
-];
-
-const SHUTDOWN_CONTRACTORS = [
-  {name:"PowerGrid Services",job:"SJ-004",role:"Electrical Rewire Specialists",minShift:10,onSiteDate:"Mar 14",headcount:3,dayRate:2800,status:"Confirmed",contact:"Dave Kowalczyk",notes:"10-hr minimum shift. Coordinate LOTO handover with Carlos Rivera."},
-  {name:"SteelWeld Specialists",job:"SJ-005",role:"Structural Welding & NDT",minShift:8,onSiteDate:"Mar 15",headcount:2,dayRate:3200,status:"Confirmed",contact:"Maria Santos",notes:"Scope TBD on-site. Bring full NDT kit. Best/worst case 4-16hrs — budget for worst case."},
-  {name:"Apex Refrigeration",job:"SJ-006",role:"Refrigerant Recharge",minShift:4,onSiteDate:"Mar 16",headcount:1,dayRate:1400,status:"Pending Confirmation",contact:"James Okafor (on-site supervisor)",notes:"Already on subcontractor WO list. Confirm arrival time by Mar 10."},
-];
-
-const SHUTDOWN_INTERNAL = [
-  {name:"Carlos Rivera",role:"Senior Technician",jobs:["SJ-001"],hoursAllocated:4,certified:["Heat Sealer","Electrical","Filler","Conveyor"]},
-  {name:"Marcus Webb",role:"Technician",jobs:["SJ-002"],hoursAllocated:9,certified:["Conveyor","Heat Tunnel","Packaging"]},
-  {name:"Priya Singh",role:"Technician",jobs:["SJ-003"],hoursAllocated:6,certified:["Filler","Conveyor"]},
-];
-
-// ── SHUTDOWN DASHBOARD ────────────────────────────────────────────────────────
-function ShutdownDashboard(){
-  const [activeTab,setActiveTab]=useState("planning");
-  const [scheduleView,setScheduleView]=useState("optimistic");
-  const [selectedLine,setSelectedLine]=useState("Line 3");
-  const lineHasData=selectedLine==="Line 3";
-
-  const TABS=[
-    {id:"planning",label:"Planning & Prep"},
-    {id:"schedule",label:"Schedule"},
-    {id:"workforce",label:"Workforce"},
-    {id:"execution",label:"Execution"},
-  ];
-
-  const SDTab=({tab})=>{
-    const isActive=activeTab===tab.id;
-    return(<button onClick={()=>setActiveTab(tab.id)} style={{display:"flex",alignItems:"center",gap:5,padding:"12px 16px",border:"none",borderBottom:isActive?`2px solid ${T.primary}`:"2px solid transparent",background:"transparent",cursor:"pointer",fontWeight:isActive?800:500,fontSize:12,color:isActive?T.primary:T.gray900,whiteSpace:"nowrap"}}>{tab.label}</button>);
-  };
-
-  const partStatusColor=s=>s==="In Stock"?T.positive:s==="On Order"?T.info:s==="Conditional"?T.warning:T.negative;
-  const jobStatusColor=s=>s==="Ready"?T.positive:s==="Contractor Pending"?T.warning:s==="Scope Uncertain"?T.warning:T.neutral;
-  const certaintyColor=c=>c==="High"?T.positive:c==="Medium"?T.warning:T.negative;
-
-  // Schedule Gantt data
-  const DAY_LABELS=["Day 1 — Mar 14","Day 2 — Mar 15","Day 3 — Mar 16"];
-  const HOURS_PER_DAY=10; // 8am-6pm
-  const totalCols=DAY_LABELS.length*HOURS_PER_DAY;
-  const jobToCol=(day,startHr,hrs)=>{
-    const dayOffset=(day-1)*HOURS_PER_DAY;
-    const hrOffset=startHr-8;
-    return{left:(dayOffset+hrOffset)/totalCols*100,width:hrs/totalCols*100};
-  };
-
-  // Build schedule positions
-  const schedJobs=SHUTDOWN_JOBS.map(j=>{
-    const hrs=scheduleView==="optimistic"?j.minHrs:j.maxHrs;
-    return{...j,hrs,pos:jobToCol(j.day,j.startHr,hrs)};
-  });
-
-  // Adjust SJ-005 on pessimistic
-  const sj005=schedJobs.find(j=>j.id==="SJ-005");
-  // SJ-002 prereqs SJ-001, recalc start
-  const sj001=schedJobs.find(j=>j.id==="SJ-001");
-  const sj002=schedJobs.find(j=>j.id==="SJ-002");
-  if(sj001&&sj002){
-    const sj001End=(1-1)*HOURS_PER_DAY+(sj001.startHr-8)+sj001.hrs;
-    const sj002Start=sj001End;
-    sj002.pos=jobToCol(1,8+sj002Start,sj002.hrs);
-  }
-
-  const totalBudget=SHUTDOWN_CONTRACTORS.reduce((a,c)=>a+c.dayRate*2.5,0)+SHUTDOWN_PARTS.reduce((a,p)=>a+(p.cost||0),0)+42000;
-
-  return(<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
-    {/* Header */}
-    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px 0",flexShrink:0}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12,flexWrap:"wrap",gap:8}}>
-        <div>
-          <div style={{fontSize:18,fontWeight:800,color:T.black}}>Shutdown Management</div>
-          <div style={{fontSize:12,color:T.gray900,marginTop:2}}>{lineHasData?`${SHUTDOWN.name} - ${SHUTDOWN.dates} - ${SHUTDOWN.duration} - ${SHUTDOWN.daysOut} days out`:`${selectedLine} - No active shutdown scheduled`}</div>
-        </div>
-        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-          <div style={{display:"flex",gap:4}}>
-            {["Line 1","Line 2","Line 3"].map(l=>(
-              <button key={l} onClick={()=>setSelectedLine(l)} style={{padding:"6px 14px",borderRadius:4,fontSize:12,fontWeight:700,cursor:"pointer",border:`1px solid ${selectedLine===l?T.primary:T.border}`,background:selectedLine===l?T.primary:T.white,color:selectedLine===l?T.white:T.gray900}}>{l}</button>
-            ))}
-          </div>
-          {lineHasData&&<div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-            {[
-              {label:"Jobs",value:`${SHUTDOWN.jobsReady}/${SHUTDOWN.jobsTotal} Ready`,color:SHUTDOWN.jobsReady===SHUTDOWN.jobsTotal?T.positive:T.warning},
-              {label:"Parts Readiness",value:`${SHUTDOWN.partsReadiness}%`,color:SHUTDOWN.partsReadiness>=90?T.positive:T.warning},
-              {label:"Contractors",value:`${SHUTDOWN.contractorsConfirmed}/${SHUTDOWN.contractorsConfirmed+SHUTDOWN.contractorsPending} Confirmed`,color:SHUTDOWN.contractorsPending>0?T.warning:T.positive},
-              {label:"Budget Est.",value:`$${(totalBudget/1000).toFixed(0)}k`,color:T.black},
-            ].map(k=>(
-              <div key={k.label} style={{textAlign:"center",padding:"6px 14px",background:T.gray100,borderRadius:4}}>
-                <div style={{fontSize:15,fontWeight:800,color:k.color}}>{k.value}</div>
-                <div style={{fontSize:10,color:T.gray400}}>{k.label}</div>
-              </div>
-            ))}
-          </div>}
-        </div>
-      </div>
-      <div style={{display:"flex",gap:0,overflowX:"auto"}}>
-        {TABS.map(t=><SDTab key={t.id} tab={t}/>)}
-      </div>
-    </div>
-
-    <div style={{flex:1,overflowY:"auto",background:T.gray100}}>
-      {!lineHasData?(<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"60vh",gap:12}}>
-        <div style={{fontSize:32}}>◈</div>
-        <div style={{fontSize:15,fontWeight:800,color:T.black}}>{selectedLine} — No Active Shutdown Scheduled</div>
-        <div style={{fontSize:13,color:T.gray900}}>No shutdown is currently planned for {selectedLine}. Select Line 3 to view the active shutdown.</div>
-        <div style={{background:T.primary+"12",border:`1px solid ${T.primary}30`,borderRadius:4,padding:"10px 20px",fontSize:12,color:T.primary,fontWeight:600}}>Line 3 Annual Shutdown - Mar 14-16, 2026 - 14 days out</div>
-      </div>):(<>
-
-      {/* ── PLANNING & PREP ── */}
-      {activeTab==="planning"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
-
-        {/* Agent banner */}
-        <div style={{background:T.primary+"10",border:`1px solid ${T.primary}30`,borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"12px 16px"}}>
-          <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>🧠 Shutdown Planning Agent — {SHUTDOWN.daysOut} Days to Shutdown</div>
-          <div style={{fontSize:12,color:T.black,marginBottom:8}}>3 of 6 jobs are fully ready. 2 items require action before Mar 10: Filler Calibration Kit delivery confirmation and Apex Refrigeration on-site confirmation. SJ-005 scope remains uncertain until Day 2 diagnosis — schedule holds 16-hr buffer.</div>
-          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-            <Badge label="⚠ Apex confirmation needed by Mar 10" color={T.warning}/>
-            <Badge label="⚠ Filler Calibration Kit ETA Mar 7" color={T.warning}/>
-            <Badge label="⚠ SJ-005 scope uncertain" color={T.warning}/>
-          </div>
-        </div>
-
-        {/* Jobs readiness */}
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
-            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Shutdown Scope — Job Readiness</div>
-            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>6 jobs · {SHUTDOWN.duration} · Parts and tools status per job</div>
-          </div>
-          <div style={{overflowX:"auto"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-              <thead><tr style={{background:T.gray100}}>
-                {["Job","Title","Assigned To","Est. Duration","Certainty","Parts","Tools","Status","Pre-Reqs"].map(h=>(
-                  <th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>
-                ))}
-              </tr></thead>
-              <tbody>{SHUTDOWN_JOBS.map((j,i)=>(
-                <tr key={j.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
-                  <td style={{padding:"9px 14px",fontWeight:800,color:T.black,whiteSpace:"nowrap"}}><span style={{color:j.color}}>●</span> {j.id}</td>
-                  <td style={{padding:"9px 14px",fontWeight:600,color:T.black,maxWidth:220}}>{j.title}</td>
-                  <td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{j.assignedTo||<span style={{color:T.warning,fontWeight:700}}>{j.contractor}</span>}</td>
-                  <td style={{padding:"9px 14px",whiteSpace:"nowrap",color:T.gray900}}>{j.minHrs===j.maxHrs?`${j.minHrs}h`:`${j.minHrs}–${j.maxHrs}h`}</td>
-                  <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}><Badge label={j.certainty} color={certaintyColor(j.certainty)}/></td>
-                  <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}>{j.partsReady?<span style={{color:T.positive,fontWeight:700}}>✓ Ready</span>:<span style={{color:T.warning,fontWeight:700}}>⚠ Pending</span>}</td>
-                  <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}>{j.toolsReady?<span style={{color:T.positive,fontWeight:700}}>✓ Ready</span>:<span style={{color:T.warning,fontWeight:700}}>⚠ Pending</span>}</td>
-                  <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}><Badge label={j.status} color={jobStatusColor(j.status)}/></td>
-                  <td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{j.prereqs.length>0?j.prereqs.join(", "):"—"}</td>
-                </tr>
-              ))}</tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Parts tracker */}
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
-            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Parts Kitting — Long Lead Tracker</div>
-            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>All parts required across 6 jobs · {SHUTDOWN_PARTS.filter(p=>p.status==="In Stock").length} of {SHUTDOWN_PARTS.length} confirmed in stock</div>
-          </div>
-          <div style={{overflowX:"auto"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-              <thead><tr style={{background:T.gray100}}>
-                {["Part","Part No.","Job","Qty","Lead Time","Status","Supplier","Cost","ETA / Notes"].map(h=>(
-                  <th key={h} style={{padding:"8px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>
-                ))}
-              </tr></thead>
-              <tbody>{SHUTDOWN_PARTS.map((p,i)=>(
-                <tr key={p.partNo} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
-                  <td style={{padding:"8px 14px",fontWeight:600,color:T.black}}>{p.part}</td>
-                  <td style={{padding:"8px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{p.partNo}</td>
-                  <td style={{padding:"8px 14px",whiteSpace:"nowrap"}}><span style={{fontWeight:700,color:SHUTDOWN_JOBS.find(j=>j.id===p.job)?.color}}>{p.job}</span></td>
-                  <td style={{padding:"8px 14px",color:T.gray900}}>{p.qty||"TBD"}</td>
-                  <td style={{padding:"8px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{p.leadWeeks===0?"Same day":`${p.leadWeeks}w`}</td>
-                  <td style={{padding:"8px 14px",whiteSpace:"nowrap"}}><Badge label={p.status} color={partStatusColor(p.status)}/></td>
-                  <td style={{padding:"8px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{p.supplier}</td>
-                  <td style={{padding:"8px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{p.cost?`$${p.cost.toLocaleString()}`:"TBD"}</td>
-                  <td style={{padding:"8px 14px",color:p.eta?T.warning:T.gray400,fontSize:11,fontWeight:p.eta?700:400}}>{p.eta||"—"}</td>
-                </tr>
-              ))}</tbody>
-            </table>
-          </div>
-        </div>
-      </div>}
-
-      {/* ── SCHEDULE ── */}
-      {activeTab==="schedule"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
-
-        {/* Optimizer banner */}
-        <div style={{background:"#FFF8E1",border:`1px solid ${T.warning}`,borderLeft:`3px solid ${T.warning}`,borderRadius:4,padding:"12px 16px"}}>
-          <div style={{fontSize:11,fontWeight:700,color:T.warning,marginBottom:4}}>🧠 Shutdown Schedule Optimizer — Probabilistic View Active</div>
-          <div style={{fontSize:12,color:T.black,marginBottom:8}}>SJ-005 (Structural Weld Inspection) has uncertain scope — cannot diagnose until Day 2. Toggle between optimistic (4hr) and pessimistic (16hr) scenarios to see downstream impact. If worst case, Day 3 runs 4hrs over — Apex Refrigeration shift must be extended or rescheduled.</div>
-          <div style={{display:"flex",gap:6}}>
-            <button onClick={()=>setScheduleView("optimistic")} style={{padding:"5px 14px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",border:`1px solid ${scheduleView==="optimistic"?T.positive:T.border}`,background:scheduleView==="optimistic"?T.positive:T.white,color:scheduleView==="optimistic"?T.white:T.gray900}}>Optimistic (4hr welds clean)</button>
-            <button onClick={()=>setScheduleView("pessimistic")} style={{padding:"5px 14px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",border:`1px solid ${scheduleView==="pessimistic"?T.negative:T.border}`,background:scheduleView==="pessimistic"?T.negative:T.white,color:scheduleView==="pessimistic"?T.white:T.gray900}}>Pessimistic (16hr cracks found)</button>
-            {scheduleView==="pessimistic"&&<Badge label="⚠ Day 3 overrun — Apex shift extension required" color={T.negative}/>}
-          </div>
-        </div>
-
-        {/* Gantt */}
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
-            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Shutdown Schedule — Gantt View</div>
-            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Mar 14–16 · 08:00–18:00 each day · {scheduleView==="optimistic"?"Optimistic scenario":"Pessimistic scenario — worst case"}</div>
-          </div>
-          <div style={{padding:"16px 20px",overflowX:"auto"}}>
-            {/* Day headers */}
-            <div style={{display:"flex",marginLeft:140,marginBottom:4}}>
-              {DAY_LABELS.map(d=><div key={d} style={{flex:1,textAlign:"center",fontSize:11,fontWeight:700,color:T.gray900,borderLeft:`1px solid ${T.border}`,paddingLeft:4}}>{d}</div>)}
-            </div>
-            {/* Hour markers */}
-            <div style={{display:"flex",marginLeft:140,marginBottom:8}}>
-              {DAY_LABELS.map(d=><div key={d} style={{flex:1,display:"flex",justifyContent:"space-between"}}>
-                {[8,10,12,14,16,18].map(h=><span key={h} style={{fontSize:9,color:T.gray400}}>{h}:00</span>)}
-              </div>)}
-            </div>
-            {/* Job rows */}
-            <div style={{display:"flex",flexDirection:"column",gap:6}}>
-              {schedJobs.map(j=>(
-                <div key={j.id} style={{display:"flex",alignItems:"center",gap:0}}>
-                  <div style={{width:140,flexShrink:0,paddingRight:12}}>
-                    <div style={{fontSize:11,fontWeight:800,color:j.color}}>{j.id}</div>
-                    <div style={{fontSize:10,color:T.gray400,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:128}}>{j.assignedTo||j.contractor}</div>
-                  </div>
-                  <div style={{flex:1,height:32,background:T.gray100,borderRadius:3,position:"relative",border:`1px solid ${T.border}`}}>
-                    {DAY_LABELS.map((_,i)=><div key={i} style={{position:"absolute",left:`${(i/3)*100}%`,top:0,bottom:0,borderLeft:`1px dashed ${T.border}40`,zIndex:0}}/>)}
-                    {/* Uncertainty bar for SJ-005 */}
-                    {j.id==="SJ-005"&&scheduleView==="optimistic"&&<div style={{position:"absolute",left:`${j.pos.left}%`,width:`${jobToCol(j.day,j.startHr,j.maxHrs).width}%`,top:3,bottom:3,background:T.warning+"20",borderRadius:3,border:`1px dashed ${T.warning}`,zIndex:1}}></div>}
-                    <div title={j.title} style={{position:"absolute",left:`${j.pos.left}%`,width:`${Math.max(j.pos.width,2)}%`,top:3,bottom:3,background:j.color,borderRadius:3,opacity:0.85,zIndex:2,display:"flex",alignItems:"center",overflow:"hidden",paddingLeft:6}}>
-                      <span style={{fontSize:9,color:T.white,fontWeight:700,whiteSpace:"nowrap"}}>{j.id} · {j.hrs}h</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            {/* Legend */}
-            <div style={{display:"flex",gap:16,marginTop:12,flexWrap:"wrap",marginLeft:140}}>
-              {SHUTDOWN_JOBS.map(j=><div key={j.id} style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:T.gray900}}><span style={{width:10,height:10,borderRadius:2,background:j.color,display:"inline-block"}}/>{j.id}</div>)}
-              <div style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:T.gray900}}><span style={{width:10,height:10,borderRadius:2,background:T.warning+"30",border:`1px dashed ${T.warning}`,display:"inline-block"}}/> Uncertainty buffer</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Job detail cards */}
-        <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          <div style={{fontSize:12,fontWeight:800,color:T.black}}>Job Details & Dependencies</div>
-          {SHUTDOWN_JOBS.map(j=>(
-            <div key={j.id} style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",borderLeft:`4px solid ${j.color}`,padding:"12px 16px"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
-                <div style={{flex:1}}>
-                  <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
-                    <span style={{fontSize:12,fontWeight:800,color:j.color}}>{j.id}</span>
-                    <Badge label={j.priority} color={j.priority==="Critical"?T.negative:j.priority==="High"?T.warning:T.info}/>
-                    <Badge label={`Certainty: ${j.certainty}`} color={certaintyColor(j.certainty)}/>
-                    <Badge label={j.status} color={jobStatusColor(j.status)}/>
-                    {j.prereqs.length>0&&<Badge label={`After: ${j.prereqs.join(", ")}`} color={T.neutral}/>}
-                  </div>
-                  <div style={{fontSize:13,fontWeight:700,color:T.black,marginBottom:2}}>{j.title}</div>
-                  <div style={{fontSize:11,color:T.gray900,marginBottom:j.note?6:0}}>{j.assignedTo?"Internal: "+j.assignedTo:"Contractor: "+j.contractor} · Day {j.day} · {j.minHrs===j.maxHrs?`${j.minHrs}h`:`${j.minHrs}–${j.maxHrs}h`}</div>
-                  {j.note&&<div style={{fontSize:11,color:T.primary}}>🧠 {j.note}</div>}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>}
-
-      {/* ── WORKFORCE ── */}
-      {activeTab==="workforce"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
-
-        <div style={{background:T.primary+"10",border:`1px solid ${T.primary}30`,borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"12px 16px"}}>
-          <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>🧠 Workforce & Contractor Orchestrator</div>
-          <div style={{fontSize:12,color:T.black}}>3 internal technicians across 3 jobs. 3 contractors covering specialist scope. PowerGrid Services has a 10-hr minimum shift — agent has confirmed SJ-004 fits within that constraint. SteelWeld scope is variable — contractor briefed on best/worst case. Apex confirmation still pending.</div>
-        </div>
-
-        {/* Internal team */}
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
-            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Internal Workforce</div>
-            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>{SHUTDOWN_INTERNAL.length} technicians allocated · Skills verified against job requirements</div>
-          </div>
-          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:12}}>
-            {SHUTDOWN_INTERNAL.map(t=>(
-              <div key={t.name} style={{background:T.gray100,borderRadius:4,padding:"14px 16px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap",marginBottom:10}}>
-                  <div style={{display:"flex",alignItems:"center",gap:10}}>
-                    <div style={{width:32,height:32,borderRadius:"50%",background:T.primary,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:T.white,flexShrink:0}}>{t.name.split(" ").map(n=>n[0]).join("")}</div>
-                    <div><div style={{fontSize:13,fontWeight:800,color:T.black}}>{t.name}</div><div style={{fontSize:11,color:T.gray900}}>{t.role}</div></div>
-                  </div>
-                  <div style={{display:"flex",gap:10}}>
-                    <div style={{textAlign:"center",padding:"4px 10px",background:T.white,borderRadius:4}}>
-                      <div style={{fontSize:14,fontWeight:800,color:T.black}}>{t.hoursAllocated}h</div>
-                      <div style={{fontSize:10,color:T.gray400}}>Allocated</div>
-                    </div>
-                  </div>
-                </div>
-                <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
-                  {t.jobs.map(j=>{const job=SHUTDOWN_JOBS.find(sj=>sj.id===j);return(<span key={j} style={{fontSize:11,fontWeight:700,color:job?.color,background:job?.color+"18",border:`1px solid ${job?.color}40`,borderRadius:3,padding:"2px 8px"}}>{j} — {job?.title.split("—")[0].trim()}</span>);})}
-                </div>
-                <div style={{fontSize:11,color:T.gray900}}>Certified: {t.certified.join(" · ")}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Contractors */}
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
-            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Contractors</div>
-            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>{SHUTDOWN_CONTRACTORS.length} contractors · {SHUTDOWN_CONTRACTORS.filter(c=>c.status==="Confirmed").length} confirmed · {SHUTDOWN_CONTRACTORS.filter(c=>c.status==="Pending Confirmation").length} pending</div>
-          </div>
-          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:12}}>
-            {SHUTDOWN_CONTRACTORS.map(c=>{
-              const job=SHUTDOWN_JOBS.find(j=>j.id===c.job);
-              return(<div key={c.name} style={{background:T.gray100,borderRadius:4,borderLeft:`4px solid ${c.status==="Confirmed"?T.positive:T.warning}`,padding:"14px 16px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap",marginBottom:8}}>
-                  <div>
-                    <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
-                      <span style={{fontSize:13,fontWeight:800,color:T.black}}>{c.name}</span>
-                      <Badge label={c.status} color={c.status==="Confirmed"?T.positive:T.warning}/>
-                      <span style={{fontSize:11,fontWeight:700,color:job?.color,background:job?.color+"18",border:`1px solid ${job?.color}40`,borderRadius:3,padding:"2px 8px"}}>{c.job}</span>
-                    </div>
-                    <div style={{fontSize:12,color:T.gray900,marginBottom:4}}>{c.role} · {c.headcount} person{c.headcount>1?"s":""} · On-site: {c.onSiteDate}</div>
-                    <div style={{display:"flex",gap:16,fontSize:11,color:T.gray900,flexWrap:"wrap"}}>
-                      <span>Min shift: <strong>{c.minShift}h</strong></span>
-                      <span>Day rate: <strong>${c.dayRate.toLocaleString()}</strong></span>
-                      <span>Contact: <strong>{c.contact}</strong></span>
-                    </div>
-                  </div>
-                </div>
-                <div style={{background:T.white,borderRadius:3,padding:"8px 12px",fontSize:11,color:T.gray900,borderLeft:`2px solid ${T.primary}`}}>🧠 {c.notes}</div>
-              </div>);
-            })}
-          </div>
-        </div>
-
-        {/* Shift plan */}
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
-            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Shift Plan — Who's On When</div>
-          </div>
-          <div style={{overflowX:"auto"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-              <thead><tr style={{background:T.gray100}}>
-                {["Person","Type","Day 1 (Mar 14)","Day 2 (Mar 15)","Day 3 (Mar 16)","Notes"].map(h=>(
-                  <th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>
-                ))}
-              </tr></thead>
-              <tbody>
-                {[
-                  {name:"Carlos Rivera",type:"Internal",d1:"SJ-001 (4h)",d2:"Standby / support",d3:"Closure & sign-off",notes:"Available all 3 days"},
-                  {name:"Marcus Webb",type:"Internal",d1:"SJ-002 (8–9h)",d2:"Overflow if needed",d3:"—",notes:"Full day 1 commitment"},
-                  {name:"Priya Singh",type:"Internal",d1:"SJ-003 (5–6h)",d2:"—",d3:"—",notes:"Day 1 only — tools pending"},
-                  {name:"PowerGrid Services",type:"Contractor",d1:"SJ-004 (10h min)",d2:"—",d3:"—",notes:"10hr minimum — Day 1"},
-                  {name:"SteelWeld Specialists",type:"Contractor",d1:"—",d2:"SJ-005 (4–16h)",d3:"Overflow if worst case",notes:"Scope TBD Day 2 AM"},
-                  {name:"Apex Refrigeration",type:"Contractor",d1:"—",d2:"—",d3:"SJ-006 (2h)",notes:"Pending confirmation"},
-                ].map((r,i)=>(
-                  <tr key={r.name} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
-                    <td style={{padding:"9px 14px",fontWeight:700,color:T.black,whiteSpace:"nowrap"}}>{r.name}</td>
-                    <td style={{padding:"9px 14px"}}><Badge label={r.type} color={r.type==="Internal"?T.primary:T.neutral}/></td>
-                    <td style={{padding:"9px 14px",color:r.d1==="—"?T.gray400:T.black,fontWeight:r.d1==="—"?400:600}}>{r.d1}</td>
-                    <td style={{padding:"9px 14px",color:r.d2==="—"?T.gray400:T.black,fontWeight:r.d2==="—"?400:600}}>{r.d2}</td>
-                    <td style={{padding:"9px 14px",color:r.d3==="—"?T.gray400:T.black,fontWeight:r.d3==="—"?400:600}}>{r.d3}</td>
-                    <td style={{padding:"9px 14px",color:T.gray900,fontSize:11}}>{r.notes}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>}
-
-      {/* ── EXECUTION ── */}
-      {activeTab==="execution"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
-
-        <div style={{background:"#FEF2F2",border:`1px solid ${T.negative}30`,borderRadius:4,padding:"12px 16px",display:"flex",alignItems:"center",gap:10}}>
-          <div style={{width:10,height:10,borderRadius:"50%",background:T.gray400,flexShrink:0}}/>
-          <div><span style={{fontSize:12,fontWeight:800,color:T.gray900}}>Shutdown not yet active — </span><span style={{fontSize:12,color:T.gray900}}>Execution view goes live on Mar 14 at 08:00. Live job tracking, time on tool, budget actuals, and real-time schedule reoptimisation will appear here once the shutdown commences.</span></div>
-        </div>
-
-        {/* Preview of what execution will look like */}
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
-            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Execution Dashboard — Preview</div>
-            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>This is what the live execution view will show once the shutdown begins</div>
-          </div>
-          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:12}}>
-            {/* Mock KPI strip */}
-            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-              {[
-                {label:"Jobs Complete",value:"0/6",color:T.gray400},
-                {label:"Hours on Tool",value:"0.0h",color:T.gray400},
-                {label:"vs Plan",value:"—",color:T.gray400},
-                {label:"Budget Used",value:"$0",color:T.gray400},
-                {label:"Schedule Status",value:"Not Started",color:T.gray400},
-              ].map(k=>(
-                <div key={k.label} style={{flex:1,minWidth:100,textAlign:"center",padding:"10px 14px",background:T.gray100,borderRadius:4,opacity:0.5}}>
-                  <div style={{fontSize:16,fontWeight:800,color:k.color}}>{k.value}</div>
-                  <div style={{fontSize:10,color:T.gray400}}>{k.label}</div>
-                </div>
-              ))}
-            </div>
-            {/* Mock job status board */}
-            {SHUTDOWN_JOBS.map(j=>(
-              <div key={j.id} style={{background:T.gray100,borderRadius:4,borderLeft:`4px solid ${T.border}`,padding:"12px 16px",opacity:0.5}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                  <div>
-                    <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:2}}><span style={{fontSize:12,fontWeight:800,color:T.gray400}}>{j.id}</span><Badge label="Not Started" color={T.neutral}/></div>
-                    <div style={{fontSize:12,color:T.gray400}}>{j.title}</div>
-                  </div>
-                  <div style={{display:"flex",gap:10,fontSize:11,color:T.gray400}}>
-                    <span>Est: {j.minHrs}h</span>
-                    <span>Actual: —</span>
-                    <span>Start: —</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-            <div style={{background:T.primary+"10",border:`1px solid ${T.primary}30`,borderRadius:4,padding:"12px 16px"}}>
-              <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>🧠 What the Schedule Optimizer will do on Day 2</div>
-              <div style={{fontSize:12,color:T.black}}>When SJ-005 opens and the diagnostic finding comes in, the agent will immediately re-model the remaining schedule. If cracks are found and SJ-005 extends to 16hrs, it will: flag the Day 3 overrun, recommend extending the SteelWeld shift, notify Apex Refrigeration of a delayed start, and recalculate budget actuals. All in real time, before the supervisor has had a chance to react.</div>
-            </div>
-          </div>
-        </div>
-      </div>}
-
-    </div>
-  </div>);
-}
-
-
-
-// ── SETPOINT & RECIPE OPTIMIZATION DATA ──────────────────────────────────────
-const SP_LINE = "Line 3";
-
-const SP_EQUIPMENT = [
-  {id:"slicer",label:"Slicer",short:"SL",x:60,y:140,w:70,h:50,
-   params:[
-     {name:"Slice Thickness",unit:"mm",setpoint:1.5,actual:1.58,min:1.2,max:1.8,status:"warning",tag:"slicer@thickness"},
-     {name:"Feed Rate",unit:"kg/h",setpoint:820,actual:818,min:750,max:900,status:"ok",tag:"slicer@feed_rate"},
-   ],
-   agentNote:"Slice thickness drifting +0.08mm above setpoint. Recommend recalibration — linked to uneven frying and 3% QC reject uptick on Line 3."},
-  {id:"blancher",label:"Blancher",short:"BL",x:190,y:140,w:70,h:50,
-   params:[
-     {name:"Water Temp",unit:"°C",setpoint:70,actual:68.2,min:65,max:75,status:"warning",tag:"blancher@temp"},
-     {name:"Dwell Time",unit:"min",setpoint:10,actual:10.1,min:7,max:15,status:"ok",tag:"blancher@dwell"},
-   ],
-   agentNote:"Water temp 1.8°C below setpoint. May cause incomplete starch removal — monitor chip colour on optical sorter output."},
-  {id:"fryer",label:"Continuous Fryer",short:"FR",x:330,y:120,w:90,h:70,
-   params:[
-     {name:"Oil Temperature",unit:"°C",setpoint:175,actual:178.4,min:160,max:182,status:"warning",tag:"fryer@oil_temp"},
-     {name:"Belt Speed",unit:"m/min",setpoint:2.8,actual:2.81,min:2.0,max:3.5,status:"ok",tag:"fryer@belt_speed"},
-     {name:"Dwell Time",unit:"min",setpoint:2.8,actual:2.79,min:1.5,max:5.0,status:"ok",tag:"fryer@dwell"},
-     {name:"Oil Level",unit:"%",setpoint:85,actual:82,min:75,max:95,status:"warning",tag:"fryer@oil_level"},
-   ],
-   agentNote:"⚠ Oil temp running 3.4°C above setpoint — primary driver of sealer degradation (WO-4421). High oil temp increases chip moisture variance, stressing the heat sealer. Recommend reducing oil temp to 175°C and monitoring seal quality."},
-  {id:"deoiler",label:"De-oiler",short:"DO",x:480,y:140,w:70,h:50,
-   params:[
-     {name:"Vibration Freq",unit:"Hz",setpoint:18,actual:18.1,min:15,max:22,status:"ok",tag:"deoiler@freq"},
-     {name:"Oil Content Out",unit:"%",setpoint:28,actual:29.2,min:24,max:32,status:"ok",tag:"deoiler@oil_out"},
-   ],
-   agentNote:"Within spec. Oil content slightly elevated — consistent with high fryer oil temp. Will self-correct once fryer temp is adjusted."},
-  {id:"cooler",label:"Cooling Conveyor",short:"CC",x:610,y:140,w:70,h:50,
-   params:[
-     {name:"Exit Temp",unit:"°C",setpoint:42,actual:44.1,min:35,max:50,status:"ok",tag:"cooler@exit_temp"},
-     {name:"Belt Speed",unit:"m/min",setpoint:3.2,actual:3.2,min:2.5,max:4.0,status:"ok",tag:"cooler@belt_speed"},
-   ],
-   agentNote:"Operating normally. Exit temp slightly elevated — downstream of high fryer temp. Monitor seasoning adhesion."},
-  {id:"seasoner",label:"Seasoning Drum",short:"SD",x:740,y:140,w:70,h:50,
-   params:[
-     {name:"Drum Speed",unit:"RPM",setpoint:12,actual:11.8,min:8,max:16,status:"ok",tag:"seasoner@speed"},
-     {name:"Seasoning Rate",unit:"g/kg",setpoint:22,actual:23.4,min:18,max:26,status:"warning",tag:"seasoner@rate"},
-     {name:"Drum Temp",unit:"°C",setpoint:38,actual:39.1,min:32,max:45,status:"ok",tag:"seasoner@temp"},
-   ],
-   agentNote:"Seasoning application rate 6.4% above target — likely caused by elevated chip temp from fryer. Chips are stickier when hot, absorbing more seasoning. Will self-correct when fryer temp is adjusted."},
-  {id:"sealer",label:"Heat Sealer",short:"HS",x:870,y:140,w:70,h:50,
-   params:[
-     {name:"Seal Temp",unit:"°C",setpoint:185,actual:191.2,min:178,max:195,status:"critical",tag:"sealer@temp"},
-     {name:"Dwell Time",unit:"ms",setpoint:600,actual:612,min:500,max:700,status:"ok",tag:"sealer@dwell"},
-     {name:"Seal Pressure",unit:"bar",setpoint:4.2,actual:4.1,min:3.5,max:5.0,status:"ok",tag:"sealer@pressure"},
-   ],
-   agentNote:"⚠ CRITICAL — Seal temp 6.2°C above setpoint and drifting. Root cause: fryer oil temp running high → chips arrive at sealer with higher moisture variance → sealer compensating with higher temp → element degradation (WO-4421). Fix the fryer first."},
-  {id:"packager",label:"Packager",short:"PK",x:1000,y:140,w:70,h:50,
-   params:[
-     {name:"Nitrogen Fill",unit:"%",setpoint:92,actual:91.8,min:88,max:96,status:"ok",tag:"packager@n2"},
-     {name:"Seal Integrity",unit:"%",setpoint:99.5,actual:98.1,min:98,max:100,status:"warning",tag:"packager@seal"},
-   ],
-   agentNote:"Seal integrity below target — downstream effect of heat sealer running hot. 1.9% reject rate above 1.5% target. Will improve once sealer is stabilized."},
-];
-
-const SP_RECS = [
-  {id:"sr1",priority:"Critical",equipment:"Continuous Fryer",tag:"fryer@oil_temp",title:"Reduce Fryer Oil Temperature",current:178.4,target:175.0,unit:"°C",delta:-3.4,rationale:"Oil temp 3.4°C above setpoint is the root cause of a cascade: elevated chip moisture variance → sealer overcompensation → element degradation (WO-4421). Reducing to 175°C will stabilize downstream equipment within 2–3 production cycles.",crossDomain:"Maintenance: reduces load on heat sealer (linked to WO-4421). Quality: expected 2.1% reduction in QC rejects. Production: no output impact expected.",impact:{quality:"+2.1% FPY",maintenance:"Reduces sealer stress — supports WO-4421 resolution",energy:"-1.8% fryer energy"},applied:false},
-  {id:"sr2",priority:"High",equipment:"Slicer",tag:"slicer@thickness",title:"Recalibrate Slicer Thickness",current:1.58,target:1.50,unit:"mm",delta:-0.08,rationale:"Slice thickness has drifted +0.08mm over the past 48hrs, contributing to uneven frying and a 3% uptick in QC rejects on optical sorter. Recommend recalibration during next scheduled changeover.",crossDomain:"Quality: expected reduction in optical sorter rejects. Maintenance: schedule slicer blade inspection — drift pattern suggests blade wear.",impact:{quality:"-3% reject rate",maintenance:"Flag blade inspection",energy:"Neutral"},applied:false},
-  {id:"sr3",priority:"Medium",equipment:"Blancher",tag:"blancher@temp",title:"Raise Blancher Water Temperature",current:68.2,target:70.0,unit:"°C",delta:+1.8,rationale:"Water temp 1.8°C below setpoint due to overnight heat exchanger fouling on the blancher circuit. Chip colour index trending darker — if uncorrected for 24hrs will breach QC spec for SKU 3801.",crossDomain:"Quality: chip colour drifting. Maintenance: flag heat exchanger fouling on blancher circuit for next inspection cycle.",impact:{quality:"Stabilises chip colour index",maintenance:"Flag HX inspection",energy:"+0.4% energy"},applied:false},
-  {id:"sr4",priority:"Medium",equipment:"Seasoning Drum",tag:"seasoner@rate",title:"Reduce Seasoning Application Rate",current:23.4,target:22.0,unit:"g/kg",delta:-1.4,rationale:"Seasoning over-application is a downstream effect of elevated fryer temp. Will self-correct once fryer is adjusted. If fryer fix is delayed >4hrs, manually adjust drum feed rate to avoid SKU 3801 flavour spec breach.",crossDomain:"Quality: seasoning variance will breach spec in 4hrs if fryer not corrected. Planning: excess seasoning usage increasing material cost ~$120/shift.",impact:{quality:"Maintains flavour spec",planning:"-$120/shift seasoning cost",energy:"Neutral"},applied:false},
-];
-
-const SP_RECIPES = [
-  {sku:"SKU 3801",name:"BBQ Chips",lastUpdated:"Feb 10, 2026",frierTemp:175,sliceThick:1.5,blancherTemp:70,seasonRate:22,status:"Active",performance:"97.2% FPY last 7 days",agentRec:{
-    hasRec:true,reason:"Fryer oil temp has been running 3.4°C above standard for 3 days. Agent recommends updating recipe standard to reflect recalibrated fryer baseline, and reducing seasoning rate from 22 to 21g/kg to account for improved chip temp consistency post-fix.",changes:[
-      {param:"Fryer Oil Temp",current:175,proposed:175,unit:"°C",note:"Confirm actual target after recalibration — standard may need updating"},
-      {param:"Seasoning Rate",current:22,proposed:21,unit:"g/kg",note:"Reduce to account for improved moisture consistency once fryer is fixed"},
-    ]}},
-  {sku:"SKU 2204",name:"Sea Salt Chips (Crimped)",lastUpdated:"Jan 28, 2026",frierTemp:172,sliceThick:1.8,blancherTemp:68,seasonRate:18,status:"Active",performance:"98.8% FPY last 7 days",agentRec:{hasRec:false}},
-  {sku:"SKU 4412",name:"Sour Cream & Onion",lastUpdated:"Feb 18, 2026",frierTemp:176,sliceThick:1.5,blancherTemp:70,seasonRate:26,status:"On Hold",performance:"—",agentRec:{hasRec:false}},
-  {sku:"SKU 1105",name:"Lightly Salted",lastUpdated:"Dec 15, 2025",frierTemp:173,sliceThick:1.6,blancherTemp:69,seasonRate:14,status:"Inactive",performance:"—",agentRec:{hasRec:false}},
-];
-
-const SP_ANOMALIES = [
-  {id:"a1",severity:"Critical",equipment:"Heat Sealer",param:"Seal Temperature",value:"191.2°C",threshold:"185°C target / 195°C max",trend:"↑ Increasing",since:"Feb 26 — 2 days",description:"Seal temp trending upward for 48hrs. Direct driver of WO-4421. Root cause: fryer oil temp cascade — chips arriving at sealer with higher moisture variance, sealer compensating with higher temp.",actionType:"wo",actionLabel:"View WO-4421 in SAP PM →",actionNote:"WO-4421 already raised — Carlos Rivera assigned. Fix fryer temp first; sealer should stabilize within 2 production cycles."},
-  {id:"a2",severity:"High",equipment:"Slicer",param:"Slice Thickness",value:"1.58mm",threshold:"1.50mm target ±0.05mm",trend:"↑ Drifting up",since:"Feb 27 — 1 day",description:"Thickness drift consistent with blade wear. QC rejects on optical sorter up 3% in last 24hrs. If uncorrected will breach spec by tomorrow shift.",actionType:"setpoint",actionLabel:"Apply Recalibration →",actionNote:"Recalibrate slicer to 1.50mm at next changeover. Schedule blade inspection — drift pattern suggests wear."},
-  {id:"a3",severity:"High",equipment:"Continuous Fryer",param:"Oil Temperature",value:"178.4°C",threshold:"175°C target ±3°C",trend:"↑ Above setpoint",since:"Feb 25 — 3 days",description:"Root cause of multiple downstream anomalies. Fryer thermocouple may need recalibration. Has been above setpoint for 3 consecutive days — every downstream deviation traces back to this.",actionType:"setpoint",actionLabel:"Apply Fryer Fix (SR-001) →",actionNote:"See Optimization Recs tab — SR-001 will reduce fryer to 175°C. Estimated to resolve 4 of 5 active anomalies within 2–3 cycles."},
-  {id:"a4",severity:"Medium",equipment:"Blancher",param:"Water Temperature",value:"68.2°C",threshold:"70°C target ±2°C",trend:"↓ Below setpoint",since:"Feb 28 — today",description:"Heat exchanger fouling on blancher circuit reducing heat transfer efficiency. Chip colour index trending darker — if uncorrected for 24hrs will breach QC spec for SKU 3801.",actionType:"escalate",actionLabel:"Escalate to Plant Leader →",actionNote:"Flag for maintenance inspection at next opportunity. Monitor chip colour index on optical sorter output."},
-  {id:"a5",severity:"Medium",equipment:"Packager",param:"Seal Integrity",value:"98.1%",threshold:"99.5% target / 98% min",trend:"↓ Declining",since:"Feb 27 — 1 day",description:"Downstream of heat sealer running hot. At 98.1% we are just above the 98% minimum — if sealer temp continues rising this will breach minimum spec and require a line stop.",actionType:"monitor",actionLabel:"Mark as Monitoring →",actionNote:"Expect improvement once fryer and sealer are corrected. If drops below 98%, pause line and inspect packaging film spec."},
-];
-
-// ── SETPOINT DASHBOARD ────────────────────────────────────────────────────────
-function SetpointDashboard(){
-  const [activeTab,setActiveTab]=useState("overview");
-  const [selectedLine,setSelectedLine]=useState("Line 3");
-  const [selectedEquip,setSelectedEquip]=useState(null);
-  const [appliedRecs,setAppliedRecs]=useState([]);
-  const [recs,setRecs]=useState(SP_RECS);
-  const [anomalyActioned,setAnomalyActioned]=useState({});
-
-  const applyRec=(id)=>{
-    setRecs(prev=>prev.map(r=>r.id===id?{...r,applied:true}:r));
-    setAppliedRecs(prev=>[...prev,id]);
-  };
-
-  const statusColor=s=>s==="critical"?T.negative:s==="warning"?T.warning:T.positive;
-  const statusDot=s=>s==="critical"?"●":s==="warning"?"●":"●";
-  const severityColor=s=>s==="Critical"?T.negative:s==="High"?T.warning:T.info;
-  const priorityColor=p=>p==="Critical"?T.negative:p==="High"?T.warning:p==="Medium"?T.info:T.neutral;
-
-  const lineHasData=selectedLine==="Line 3";
-
-  const TABS=[
-    {id:"overview",label:"Process Overview"},
-    {id:"recommendations",label:"Optimization Recs",alert:recs.filter(r=>!r.applied).length},
-    {id:"anomalies",label:"Anomaly Detection",alert:SP_ANOMALIES.filter(a=>a.severity==="Critical"||a.severity==="High").length},
-    {id:"recipes",label:"Recipe Library"},
-  ];
-
-  const SPTab=({tab})=>{
-    const isActive=activeTab===tab.id;
-    return(<button onClick={()=>setActiveTab(tab.id)} style={{display:"flex",alignItems:"center",gap:5,padding:"12px 16px",border:"none",borderBottom:isActive?`2px solid ${T.primary}`:"2px solid transparent",background:"transparent",cursor:"pointer",fontWeight:isActive?800:500,fontSize:12,color:isActive?T.primary:T.gray900,whiteSpace:"nowrap"}}>
-      <span>{tab.label}</span>
-      {tab.alert>0&&<span style={{background:tab.id==="anomalies"?T.negative:T.warning,color:T.white,borderRadius:10,padding:"1px 6px",fontSize:10,fontWeight:800}}>{tab.alert}</span>}
-    </button>);
-  };
-
-  // Gauge bar component
-  const GaugeBar=({min,max,setpoint,actual,unit,status})=>{
-    const pct=v=>Math.max(0,Math.min(100,((v-min)/(max-min))*100));
-    const spPct=pct(setpoint);
-    const actPct=pct(actual);
-    const color=statusColor(status);
-    return(<div style={{position:"relative",height:8,background:T.border,borderRadius:4,marginTop:4}}>
-      <div style={{position:"absolute",left:0,width:`${actPct}%`,height:"100%",background:color,borderRadius:4,transition:"width 0.3s"}}/>
-      <div style={{position:"absolute",left:`${spPct}%`,top:-2,width:2,height:12,background:T.black,borderRadius:1,transform:"translateX(-50%)"}}/>
-    </div>);
-  };
-
-  const noDataView=(<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"60vh",gap:12}}>
-    <div style={{fontSize:32}}>📊</div>
-    <div style={{fontSize:15,fontWeight:800,color:T.black}}>{selectedLine} — No Data Available</div>
-    <div style={{fontSize:13,color:T.gray900}}>Process data for {selectedLine} is not yet connected to the Setpoint & Recipe Optimization Agent.</div>
-    <div style={{background:T.primary+"12",border:`1px solid ${T.primary}30`,borderRadius:4,padding:"10px 20px",fontSize:12,color:T.primary,fontWeight:600}}>Line 3 is the active demo line — select Line 3 to view live data</div>
-  </div>);
-
-  return(<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
-    {/* Header */}
-    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px 0",flexShrink:0}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12,flexWrap:"wrap",gap:8}}>
-        <div>
-          <div style={{fontSize:18,fontWeight:800,color:T.black}}>Setpoint & Recipe Optimization</div>
-          <div style={{fontSize:12,color:T.gray900,marginTop:2}}>Process Engineering · Real-time setpoint monitoring & AI-driven optimization</div>
-        </div>
-        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-          {/* Line filter */}
-          <div style={{display:"flex",gap:4}}>
-            {["Line 1","Line 2","Line 3"].map(l=>(
-              <button key={l} onClick={()=>setSelectedLine(l)} style={{padding:"6px 14px",borderRadius:4,fontSize:12,fontWeight:700,cursor:"pointer",border:`1px solid ${selectedLine===l?T.primary:T.border}`,background:selectedLine===l?T.primary:T.white,color:selectedLine===l?T.white:T.gray900}}>{l}</button>
-            ))}
-          </div>
-        </div>
-      </div>
-      <div style={{display:"flex",gap:0,overflowX:"auto"}}>
-        {TABS.map(t=><SPTab key={t.id} tab={t}/>)}
-      </div>
-    </div>
-
-    <div style={{flex:1,overflowY:"auto",background:T.gray100}}>
-      {!lineHasData ? noDataView : (<>
-
-      {/* ── PROCESS OVERVIEW ── */}
-      {activeTab==="overview"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
-
-        {/* Agent banner */}
-        <div style={{background:T.primary+"10",border:`1px solid ${T.primary}30`,borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"12px 16px"}}>
-          <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>🧠 Setpoint & Recipe Optimization Agent — {selectedLine} · SKU 3801 (BBQ Chips) · Feb 28, 2026 07:00</div>
-          <div style={{fontSize:12,color:T.black,marginBottom:6}}>Root cause identified: fryer oil temperature running 3.4°C above setpoint for 3 days, creating a cascade of downstream issues — elevated chip moisture variance, sealer overcompensation, seasoning over-application, and packaging seal integrity decline. Applying SR-001 (reduce fryer to 175°C) is expected to resolve 4 of 5 active anomalies within 2–3 production cycles.</div>
-          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-            <Badge label="1 Critical anomaly" color={T.negative}/>
-            <Badge label="2 High warnings" color={T.warning}/>
-            <Badge label="4 Optimization recs" color={T.info}/>
-            <Badge label="Root cause: Fryer oil temp" color={T.primary}/>
-          </div>
-        </div>
-
-        {/* Process flow diagram */}
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
-            <div>
-              <div style={{fontSize:13,fontWeight:800,color:T.black}}>Process Flow — {selectedLine} · Live Setpoints</div>
-
-            </div>
-            <div style={{display:"flex",gap:10,fontSize:11,color:T.gray900}}>
-              <span style={{display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:"50%",background:T.positive,display:"inline-block"}}/> On spec</span>
-              <span style={{display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:"50%",background:T.warning,display:"inline-block"}}/> Warning</span>
-              <span style={{display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:"50%",background:T.negative,display:"inline-block"}}/> Critical</span>
-            </div>
-          </div>
-          <div style={{padding:"20px",overflowX:"auto"}}>
-            {/* SVG Process Flow Diagram */}
-            <svg viewBox="0 0 1120 320" xmlns="http://www.w3.org/2000/svg" style={{width:"100%",minWidth:900,display:"block"}}>
-              {/* Flow arrows between equipment */}
-              {[[125,165,190,165],[260,165,330,165],[420,165,480,165],[550,165,610,165],[680,165,740,165],[810,165,870,165],[940,165,1000,165]].map(([x1,y1,x2,y2],i)=>(
-                <g key={i}>
-                  <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#94A3B8" strokeWidth="2" markerEnd="url(#arrow)"/>
-                </g>
-              ))}
-              <defs>
-                <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-                  <path d="M0,0 L8,3 L0,6 Z" fill="#94A3B8"/>
-                </marker>
-              </defs>
-
-              {/* Raw material input */}
-              <rect x="10" y="148" width="50" height="34" rx="4" fill="#F1F5F9" stroke="#CBD5E1" strokeWidth="1.5"/>
-              <text x="35" y="161" textAnchor="middle" fontSize="8" fontWeight="700" fill="#64748B">RAW</text>
-              <text x="35" y="173" textAnchor="middle" fontSize="8" fontWeight="700" fill="#64748B">INPUT</text>
-              <line x1="60" y1="165" x2="55" y2="165" stroke="#94A3B8" strokeWidth="2"/>
-
-              {/* Equipment nodes */}
-              {SP_EQUIPMENT.map(eq=>{
-                const worstStatus=eq.params.reduce((w,p)=>p.status==="critical"?"critical":p.status==="warning"&&w!=="critical"?"warning":w,"ok");
-                const borderCol=statusColor(worstStatus);
-                const isSelected=selectedEquip===eq.id;
-                const mainParam=eq.params[0];
-                const pctActual=((mainParam.actual-mainParam.min)/(mainParam.max-mainParam.min))*100;
-                const pctSP=((mainParam.setpoint-mainParam.min)/(mainParam.max-mainParam.min))*100;
-
-                return(<g key={eq.id} onClick={()=>setSelectedEquip(isSelected?null:eq.id)} style={{cursor:"pointer"}}>
-                  {/* Equipment box */}
-                  <rect x={eq.x} y={eq.y} width={eq.w} height={eq.h} rx="5"
-                    fill={isSelected?"#EFF6FF":T.white}
-                    stroke={isSelected?T.primary:borderCol}
-                    strokeWidth={isSelected?2.5:1.5}/>
-                  {/* Status dot */}
-                  <circle cx={eq.x+eq.w-8} cy={eq.y+8} r="5" fill={borderCol}/>
-                  {/* Equipment label */}
-                  <text x={eq.x+eq.w/2} y={eq.y+16} textAnchor="middle" fontSize="8" fontWeight="800" fill="#1E293B">{eq.short}</text>
-                  {/* Equipment name */}
-                  {eq.label.split(" ").map((word,wi)=>(
-                    <text key={wi} x={eq.x+eq.w/2} y={eq.y+eq.h+12+(wi*10)} textAnchor="middle" fontSize="8" fill="#64748B">{word}</text>
-                  ))}
-                  {/* Main param value */}
-                  <text x={eq.x+eq.w/2} y={eq.y+30} textAnchor="middle" fontSize="9" fontWeight="700" fill={borderCol}>{mainParam.actual}{mainParam.unit}</text>
-                  {/* Mini gauge */}
-                  <rect x={eq.x+8} y={eq.y+38} width={eq.w-16} height="5" rx="2" fill="#E2E8F0"/>
-                  <rect x={eq.x+8} y={eq.y+38} width={Math.max(0,Math.min(eq.w-16,(pctActual/100)*(eq.w-16)))} height="5" rx="2" fill={borderCol}/>
-                  <rect x={eq.x+8+(pctSP/100)*(eq.w-16)-1} y={eq.y+36} width="2" height="9" rx="1" fill="#1E293B"/>
-                </g>);
-              })}
-
-              {/* Output box */}
-              <rect x="1070" y="148" width="50" height="34" rx="4" fill="#F0FDF4" stroke="#86EFAC" strokeWidth="1.5"/>
-              <text x="1095" y="161" textAnchor="middle" fontSize="8" fontWeight="700" fill="#16A34A">PACKED</text>
-              <text x="1095" y="173" textAnchor="middle" fontSize="8" fontWeight="700" fill="#16A34A">OUTPUT</text>
-
-              {/* Root cause callout arrow for fryer */}
-              <path d="M375,115 L375,100 L375,85" stroke={T.negative} strokeWidth="1.5" strokeDasharray="3 2" fill="none"/>
-              <rect x="290" y="60" width="170" height="24" rx="4" fill={T.negative+"18"} stroke={T.negative} strokeWidth="1"/>
-              <text x="375" y="75" textAnchor="middle" fontSize="8" fontWeight="800" fill={T.negative}>⚠ ROOT CAUSE — Fix First</text>
-            </svg>
-          </div>
-        </div>
-
-        {/* Selected equipment detail */}
-        {selectedEquip&&SP_EQUIPMENT.filter(e=>e.id===selectedEquip).map(eq=>{
-          const worstStatus=eq.params.reduce((w,p)=>p.status==="critical"?"critical":p.status==="warning"&&w!=="critical"?"warning":w,"ok");
-          return(<div key={eq.id} style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",borderTop:`3px solid ${statusColor(worstStatus)}`}}>
-            <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <div style={{fontSize:13,fontWeight:800,color:T.black}}>{eq.label} — All Parameters</div>
-              <button onClick={()=>setSelectedEquip(null)} style={{background:"none",border:"none",cursor:"pointer",color:T.gray400,fontSize:16}}>✕</button>
-            </div>
-            <div style={{padding:"16px 20px",display:"flex",gap:16,flexWrap:"wrap"}}>
-              <div style={{flex:"2 1 300px",display:"flex",flexDirection:"column",gap:10}}>
-                {eq.params.map(p=>(
-                  <div key={p.tag} style={{background:T.gray100,borderRadius:4,padding:"10px 14px",borderLeft:`3px solid ${statusColor(p.status)}`}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-                      <span style={{fontSize:12,fontWeight:700,color:T.black}}>{p.name}</span>
-                      <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                        <span style={{fontSize:11,color:T.gray400}}>SP: {p.setpoint}{p.unit}</span>
-                        <span style={{fontSize:13,fontWeight:800,color:statusColor(p.status)}}>{p.actual}{p.unit}</span>
-                        <Badge label={p.status==="critical"?"Critical":p.status==="warning"?"Warning":"On Spec"} color={statusColor(p.status)}/>
-                      </div>
-                    </div>
-                    <GaugeBar min={p.min} max={p.max} setpoint={p.setpoint} actual={p.actual} unit={p.unit} status={p.status}/>
-                    <div style={{display:"flex",justifyContent:"space-between",marginTop:3,fontSize:9,color:T.gray400}}>
-                      <span>{p.min}{p.unit}</span><span style={{color:T.gray900,fontWeight:600}}>SP: {p.setpoint}{p.unit}</span><span>{p.max}{p.unit}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div style={{flex:"1 1 200px",background:T.primary+"08",borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"12px 14px"}}>
-                <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:6}}>🧠 Agent Note</div>
-                <div style={{fontSize:12,color:T.black,lineHeight:1.6}}>{eq.agentNote}</div>
-              </div>
-            </div>
-          </div>);
-        })}
-
-        {/* Quick equipment overview grid */}
-        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-          {SP_EQUIPMENT.map(eq=>{
-            const worstStatus=eq.params.reduce((w,p)=>p.status==="critical"?"critical":p.status==="warning"&&w!=="critical"?"warning":w,"ok");
-            const mp=eq.params[0];
-            return(<div key={eq.id} onClick={()=>setSelectedEquip(selectedEquip===eq.id?null:eq.id)} style={{flex:"1 1 120px",background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",padding:"10px 14px",cursor:"pointer",borderTop:`3px solid ${statusColor(worstStatus)}`,border:selectedEquip===eq.id?`2px solid ${T.primary}`:undefined}}>
-              <div style={{fontSize:11,fontWeight:800,color:T.black,marginBottom:2}}>{eq.label}</div>
-              <div style={{fontSize:14,fontWeight:800,color:statusColor(worstStatus)}}>{mp.actual}{mp.unit}</div>
-              <div style={{fontSize:10,color:T.gray400}}>SP: {mp.setpoint}{mp.unit}</div>
-              <div style={{fontSize:10,color:statusColor(worstStatus),fontWeight:700,marginTop:2}}>{worstStatus==="critical"?"⚠ Critical":worstStatus==="warning"?"⚠ Warning":"✓ On Spec"}</div>
-            </div>);
-          })}
-        </div>
-      </div>}
-
-      {/* ── OPTIMIZATION RECOMMENDATIONS ── */}
-      {activeTab==="recommendations"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:12}}>
-        <div style={{background:T.white,borderRadius:4,padding:"12px 16px",boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-          <div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:4}}>Setpoint Optimization Recommendations — {selectedLine}</div>
-          <div style={{fontSize:12,color:T.gray900}}>Agent-generated recommendations ranked by impact. Apply to send setpoint change to operator co-pilot and notify line supervisor.</div>
-        </div>
-        {recs.map(r=>(
-          <div key={r.id} style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",borderLeft:`4px solid ${r.applied?T.positive:priorityColor(r.priority)}`,overflow:"hidden",opacity:r.applied?0.75:1}}>
-            <div style={{padding:"14px 18px"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap",marginBottom:8}}>
-                <div style={{flex:1}}>
-                  <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
-                    <Badge label={r.priority} color={r.applied?T.positive:priorityColor(r.priority)}/>
-                    <Badge label={r.equipment} color={T.primary}/>
-                    {r.applied&&<Badge label="✓ Applied" color={T.positive}/>}
-                  </div>
-                  <div style={{fontSize:14,fontWeight:800,color:T.black,marginBottom:4}}>{r.title}</div>
-                  <div style={{display:"flex",gap:20,flexWrap:"wrap",marginBottom:8}}>
-                    <div style={{textAlign:"center",padding:"6px 14px",background:T.negative+"10",borderRadius:4}}>
-                      <div style={{fontSize:10,color:T.gray400,marginBottom:2}}>Current</div>
-                      <div style={{fontSize:16,fontWeight:800,color:T.negative}}>{r.current}{r.unit}</div>
-                    </div>
-                    <div style={{display:"flex",alignItems:"center",fontSize:16,color:T.gray400}}>→</div>
-                    <div style={{textAlign:"center",padding:"6px 14px",background:T.positive+"10",borderRadius:4}}>
-                      <div style={{fontSize:10,color:T.gray400,marginBottom:2}}>Target</div>
-                      <div style={{fontSize:16,fontWeight:800,color:T.positive}}>{r.target}{r.unit}</div>
-                    </div>
-                    <div style={{textAlign:"center",padding:"6px 14px",background:T.gray100,borderRadius:4}}>
-                      <div style={{fontSize:10,color:T.gray400,marginBottom:2}}>Delta</div>
-                      <div style={{fontSize:16,fontWeight:800,color:r.delta<0?T.info:T.warning}}>{r.delta>0?"+":""}{r.delta}{r.unit}</div>
-                    </div>
-                  </div>
-                  <div style={{fontSize:12,color:T.gray900,marginBottom:8}}>{r.rationale}</div>
-                  <div style={{background:T.primary+"08",borderLeft:`2px solid ${T.primary}`,borderRadius:3,padding:"8px 12px",marginBottom:8}}>
-                    <div style={{fontSize:10,fontWeight:700,color:T.primary,marginBottom:3}}>CROSS-DOMAIN IMPACT</div>
-                    <div style={{fontSize:11,color:T.black}}>{r.crossDomain}</div>
-                  </div>
-                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                    {Object.entries(r.impact).map(([k,v])=>(
-                      <span key={k} style={{fontSize:10,background:T.positive+"12",color:T.positive,border:`1px solid ${T.positive}30`,borderRadius:3,padding:"2px 8px",fontWeight:600}}>{k}: {v}</span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              {!r.applied&&<div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                <button onClick={()=>applyRec(r.id)} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"7px 16px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Apply & Notify Operator →</button>
-                <button style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"7px 14px",fontSize:12,cursor:"pointer",color:T.gray900}}>Add to Dashboard</button>
-              </div>}
-              {r.applied&&<div style={{background:"#F0FDF4",border:`1px solid ${T.positive}`,borderRadius:4,padding:"8px 12px",fontSize:12,color:T.positive,fontWeight:700}}>✅ Applied — Operator notified. Monitoring outcome over next 2–3 production cycles.</div>}
-            </div>
-          </div>
-        ))}
-      </div>}
-
-      {/* ── ANOMALY DETECTION ── */}
-      {activeTab==="anomalies"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:12}}>
-        <div style={{background:T.primary+"10",border:`1px solid ${T.primary}30`,borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"12px 16px"}}>
-          <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>🧠 Setpoint & Recipe Optimization Agent — Anomaly Feed · {selectedLine}</div>
-          <div style={{fontSize:12,color:T.black}}>The agent continuously monitors all process parameters against recipe standards and historical baselines. Anomalies are things already outside acceptable range — they need a decision. Each one has a recommended action: apply a setpoint fix, raise or view a work order, escalate, or mark as monitoring.</div>
-        </div>
-        {SP_ANOMALIES.map(a=>{
-          const actColor=a.actionType==="wo"?"#4F46E5":a.actionType==="setpoint"?T.primary:a.actionType==="escalate"?T.negative:T.neutral;
-          const actBg=a.actionType==="wo"?"#EEF2FF":a.actionType==="setpoint"?T.primary+"10":a.actionType==="escalate"?T.negative+"10":T.gray100;
-          return(<div key={a.id} style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",borderLeft:`4px solid ${severityColor(a.severity)}`}}>
-            <div style={{padding:"14px 18px"}}>
-              {/* Header row */}
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap",marginBottom:8}}>
-                <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
-                  <Badge label={a.severity} color={severityColor(a.severity)}/>
-                  <Badge label={a.equipment} color={T.primary}/>
-                  <span style={{fontSize:13,fontWeight:800,color:T.black}}>{a.param}</span>
-                </div>
-                <span style={{fontSize:11,color:T.gray400}}>Detected: {a.since}</span>
-              </div>
-              {/* Values row */}
-              <div style={{display:"flex",gap:16,flexWrap:"wrap",marginBottom:10}}>
-                <div style={{padding:"6px 12px",background:severityColor(a.severity)+"10",borderRadius:4,textAlign:"center"}}>
-                  <div style={{fontSize:10,color:T.gray400,marginBottom:2}}>Current</div>
-                  <div style={{fontSize:16,fontWeight:800,color:severityColor(a.severity)}}>{a.value}</div>
-                </div>
-                <div style={{padding:"6px 12px",background:T.gray100,borderRadius:4,textAlign:"center"}}>
-                  <div style={{fontSize:10,color:T.gray400,marginBottom:2}}>Target / Limit</div>
-                  <div style={{fontSize:12,fontWeight:600,color:T.black}}>{a.threshold}</div>
-                </div>
-                <div style={{padding:"6px 12px",background:T.gray100,borderRadius:4,textAlign:"center"}}>
-                  <div style={{fontSize:10,color:T.gray400,marginBottom:2}}>Trend</div>
-                  <div style={{fontSize:12,fontWeight:700,color:severityColor(a.severity)}}>{a.trend}</div>
-                </div>
-              </div>
-              {/* Description */}
-              <div style={{fontSize:12,color:T.gray900,marginBottom:10,lineHeight:1.6}}>{a.description}</div>
-              {/* Action section */}
-              <div style={{background:actBg,border:`1px solid ${actColor}30`,borderRadius:4,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,flexWrap:"wrap"}}>
-                <div style={{flex:1}}>
-                  <div style={{fontSize:10,fontWeight:700,color:actColor,marginBottom:3,textTransform:"uppercase",letterSpacing:"0.04em"}}>
-                    {a.actionType==="wo"?"🔧 Maintenance Action":a.actionType==="setpoint"?"⚙ Setpoint Fix Available":a.actionType==="escalate"?"🚨 Escalation Recommended":"👁 Monitoring"}
-                  </div>
-                  <div style={{fontSize:11,color:T.black}}>{a.actionNote}</div>
-                </div>
-                {!anomalyActioned[a.id]
-                  ?<button onClick={()=>setAnomalyActioned(prev=>({...prev,[a.id]:a.actionType}))} style={{background:actColor,color:T.white,border:"none",borderRadius:4,padding:"7px 14px",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>{a.actionLabel}</button>
-                  :<span style={{fontSize:11,fontWeight:700,color:T.positive,whiteSpace:"nowrap",flexShrink:0}}>✓ {a.actionType==="wo"?"Opened in SAP PM":a.actionType==="setpoint"?"Fix Applied — Operator Notified":a.actionType==="escalate"?"Escalated to Plant Leader":"Marked as Monitoring"}</span>
-                }
-              </div>
-              {anomalyActioned[a.id]&&<div style={{marginTop:8,background:"#F0FDF4",border:`1px solid ${T.positive}`,borderRadius:4,padding:"8px 12px",fontSize:11,color:T.positive,fontWeight:600}}>
-                ✅ {a.actionType==="wo"?"WO-4421 opened in SAP PM. Carlos Rivera notified.":a.actionType==="setpoint"?`Setpoint fix applied. Operator notified. Monitoring next 2–3 production cycles.`:a.actionType==="escalate"?"Escalated to Plant Leader — added to dashboard recommendations.":"Anomaly flagged as monitoring. Agent will alert if it worsens."}
-              </div>}
-            </div>
-          </div>);
-        })}
-      </div>}
-
-      {/* ── RECIPE LIBRARY ── */}
-      {activeTab==="recipes"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
-
-        {/* Agent banner */}
-        <div style={{background:T.primary+"10",border:`1px solid ${T.primary}30`,borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"12px 16px"}}>
-          <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>🧠 Recipe Optimization Agent — {selectedLine}</div>
-          <div style={{fontSize:12,color:T.black}}>Agent continuously monitors production performance against recipe standards. When actual conditions drift from standard for more than 24hrs, or when FPY falls below target, the agent recommends recipe updates for process engineering review. Updates require process engineer approval before taking effect.</div>
-        </div>
-
-        {/* Recipes with agent recs */}
-        {SP_RECIPES.map(r=>{
-          const statusColor=r.status==="Active"?T.positive:r.status==="On Hold"?T.warning:T.neutral;
-          return(<div key={r.sku} style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",overflow:"hidden",borderLeft:`4px solid ${r.agentRec.hasRec?T.warning:statusColor}`}}>
-            <div style={{padding:"14px 18px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
-              <div style={{flex:1}}>
-                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
-                  <span style={{fontSize:13,fontWeight:800,color:T.black}}>{r.sku}</span>
-                  <span style={{fontSize:13,color:T.gray900}}>{r.name}</span>
-                  <Badge label={r.status} color={statusColor}/>
-                  {r.agentRec.hasRec&&<Badge label="🧠 Recipe update recommended" color={T.warning}/>}
-                </div>
-                <div style={{display:"flex",gap:16,flexWrap:"wrap",fontSize:11,color:T.gray900,marginBottom:r.agentRec.hasRec?8:0}}>
-                  <span>Fryer: <strong>{r.frierTemp}°C</strong></span>
-                  <span>Slice: <strong>{r.sliceThick}mm</strong></span>
-                  <span>Blancher: <strong>{r.blancherTemp}°C</strong></span>
-                  <span>Seasoning: <strong>{r.seasonRate}g/kg</strong></span>
-                  <span>Last updated: <strong>{r.lastUpdated}</strong></span>
-                  {r.performance!=="—"&&<span>Performance: <strong style={{color:T.positive}}>{r.performance}</strong></span>}
-                </div>
-              </div>
-            </div>
-
-            {/* Agent recommendation */}
-            {r.agentRec.hasRec&&<div style={{borderTop:`1px solid ${T.border}`,padding:"12px 18px",background:T.warning+"06"}}>
-              <div style={{fontSize:11,fontWeight:700,color:T.warning,marginBottom:6}}>🧠 Recommended Recipe Changes — Review & Approve</div>
-              <div style={{fontSize:12,color:T.black,marginBottom:10}}>{r.agentRec.reason}</div>
-              <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:10}}>
-                {r.agentRec.changes.map((c,i)=>(
-                  <div key={i} style={{background:T.white,border:`1px solid ${T.border}`,borderRadius:4,padding:"10px 14px",flex:"1 1 200px"}}>
-                    <div style={{fontSize:11,fontWeight:700,color:T.black,marginBottom:4}}>{c.param}</div>
-                    <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:4}}>
-                      <span style={{fontSize:12,color:T.gray400}}>{c.current}{c.unit}</span>
-                      <span style={{fontSize:11,color:T.gray400}}>→</span>
-                      <span style={{fontSize:13,fontWeight:800,color:T.positive}}>{c.proposed}{c.unit}</span>
-                    </div>
-                    <div style={{fontSize:10,color:T.gray900,fontStyle:"italic"}}>{c.note}</div>
-                  </div>
-                ))}
-              </div>
-              <div style={{display:"flex",gap:8}}>
-                <button style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"7px 16px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Approve & Update Recipe</button>
-                <button style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"7px 14px",fontSize:12,cursor:"pointer",color:T.gray900}}>Dismiss</button>
-              </div>
-            </div>}
-          </div>);
-        })}
-      </div>}
-
-      </>)}
-    </div>
-  </div>);
-}
-
-// ── DISRUPTION MODAL ──────────────────────────────────────────────────────────{A:{title:"SKU 4412 → SKU 3802 Swap Executed — Line 1",priority:"High",domain:"Production",icon:"⚙️",lines:["All","Line 1"],agents:["Scheduling Agent","Inbound Materials Agent","Quality Monitoring Agent","Supervisor & Operator Co-Pilot"],suggestedAction:"Monitor Line 1 changeover to SKU 3802, confirm quality checks pass.",summary:"Line 1 switched from SKU 4412 to SKU 3802 following inbound materials failure. 35-min changeover underway.",detail:{issue:"Inbound seasoning blend Lot #SB-2291 for SKU 4412 was rejected at intake — sodium content 14% above spec.",action:"Monitor changeover progress, confirm quality sign-off on SKU 3802 first run.",steps:[{agent:"Inbound Materials Agent",domain:"Quality",action:"Quarantine Lot #SB-2291 and raise supplier deviation report.",status:"complete"},{agent:"Scheduling Agent",domain:"Planning",action:"Update Line 1 production schedule — replace SKU 4412 run with SKU 3802.",status:"complete"},{agent:"Quality Monitoring Agent",domain:"Quality",action:"Monitor first-pass yield on SKU 3802 run.",status:"pending"},{agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Guide Line 1 operator through SKU 3802 changeover SOP.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"}]}},B:{title:"Emergency SKU 4412 Batch Sourcing — Line 1 On Hold",priority:"Critical",domain:"Production",icon:"📦",lines:["All","Line 1"],agents:["Inbound Materials Agent","Planning Agent","Scheduling Agent"],suggestedAction:"Track emergency batch delivery ETA, hold Line 1.",summary:"Emergency replacement batch ordered. Line 1 on hold pending delivery.",detail:{issue:"SKU 4412 inbound materials rejected. Emergency batch ordered — 60% confidence on timing.",action:"Monitor delivery ETA. If batch arrives by 11am, proceed. If delayed, activate SKU 3802 contingency.",steps:[{agent:"Inbound Materials Agent",domain:"Quality",action:"Raise emergency PO with approved seasoning supplier.",status:"complete"},{agent:"Planning Agent",domain:"Planning",action:"Place Line 1 on hold. Prepare SKU 3802 contingency.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"}]}},C:{title:"Line 1 Held — SKU 4412 Rescheduled to Tomorrow",priority:"High",domain:"Planning",icon:"📋",lines:["All","Line 1"],agents:["Planning Agent","Scheduling Agent"],suggestedAction:"Confirm Line 1 hold and reschedule SKU 4412 to tomorrow.",summary:"Line 1 Day shift held. SKU 4412 rescheduled to tomorrow pending fresh batch.",detail:{issue:"SKU 4412 cannot run today. Full Day shift volume on Line 1 lost.",action:"Reschedule SKU 4412 to tomorrow's Day shift. Notify DC-West.",steps:[{agent:"Scheduling Agent",domain:"Planning",action:"Reschedule SKU 4412 Line 1 run to tomorrow Day shift.",status:"complete"},{agent:"Planning Agent",domain:"Planning",action:"Notify DC-West of one-day delay.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Priya Nair",role:"Scheduler",avatar:"SC"}]}}};
-
-function DisruptionModal({onClose,onAddRec}){
-  const [selected,setSelected]=useState(null);const [dispatched,setDispatched]=useState(false);const [dispatching,setDispatching]=useState(false);
-  const dispatch=()=>{if(!selected)return;setDispatching(true);setTimeout(()=>{setDispatching(false);setDispatched(true);const recTemplate=DISRUPTION_RECS[selected];if(recTemplate&&onAddRec){onAddRec({...recTemplate,id:Date.now(),fromDisruption:true});}},1800);};
-  return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-    <div style={{background:T.white,borderRadius:6,width:"100%",maxWidth:680,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
-      <div style={{background:T.negative,padding:"14px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <div><div style={{fontSize:11,fontWeight:700,color:"#ffffff99",marginBottom:2}}>🚨 REAL-TIME DISRUPTION · {disruptionAlert.time}</div><div style={{fontSize:15,fontWeight:800,color:T.white}}>{disruptionAlert.title}</div></div>
-        <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:4,padding:"6px 12px",color:T.white,cursor:"pointer",fontWeight:700,fontSize:12}}>✕ Close</button>
-      </div>
-      <div style={{padding:"20px",display:"flex",flexDirection:"column",gap:16}}>
-        {dispatched&&<div style={{background:"#F0FDF4",border:`2px solid ${T.positive}`,borderRadius:4,padding:"12px 16px"}}><div style={{fontSize:13,fontWeight:800,color:T.positive}}>✅ Response Dispatched</div><div style={{fontSize:12,color:T.black,marginTop:3}}>{disruptionAlert.notifyList.join(", ")} notified. Recommendation added to dashboard.</div></div>}
-        <div style={{fontSize:12,color:T.black,lineHeight:1.6}}>{disruptionAlert.description}</div>
-        <div style={{background:"#FEF2F2",borderRadius:4,padding:"12px 16px",borderLeft:`3px solid ${T.negative}`}}><div style={{fontSize:11,fontWeight:700,color:T.negative,marginBottom:6}}>IMMEDIATE IMPACTS</div>{disruptionAlert.impacts.map((imp,i)=><div key={i} style={{fontSize:12,color:T.black,marginBottom:3}}>• {imp}</div>)}</div>
-        <div><div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:10}}>Select Response Option</div><div style={{display:"flex",flexDirection:"column",gap:8}}>{disruptionAlert.options.map(opt=>(<div key={opt.id} onClick={()=>!dispatched&&setSelected(opt.id)} style={{padding:"12px 16px",borderRadius:4,border:`2px solid ${selected===opt.id?T.primary:T.border}`,background:selected===opt.id?T.primary+"08":T.white,cursor:dispatched?"default":"pointer"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4,gap:8,flexWrap:"wrap"}}><div style={{display:"flex",gap:6,alignItems:"center"}}><span style={{fontSize:13,fontWeight:800,color:T.black}}>Option {opt.id}: {opt.label}</span>{opt.recommended&&<Badge label="✓ Recommended" color={T.positive}/>}</div><Badge label={`Impact: ${opt.impact}`} color={opt.impact==="Low"?T.positive:opt.impact==="Medium"?T.warning:T.negative}/></div>
-          <div style={{fontSize:12,color:T.gray900}}>{opt.description}</div>
-        </div>))}</div></div>
-        <div style={{background:T.gray100,borderRadius:4,padding:"10px 14px"}}><div style={{fontSize:11,fontWeight:700,color:T.gray900,marginBottom:4}}>WILL NOTIFY</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{disruptionAlert.notifyList.map(n=><Badge key={n} label={n} color={T.primary}/>)}</div></div>
-        <button onClick={dispatch} disabled={!selected||dispatched||dispatching} style={{width:"100%",padding:"12px",background:selected&&!dispatched?T.negative:T.gray400,color:T.white,border:"none",borderRadius:4,fontSize:14,fontWeight:800,cursor:selected&&!dispatched?"pointer":"not-allowed"}}>{dispatching?"⏳ Dispatching response...":dispatched?"✅ Response Dispatched":selected?`🚨 Execute Option ${selected} & Notify Team`:"Select a response option above"}</button>
-      </div>
-    </div>
-  </div>);
-}
-
-// ── APP ───────────────────────────────────────────────────────────────────────
-export default function App(){
-  const [tab,setTab]=useState("dashboard");
-  const [selectedRec,setSelectedRec]=useState(null);
-  const [showDisruption,setShowDisruption]=useState(false);
-  const [disruptionActive,setDisruptionActive]=useState(true);
-  const [recs,setRecs]=useState(initialRecommendations);
-  const [persona,setPersona]=useState("plant_leader");
-  const [personaOpen,setPersonaOpen]=useState(false);
-  const [chatMode,setChatMode]=useState(null); // null | 'scenario' | 'copilot'
-  const personaRef=useRef(null);
-  useEffect(()=>{const h=(e)=>{if(personaRef.current&&!personaRef.current.contains(e.target))setPersonaOpen(false);};document.addEventListener("mousedown",h);return()=>document.removeEventListener("mousedown",h);},[]);
-  const addRec=rec=>setRecs(prev=>[rec,...prev]);
-  const handleViewDashboardRec=(recId)=>{const rec=[...recs,...initialRecommendations].find(r=>r.id===recId);if(rec){setSelectedRec(rec);setTab("dashboard");setChatMode(null);}};
-
-  const personas=[{id:"plant_leader",label:"Plant Leader",avatar:"PL"},{id:"maint_manager",label:"Maintenance Manager",avatar:"MM"},{id:"technician",label:"Technician",avatar:"TC"},{id:"process_eng",label:"Process Engineer",avatar:"PE"},{id:"scheduler",label:"Scheduler",avatar:"SC"},{id:"quality_manager",label:"Quality Manager",avatar:"QM"},{id:"safety_lead",label:"Safety Lead",avatar:"SL"}];
-  const personaNav={plant_leader:["dashboard","actions","lineperf","quality","maintenance","technician","shutdown","setpoint","assethealth","materials","schedule","labor","safety"],maint_manager:["dashboard","actions","lineperf","maintenance","technician","shutdown","assethealth","schedule"],technician:["technician"],process_eng:["dashboard","actions","setpoint","lineperf","quality"],scheduler:["dashboard","actions","schedule","materials","labor","lineperf"],quality_manager:["dashboard","actions","quality","materials","lineperf"],safety_lead:["dashboard","actions","safety","lineperf"]};
-  const allNavItems=[{id:"dashboard",icon:"▦",label:"Summary Dashboard"},{id:"actions",icon:"☑",label:"Action Log"},{id:"lineperf",icon:"↗",label:"Line Performance"},{id:"quality",icon:"◎",label:"Quality Dashboard"},{id:"maintenance",icon:"⚙",label:"Maintenance Dashboard"},{id:"technician",icon:"⬡",label:"Technician Dashboard"},{id:"shutdown",icon:"◈",label:"Shutdown Management"},{id:"setpoint",icon:"⊕",label:"Setpoint & Recipe Optimization"},{id:"assethealth",icon:"♡",label:"Asset Health"},{id:"materials",icon:"▤",label:"Inbound Materials"},{id:"schedule",icon:"▦",label:"Production Schedule"},{id:"labor",icon:"♟",label:"Labor Scheduling"},{id:"safety",icon:"◬",label:"Safety & EHS"}];
-  const activeNavIds=personaNav[persona]||personaNav.plant_leader;
-  const builtTabs=["dashboard","actions","lineperf","schedule","maintenance","technician","shutdown","setpoint"];
-
-  const handleTabClick=(id)=>{setTab(id);setSelectedRec(null);setChatMode(null);};
-
-  return(<div style={{background:T.gray100,minHeight:"100vh",fontFamily:"'Inter',system-ui,sans-serif",display:"flex",flexDirection:"column"}}>
-    {/* Top bar */}
-    <div style={{background:T.primary,padding:"0 20px",display:"flex",alignItems:"center",justifyContent:"space-between",height:48,flexShrink:0,gap:8}}>
-      <div style={{display:"flex",alignItems:"center",gap:10}}><span style={{color:T.white,fontWeight:800,fontSize:15}}>🏭 Plant Orchestration Agent</span><span style={{color:"#ffffff60",fontSize:12}}>Austin Plant · Snack Chips</span></div>
-      <div style={{display:"flex",gap:8,alignItems:"center"}}>
-        {recs.some(r=>r.fromChat)&&<span style={{background:T.info,borderRadius:4,padding:"3px 10px",fontSize:11,color:T.white,fontWeight:700}}>✦ {recs.filter(r=>r.fromChat).length} new from chat</span>}
-        {disruptionActive&&persona==="plant_leader"&&<button onClick={()=>setShowDisruption(true)} style={{background:T.negative,border:"none",borderRadius:4,padding:"5px 12px",color:T.white,fontWeight:700,fontSize:11,cursor:"pointer"}}>🚨 Live Disruption</button>}
-
-        {/* Scenario Simulation button */}
-        <button onClick={()=>{setChatMode(chatMode==="scenario"?null:"scenario");setSelectedRec(null);}}
-          style={{background:chatMode==="scenario"?"rgba(255,255,255,0.25)":"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.3)",borderRadius:4,padding:"6px 14px",color:T.white,fontWeight:700,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
-          💬 Scenario Simulation
-        </button>
-
-        {/* Co-Pilot button */}
-        <button onClick={()=>{setChatMode(chatMode==="copilot"?null:"copilot");setSelectedRec(null);}}
-          style={{background:chatMode==="copilot"?"rgba(255,255,255,0.25)":"rgba(255,255,255,0.12)",border:`1px solid ${chatMode==="copilot"?"rgba(255,255,255,0.6)":"rgba(255,255,255,0.3)"}`,borderRadius:4,padding:"6px 14px",color:T.white,fontWeight:700,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
-          🤖 Co-Pilot
-        </button>
-
-        {/* Persona switcher */}
-        <div ref={personaRef} style={{position:"relative"}}>
-          <button onClick={()=>setPersonaOpen(o=>!o)} style={{display:"flex",alignItems:"center",gap:8,background:"rgba(255,255,255,0.15)",border:"1px solid rgba(255,255,255,0.3)",borderRadius:4,padding:"5px 10px",cursor:"pointer",color:T.white}}>
-            <div style={{width:24,height:24,borderRadius:"50%",background:"rgba(255,255,255,0.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800}}>{personas.find(p=>p.id===persona)?.avatar}</div>
-            <span style={{fontSize:12,fontWeight:700}}>{personas.find(p=>p.id===persona)?.label}</span>
-            <span style={{fontSize:9}}>▼</span>
-          </button>
-          {personaOpen&&<div style={{position:"absolute",right:0,top:"110%",background:T.white,border:`1px solid ${T.border}`,borderRadius:4,boxShadow:"0 4px 16px rgba(0,0,0,0.15)",zIndex:200,minWidth:200,overflow:"hidden"}}>
-            <div style={{padding:"8px 14px 6px",fontSize:10,fontWeight:800,color:T.gray400,textTransform:"uppercase",letterSpacing:"0.06em"}}>Switch Persona</div>
-            {personas.map(p=>(<button key={p.id} onClick={()=>{setPersona(p.id);setPersonaOpen(false);setTab(p.id==="technician"?"technician":p.id==="process_eng"?"setpoint":"dashboard");setSelectedRec(null);setChatMode(null);}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"9px 14px",border:"none",cursor:"pointer",textAlign:"left",fontSize:13,background:persona===p.id?T.primary+"10":"transparent",fontWeight:persona===p.id?800:400,color:persona===p.id?T.primary:T.black}}>
-              <div style={{width:28,height:28,borderRadius:"50%",background:persona===p.id?T.primary:T.gray100,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:persona===p.id?T.white:T.gray900,flexShrink:0}}>{p.avatar}</div>
-              <span>{p.label}</span>
-              {persona===p.id&&<span style={{marginLeft:"auto",fontSize:11,color:T.primary}}>✓</span>}
-            </button>))}
-          </div>}
-        </div>
-      </div>
-    </div>
-
-    {/* Body */}
-    <div style={{display:"flex",flex:1,overflow:"hidden"}}>
-      {/* Left nav */}
-      <div style={{width:52,background:T.white,borderRight:`1px solid ${T.border}`,display:"flex",flexDirection:"column",alignItems:"center",paddingTop:8,flexShrink:0}}>
-        {allNavItems.map(item=>{const isActive=tab===item.id&&!chatMode;const isEnabled=activeNavIds.includes(item.id);return(<div key={item.id} style={{position:"relative",width:"100%"}} title={`${item.label}${!isEnabled?" (not available for your role)":""}`}>
-          <button onClick={()=>{if(isEnabled)handleTabClick(item.id);}} style={{width:"100%",height:44,border:"none",cursor:isEnabled?"pointer":"default",background:isActive?T.primary+"18":"transparent",borderLeft:isActive?`3px solid ${T.primary}`:"3px solid transparent",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:600,color:isActive?T.primary:isEnabled?T.gray900:T.gray400,opacity:isEnabled?1:0.3}}>
-            {item.icon}
-            {item.id==="actions"&&isEnabled&&actionLog.filter(a=>a.status==="Open"||a.status==="In Progress").length>0&&<span style={{position:"absolute",top:6,right:6,width:7,height:7,borderRadius:"50%",background:T.negative,display:"block"}}/>}
-          </button>
-        </div>);})}
-        <div style={{marginTop:"auto",paddingBottom:12,display:"flex",flexDirection:"column",alignItems:"center",gap:5}}>
-          <div style={{width:24,height:1,background:T.border,marginBottom:4}}/>
-          {[{c:T.warning,l:"L1"},{c:T.positive,l:"L2"},{c:T.negative,l:"L3"}].map(l=>(<div key={l.l} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}><span style={{width:7,height:7,borderRadius:"50%",background:l.c,display:"inline-block"}}/><span style={{fontSize:8,color:T.gray400,fontWeight:700}}>{l.l}</span></div>))}
-        </div>
-      </div>
-
-      {/* Main content */}
-      <div style={{flex:1,overflowY:"auto"}}>
-        {/* Chat modes */}
-        {chatMode==="scenario"&&<ScenarioChat recs={recs} onAddRec={addRec}/>}
-        {chatMode==="copilot"&&<CoPilotChat activeTab={tab}/>}
-
-        {/* Tab content (only when chat not open) */}
-        {!chatMode&&(<>
-          {tab==="dashboard"&&!selectedRec&&<Dashboard recs={recs} onSelectRec={r=>setSelectedRec(r)} onShowDisruption={()=>setShowDisruption(true)} disruptionActive={disruptionActive} persona={persona}/>}
-          {tab==="dashboard"&&selectedRec&&<DetailPage rec={selectedRec} onBack={()=>setSelectedRec(null)}/>}
-          {tab==="actions"&&<ActionLog/>}
-          {tab==="lineperf"&&<LinePerformanceView/>}
-          {tab==="schedule"&&<ProductionScheduleView onViewDashboardRec={handleViewDashboardRec}/>}
-          {tab==="maintenance"&&!selectedRec&&<MaintenanceDashboard onSelectRec={r=>setSelectedRec(r)}/>}
-          {tab==="maintenance"&&selectedRec&&<DetailPage rec={selectedRec} onBack={()=>setSelectedRec(null)}/>}
-          {tab==="technician"&&<TechnicianDashboard/>}
-          {tab==="shutdown"&&<ShutdownDashboard/>}
-          {tab==="setpoint"&&<SetpointDashboard/>}
-          {!builtTabs.includes(tab)&&(<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"60vh",gap:12}}>
-            <div style={{fontSize:40}}>{allNavItems.find(n=>n.id===tab)?.icon}</div>
-            <div style={{fontSize:16,fontWeight:800,color:T.black}}>{allNavItems.find(n=>n.id===tab)?.label}</div>
-            <div style={{fontSize:13,color:T.gray900}}>This view is part of the full vision — coming in a future build.</div>
-            <div style={{background:T.primary+"12",border:`1px solid ${T.primary}30`,borderRadius:4,padding:"10px 20px",fontSize:12,color:T.primary,fontWeight:600}}>💬 Use Scenario Simulation to ask questions about this domain</div>
-          </div>)}
-        </>)}
-      </div>
-    </div>
-
-    {showDisruption&&<DisruptionModal onClose={()=>{setShowDisruption(false);setDisruptionActive(false);}} onAddRec={addRec}/>}
-  </div>);
-}
+	
+	const T = {
+	  primary:"#197A56", positive:"#29BA74", negative:"#D64454", neutral:"#7C7C7C",
+	  warning:"#F59E0B", info:"#1976D2", black:"#000000", gray900:"#4C4D4D",
+	  gray400:"#B1B1B7", gray100:"#F3F3F3", white:"#FFFFFF", border:"#E0E0E0",
+	};
+	
+	const Badge=({label,color})=>(<span style={{background:color+"18",color,border:`1px solid ${color}40`,borderRadius:3,padding:"2px 8px",fontSize:11,fontWeight:700,whiteSpace:"nowrap"}}>{label}</span>);
+	const PriorityColor=p=>p==="Critical"?T.negative:p==="High"?T.warning:p==="Medium"?T.info:T.neutral;
+	const statusColor=s=>s==="Complete"?T.positive:s==="In Progress"?T.info:s==="Action Required"?T.negative:T.warning;
+	const Metric=({label,value,target,unit="",good,bad})=>{
+	  const color=good?T.positive:bad?T.negative:T.warning;
+	  return(<div style={{display:"flex",flexDirection:"column",gap:2}}><div style={{fontSize:10,color:T.gray900,fontWeight:600,whiteSpace:"nowrap"}}>{label}</div><div style={{fontSize:16,fontWeight:800,color,lineHeight:1}}>{value}{unit}</div>{target!=null&&<div style={{fontSize:10,color:T.gray400}}>Target: {target}{unit}</div>}</div>);
+	};
+	
+	// ── MAINTENANCE DATA ──────────────────────────────────────────────────────────
+	
+	const maintAssets = [
+	  {id:"A-001",name:"Line 3 Heat Sealer",line:"Line 3",criticality:"Critical",safetyImpact:"High",qualityImpact:"High",productionImpact:"High",failureCost:42000,replacementCost:800,currentStrategy:"Reactive",agentRec:"Increase PM Frequency",recReason:"Vibration index 8.4 exceeds threshold. Failure causes full line stoppage and quality escapes. Criticality warrants monthly PM minimum.",healthScore:34,vibration:8.4,tempVariance:6.1,lastPM:"Jan 15, 2026",nextPM:"Overdue",failureRisk:"Critical",trend:"Degrading"},
+	  {id:"A-002",name:"Line 1 Label Applicator",line:"Line 1",criticality:"High",safetyImpact:"Low",qualityImpact:"High",productionImpact:"Medium",failureCost:8500,replacementCost:1200,currentStrategy:"Scheduled PM",agentRec:"Maintain Current",recReason:"Current 8-week PM cycle aligns with degradation rate. Quality impact is high but failure is recoverable within 30 min. No change needed.",healthScore:72,vibration:3.1,tempVariance:1.2,lastPM:"Feb 10, 2026",nextPM:"Apr 7, 2026",failureRisk:"Medium",trend:"Stable"},
+	  {id:"A-003",name:"Line 2 Conveyor Belt",line:"Line 2",criticality:"Medium",safetyImpact:"Low",qualityImpact:"Low",productionImpact:"Medium",failureCost:3200,replacementCost:420,currentStrategy:"Scheduled PM",agentRec:"Reduce Frequency",recReason:"Current 4-week cycle is excessive given low criticality and $420 replacement cost. Failure causes <15 min downtime. Extend to 10 weeks to reduce technician load.",healthScore:81,vibration:2.2,tempVariance:0.8,lastPM:"Feb 20, 2026",nextPM:"Mar 20, 2026",failureRisk:"Low",trend:"Stable"},
+	  {id:"A-004",name:"Line 3 Packaging Filler",line:"Line 3",criticality:"High",safetyImpact:"Low",qualityImpact:"High",productionImpact:"High",failureCost:14000,replacementCost:2100,currentStrategy:"Scheduled PM",agentRec:"Increase PM Frequency",recReason:"High production and quality impact. Recent scrap rate increase on Line 3 partially attributed to filler calibration drift. Reduce interval from 8 weeks to 5 weeks.",healthScore:58,vibration:4.7,tempVariance:2.9,lastPM:"Jan 28, 2026",nextPM:"Mar 25, 2026",failureRisk:"High",trend:"Degrading"},
+	  {id:"A-005",name:"Line 1 Mixing Motor",line:"Line 1",criticality:"Low",safetyImpact:"Low",qualityImpact:"Low",productionImpact:"Low",failureCost:600,replacementCost:180,currentStrategy:"Scheduled PM",agentRec:"Run to Failure",recReason:"Low criticality across all dimensions. Replacement cost is $180 and failure causes <5 min downtime. PM cost exceeds expected failure cost. Safe to run to failure.",healthScore:91,vibration:1.4,tempVariance:0.4,lastPM:"Feb 1, 2026",nextPM:"Mar 1, 2026",failureRisk:"Low",trend:"Stable"},
+	  {id:"A-006",name:"Line 2 Heat Tunnel",line:"Line 2",criticality:"High",safetyImpact:"Medium",qualityImpact:"High",productionImpact:"High",failureCost:18000,replacementCost:3400,currentStrategy:"Reactive",agentRec:"Initiate PM Program",recReason:"No current PM program despite high criticality. Safety impact (burn risk) and quality impact (seal integrity) make reactive strategy unacceptable. Initiate 6-week PM cycle immediately.",healthScore:67,vibration:3.8,tempVariance:3.2,lastPM:"Never",nextPM:"Not scheduled",failureRisk:"High",trend:"Unknown"},
+	  {id:"A-007",name:"Line 3 Crimping Unit",line:"Line 3",criticality:"Medium",safetyImpact:"Low",qualityImpact:"Medium",productionImpact:"Medium",failureCost:4800,replacementCost:650,currentStrategy:"Scheduled PM",agentRec:"Maintain Current",recReason:"Current 6-week cycle appropriate for medium criticality asset. Health score 74 indicates no immediate risk. Continue monitoring.",healthScore:74,vibration:2.9,tempVariance:1.6,lastPM:"Feb 5, 2026",nextPM:"Mar 19, 2026",failureRisk:"Medium",trend:"Stable"},
+	  {id:"A-008",name:"Line 1 Sealing Bar",line:"Line 1",criticality:"Low",safetyImpact:"Low",qualityImpact:"Medium",productionImpact:"Low",failureCost:1100,replacementCost:95,currentStrategy:"Scheduled PM",agentRec:"Run to Failure",recReason:"Replacement cost is $95. Even with medium quality impact, the failure is quickly detectable and recoverable. PM cost over 12 months exceeds expected failure cost by 3x.",healthScore:88,vibration:1.8,tempVariance:0.6,lastPM:"Feb 15, 2026",nextPM:"Mar 15, 2026",failureRisk:"Low",trend:"Stable"},
+	];
+	
+	const maintWorkOrders = [
+	  {id:"WO-4421",asset:"Line 3 Heat Sealer",line:"Line 3",type:"Corrective",priority:"Critical",status:"In Progress",assignedTo:"Carlos Rivera",estimatedHrs:4,actualHrs:1.5,dueDate:"Feb 28, 2026",description:"Sealer inspection — vibration and temp variance above threshold. Full component check required.",agentSuggestion:null},
+	  {id:"WO-4422",asset:"Line 2 Heat Tunnel",line:"Line 2",type:"Preventive",priority:"High",status:"Open",assignedTo:null,estimatedHrs:2,actualHrs:0,dueDate:"Mar 3, 2026",description:"Initiate first PM cycle — inspect heating elements, check safety interlocks, calibrate temp controls.",agentSuggestion:"Assign to Marcus Webb — heat tunnel certified, available this afternoon after WO-4425 completes."},
+	  {id:"WO-4423",asset:"Line 3 Packaging Filler",line:"Line 3",type:"Preventive",priority:"High",status:"Open",assignedTo:null,estimatedHrs:3,actualHrs:0,dueDate:"Mar 4, 2026",description:"Filler calibration and seal check — scrap rate increase linked to calibration drift.",agentSuggestion:"Assign to Priya Singh — filler-certified, currently underutilised (2.5hrs available today)."},
+	  {id:"WO-4424",asset:"Line 1 Label Applicator",line:"Line 1",type:"Corrective",priority:"Medium",status:"Open",assignedTo:"Priya Singh",estimatedHrs:1.5,actualHrs:0,dueDate:"Mar 2, 2026",description:"Label misalignment root cause investigation — check applicator head alignment and sensor calibration.",agentSuggestion:null},
+	  {id:"WO-4425",asset:"Line 2 Conveyor Belt",line:"Line 2",type:"Preventive",priority:"Low",status:"In Progress",assignedTo:"Marcus Webb",estimatedHrs:1,actualHrs:0.5,dueDate:"Mar 6, 2026",description:"Routine belt inspection — tension check, wear assessment.",agentSuggestion:null},
+	  {id:"WO-4426",asset:"Line 1 Mixing Motor",line:"Line 1",type:"Preventive",priority:"Low",status:"Open",assignedTo:null,estimatedHrs:0.5,actualHrs:0,dueDate:"Mar 10, 2026",description:"Routine lubrication and visual inspection.",agentSuggestion:"Consider cancelling — Maintenance Strategy Agent recommends run-to-failure for this asset. Saves 0.5 technician hours."},
+	];
+	
+	const maintTechnicians = [
+	  {name:"Carlos Rivera",role:"Senior Technician",certifications:["Heat Sealer","Filler","Conveyor","Electrical"],currentWOs:["WO-4421"],scheduledHrs:8,allocatedHrs:4,availableHrs:4,utilization:50,status:"On Job"},
+	  {name:"Marcus Webb",role:"Technician",certifications:["Heat Tunnel","Conveyor","Packaging"],currentWOs:["WO-4425"],scheduledHrs:8,allocatedHrs:3,availableHrs:5,utilization:38,status:"On Job"},
+	  {name:"Priya Singh",role:"Technician",certifications:["Filler","Label Applicator","Mixing"],currentWOs:["WO-4424"],scheduledHrs:8,allocatedHrs:1.5,availableHrs:6.5,utilization:19,status:"Available"},
+	  {name:"James Okafor",role:"Junior Technician",certifications:["Conveyor","General"],currentWOs:[],scheduledHrs:8,allocatedHrs:0,availableHrs:8,utilization:0,status:"Unassigned"},
+	];
+	
+	// ── SPARE PARTS DATA ──────────────────────────────────────────────────────────
+	const spareParts = [
+	  {id:"P-001",name:"Sealer Heating Element",partNo:"SE-441",line:"Line 3",asset:"Heat Sealer",stock:0,minStock:2,status:"Stock-Out",blockedWOs:["WO-4421"],unitCost:340,supplier:"Supplier B",leadTimeDays:3,emergencyLeadTimeDays:1,emergencyUnitCost:420,agentRec:"Emergency PO raised — next-day AM delivery confirmed",poRaised:true},
+	  {id:"P-002",name:"Heat Tunnel Igniter",partNo:"HT-209",line:"Line 2",asset:"Heat Tunnel",stock:1,minStock:3,status:"Low Stock",blockedWOs:[],unitCost:185,supplier:"Supplier A",leadTimeDays:5,emergencyLeadTimeDays:2,emergencyUnitCost:240,agentRec:"Order 3 units standard delivery — 5-day lead time, no emergency needed",poRaised:false},
+	  {id:"P-003",name:"Filler Calibration Weight Set",partNo:"FC-112",line:"Line 3",asset:"Packaging Filler",stock:0,minStock:1,status:"Stock-Out",blockedWOs:["WO-4423"],unitCost:95,supplier:"Supplier C",leadTimeDays:2,emergencyLeadTimeDays:1,emergencyUnitCost:130,agentRec:"Emergency PO recommended — WO-4423 blocked without this part",poRaised:false},
+	  {id:"P-004",name:"Label Applicator Head",partNo:"LA-334",line:"Line 1",asset:"Label Applicator",stock:2,minStock:2,status:"At Min",blockedWOs:[],unitCost:220,supplier:"Supplier A",leadTimeDays:4,emergencyLeadTimeDays:null,emergencyUnitCost:null,agentRec:"Reorder triggered — stock at minimum. 4-day standard lead time.",poRaised:false},
+	  {id:"P-005",name:"Conveyor Belt Tensioner",partNo:"CB-087",line:"Line 2",asset:"Conveyor Belt",stock:4,minStock:2,status:"OK",blockedWOs:[],unitCost:65,supplier:"Supplier B",leadTimeDays:3,emergencyLeadTimeDays:null,emergencyUnitCost:null,agentRec:null,poRaised:false},
+	  {id:"P-006",name:"Sealer Temperature Probe",partNo:"SE-442",line:"Line 3",asset:"Heat Sealer",stock:0,minStock:2,status:"Stock-Out",blockedWOs:["WO-4421"],unitCost:280,supplier:"Supplier B",leadTimeDays:3,emergencyLeadTimeDays:1,emergencyUnitCost:360,agentRec:"Emergency PO recommended — needed for sealer inspection WO-4421",poRaised:false},
+	];
+	
+	// ── TECHNICIAN PERFORMANCE DATA ───────────────────────────────────────────────
+	const techPerformance = [
+	  {
+	    name:"Carlos Rivera",role:"Senior Technician",avatar:"CR",
+	    thisWeek:{completed:8,target:10,onTime:7,lateCount:1},
+	    efficiency:{avgActualVsEstimate:0.92,trend:"Improving"},
+	    wosThisWeek:[
+	      {id:"WO-4418",estHrs:2,actualHrs:1.8,asset:"Line 1 Conveyor",estHrs:2,actualHrs:1.8,onTime:true,status:"Complete"},
+	      {id:"WO-4419",estHrs:3,actualHrs:2.7,asset:"Line 2 Filler",estHrs:3,actualHrs:2.7,onTime:true,status:"Complete"},
+	      {id:"WO-4420",estHrs:1.5,actualHrs:1.6,asset:"Line 3 Crimping Unit",estHrs:1.5,actualHrs:1.6,onTime:false,status:"Complete"},
+	      {id:"WO-4421",asset:"Line 3 Heat Sealer",estHrs:4,actualHrs:1.5,onTime:null,status:"In Progress"},
+	    ],
+	    coachingSuggestions:[],
+	    strengths:["Fastest diagnosis on electrical faults","Mentors junior technicians well"],
+	  },
+	  {
+	    name:"Marcus Webb",role:"Technician",avatar:"MW",
+	    thisWeek:{completed:5,target:8,onTime:3,lateCount:2},
+	    efficiency:{avgActualVsEstimate:1.38,trend:"Declining"},
+	    wosThisWeek:[
+	      {id:"WO-4415",estHrs:2,actualHrs:3.1,asset:"Line 2 Heat Tunnel",estHrs:2,actualHrs:3.1,onTime:false,status:"Complete"},
+	      {id:"WO-4416",estHrs:1,actualHrs:1.4,asset:"Line 2 Conveyor Belt",estHrs:1,actualHrs:1.4,onTime:true,status:"Complete"},
+	      {id:"WO-4417",estHrs:2,actualHrs:2.6,asset:"Line 1 Packaging",estHrs:2,actualHrs:2.6,onTime:false,status:"Complete"},
+	      {id:"WO-4425",asset:"Line 2 Conveyor Belt",estHrs:1,actualHrs:0.5,onTime:null,status:"In Progress"},
+	    ],
+	    coachingSuggestions:[
+	      {type:"SOP",note:"Averaging 1.38x estimated time on heat tunnel work — recommend Co-Pilot SOP walkthrough before WO-4422 to improve first-time completion rate"},
+	      {type:"Training",note:"Heat Tunnel PM Checklist v1.1 not completed since Nov 2025 — refresh recommended before first PM execution"},
+	    ],
+	    strengths:["Strong on conveyor and packaging","Good safety compliance record"],
+	  },
+	  {
+	    name:"Priya Singh",role:"Technician",avatar:"PS",
+	    thisWeek:{completed:6,target:8,onTime:6,lateCount:0},
+	    efficiency:{avgActualVsEstimate:1.05,trend:"Stable"},
+	    wosThisWeek:[
+	      {id:"WO-4412",asset:"Line 3 Filler",estHrs:3,actualHrs:3.1,onTime:true,status:"Complete"},
+	      {id:"WO-4413",asset:"Line 1 Label Applicator",estHrs:1.5,actualHrs:1.6,onTime:true,status:"Complete"},
+	      {id:"WO-4414",asset:"Line 1 Mixing Motor",estHrs:0.5,actualHrs:0.5,onTime:true,status:"Complete"},
+	      {id:"WO-4424",asset:"Line 1 Label Applicator",estHrs:1.5,actualHrs:0,onTime:null,status:"Open"},
+	    ],
+	    coachingSuggestions:[
+	      {type:"Upskill",note:"Priya is consistently on-time and accurate — recommend expanding certifications to Heat Tunnel to increase coverage flexibility"},
+	    ],
+	    strengths:["Most on-time technician this week","Filler calibration specialist"],
+	  },
+	  {
+	    name:"James Okafor",role:"Junior Technician",avatar:"JO",
+	    thisWeek:{completed:2,target:6,onTime:1,lateCount:1},
+	    efficiency:{avgActualVsEstimate:1.72,trend:"Needs Support"},
+	    wosThisWeek:[
+	      {id:"WO-4410",estHrs:1,actualHrs:1.9,asset:"Line 2 Conveyor",estHrs:1,actualHrs:1.9,onTime:false,status:"Complete"},
+	      {id:"WO-4411",estHrs:1,actualHrs:1.6,asset:"Line 1 Conveyor",estHrs:1,actualHrs:1.6,onTime:true,status:"Complete"},
+	    ],
+	    coachingSuggestions:[
+	      {type:"SOP",note:"Averaging 1.72x estimated time — Co-Pilot guided walkthroughs recommended for all assigned WOs until average drops below 1.2x"},
+	      {type:"Pairing",note:"Recommend pairing James with Carlos Rivera on next complex WO for on-the-job mentoring"},
+	      {type:"Training",note:"Only 2 certifications (Conveyor, General) limits assignment flexibility — suggest Filler or Packaging certification next"},
+	    ],
+	    strengths:["Improving safety checklist compliance","Proactive in asking for help"],
+	  },
+	];
+	
+	// ── ORCHESTRATOR RECS (cross-domain + maintenance-specific) ───────────────────
+	const crossDomainMaintRecs = [
+	  {id:"cd1",priority:"Critical",domain:"Maintenance",icon:"🌐",lines:["All","Line 3"],title:"Line 3 Sealer Failure Will Halt Production & Miss Friday Customer Order",summary:"Plant Orchestration Agent has identified that the Line 3 sealer failure risk directly threatens SKU 3801 production and conflicts with a maintenance window needed today.",suggestedAction:"Coordinate maintenance window with Scheduler to protect SKU 3801 order — reschedule to Line 1 Thursday before executing sealer repair.",agents:["Asset Health Monitoring Agent","Scheduling Agent","Plant Orchestration Agent"],detail:{issue:"Line 3 heat sealer failure risk (vibration 8.4, threshold 7.0) directly conflicts with SKU 3801 customer order due Friday.",compounding:"SKU 3801 requires the heat sealer. If sealer fails before maintenance window, CO-8820 (6,200 units) cannot be fulfilled.",risk:"Customer order CO-8820 missed. ~$42,000 unplanned downtime cost. Quality escapes on in-process product.",action:"Reschedule SKU 3801 to Line 1 Thursday 1–5pm before executing sealer maintenance. Confirm labor reallocation for Thursday.",steps:[{agent:"Plant Orchestration Agent",domain:"Maintenance",action:"Flag cross-domain conflict: sealer failure risk vs. SKU 3801 production schedule.",status:"complete"},{agent:"Scheduling Agent",domain:"Planning",action:"Reschedule SKU 3801 from Line 3 to Line 1, Thursday 1–5pm.",status:"complete"},{agent:"Maintenance Planning & Scheduling Agent",domain:"Maintenance",action:"Lock in Line 3 maintenance window today 2–4pm after SKU 3801 rescheduled.",status:"pending"},{agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Notify Line 3 supervisor of maintenance window and schedule change.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Carlos Rivera",role:"Maintenance Manager",avatar:"MM"},{name:"Priya Nair",role:"Scheduler",avatar:"SC"}]}},
+	  {id:"cd2",priority:"High",domain:"Maintenance",icon:"🌐",lines:["All","Line 2"],title:"Line 2 Heat Tunnel — Safety & Maintenance Risk Flagged Across Two Domains",summary:"Safety Agent and Maintenance Strategy Agent both flagging the Line 2 Heat Tunnel. No PM program despite High criticality and burn risk. 3 operators also have overdue LOTO recertification.",suggestedAction:"Initiate PM program and complete LOTO recertification before first PM is executed.",agents:["Safety Agent","Maintenance Strategy Agent","Plant Orchestration Agent"],detail:{issue:"Line 2 Heat Tunnel has no PM program. Safety Agent flags burn risk. 3 operators have overdue LOTO recertification.",compounding:"Executing the first PM without LOTO-certified operators creates a compliance violation.",risk:"Operator safety incident during maintenance. LOTO audit failure. Heat tunnel failure causing quality escapes.",action:"Complete LOTO recertification by Mar 4. Initiate PM program with first inspection week of Mar 9.",steps:[{agent:"Safety Agent",domain:"Safety",action:"Confirm LOTO recertification status — 3 operators overdue, deadline Mar 4.",status:"complete"},{agent:"Maintenance Strategy Agent",domain:"Maintenance",action:"Define PM program for Line 2 Heat Tunnel — 6-week cycle, starting Mar 9.",status:"pending"},{agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Schedule LOTO recertification session for J. Park, D. Williams, M. Santos.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Carlos Rivera",role:"Maintenance Manager",avatar:"MM"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"}]}},
+	];
+	
+	const maintOnlyRecs = [
+	  {id:"m2",priority:"High",domain:"Maintenance",icon:"🔧",lines:["All","Line 2"],title:"Line 2 Heat Tunnel Has No PM Program — Initiate Immediately",summary:"Maintenance Strategy Agent flagged Line 2 Heat Tunnel as reactive with no PM schedule despite High criticality and safety impact. Failure risk is increasing.",suggestedAction:"Assign WO-4422 to Marcus Webb this afternoon and initiate 6-week PM cycle.",agents:["Maintenance Strategy Agent","Maintenance Planning & Scheduling Agent"],detail:{issue:"Line 2 Heat Tunnel has zero PM history. Reactive-only strategy is unacceptable given High criticality and Medium safety impact.",compounding:"Current health score 67 and unknown degradation trend. No baseline data to detect future anomalies.",risk:"Undetected heating element failure. Safety incident. Quality escapes on Line 2 seal integrity.",action:"Raise WO-4422, assign to Marcus Webb today after WO-4425 completes. Initiate 6-week PM cycle.",steps:[{agent:"Maintenance Planning & Scheduling Agent",domain:"Maintenance",action:"Assign WO-4422 to Marcus Webb — heat tunnel certified, available 1pm today.",status:"pending"},{agent:"Technician Co-Pilot",domain:"Maintenance",action:"Pre-load heat tunnel PM checklist (v1.1) for Marcus Webb.",status:"pending"}],approvers:[{name:"Carlos Rivera",role:"Maintenance Manager",avatar:"MM"},{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"}]}},
+	  {id:"m3",priority:"High",domain:"Maintenance",icon:"👷",lines:["All"],title:"2 High-Priority Work Orders Unassigned — Technician Reallocation Needed",summary:"WO-4422 and WO-4423 are both unassigned. Priya Singh has 6.5hrs available today. James Okafor is fully unassigned.",suggestedAction:"Assign WO-4423 to Priya Singh now and WO-4422 to Marcus Webb after WO-4425 completes at 1pm.",agents:["Maintenance Planning & Scheduling Agent"],detail:{issue:"WO-4422 (Heat Tunnel PM, High priority, due Mar 3) and WO-4423 (Filler calibration, High priority, due Mar 4) are both unassigned.",compounding:"Overall technician utilization is 27% — capacity exists but is not being allocated to priority work.",risk:"Both work orders miss due dates. Line 2 heat tunnel remains uninspected. Line 3 filler calibration drift continues.",action:"Assign WO-4423 to Priya Singh immediately. Assign WO-4422 to Marcus Webb when WO-4425 completes (~1pm).",steps:[{agent:"Maintenance Planning & Scheduling Agent",domain:"Maintenance",action:"Assign WO-4423 to Priya Singh — filler-certified, 6.5hrs available today.",status:"pending"},{agent:"Maintenance Planning & Scheduling Agent",domain:"Maintenance",action:"Schedule WO-4422 for Marcus Webb post-1pm after WO-4425 completes.",status:"pending"},{agent:"Technician Co-Pilot",domain:"Maintenance",action:"Notify Priya Singh and Marcus Webb of new assignments with WO context.",status:"pending"}],approvers:[{name:"Carlos Rivera",role:"Maintenance Manager",avatar:"MM"}]}},
+	  {id:"m4",priority:"Medium",domain:"Maintenance",icon:"📦",lines:["All","Line 3"],title:"2 Parts Stock-Outs Blocking Active Work Orders",summary:"Part #SE-442 (Sealer Temperature Probe) and Part #FC-112 (Filler Calibration Weight Set) are both at zero stock and blocking WO-4421 and WO-4423.",suggestedAction:"Raise emergency PO for Part #FC-112 today. Part #SE-441 PO already in transit.",agents:["Maintenance Planning & Scheduling Agent"],detail:{issue:"SE-442 and FC-112 are both at zero stock. WO-4421 and WO-4423 cannot be fully completed without these parts.",compounding:"Part #SE-441 already has an emergency PO in transit (arriving tomorrow). FC-112 and SE-442 have not been ordered yet.",risk:"WO-4423 cannot proceed. Sealer inspection incomplete without temperature probe.",action:"Raise emergency PO for FC-112 from Supplier C ($130, 1-day delivery). Raise emergency PO for SE-442 from Supplier B ($360, 1-day delivery).",steps:[{agent:"Maintenance Planning & Scheduling Agent",domain:"Maintenance",action:"Raise emergency PO for Part #FC-112 from Supplier C — next-day AM delivery.",status:"pending"},{agent:"Maintenance Planning & Scheduling Agent",domain:"Maintenance",action:"Raise emergency PO for Part #SE-442 from Supplier B — next-day AM delivery.",status:"pending"}],approvers:[{name:"Carlos Rivera",role:"Maintenance Manager",avatar:"MM"},{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"}]}},
+	];
+	
+	// ── PM SCHEDULE DATA ──────────────────────────────────────────────────────────
+	const pmSchedule = [
+	  {id:"PM-001",asset:"Line 3 Heat Sealer",line:"Line 3",interval:"4 weeks",lastPM:"Jan 15, 2026",nextPM:"Feb 12, 2026",daysOverdue:16,status:"Overdue",woCoverage:"WO-4421 (Corrective)",notes:"Scheduled PM missed — asset now in corrective mode"},
+	  {id:"PM-002",asset:"Line 2 Heat Tunnel",line:"Line 2",interval:"None",lastPM:"Never",nextPM:"Not scheduled",daysOverdue:null,status:"No Program",woCoverage:"WO-4422 (First PM pending)",notes:"Strategy Agent recommends initiating 6-week PM cycle"},
+	  {id:"PM-003",asset:"Line 3 Packaging Filler",line:"Line 3",interval:"8 weeks",lastPM:"Jan 28, 2026",nextPM:"Mar 25, 2026",daysOverdue:null,status:"Upcoming",woCoverage:"WO-4423 (Preventive)",notes:"Strategy Agent recommends reducing to 5-week cycle"},
+	  {id:"PM-004",asset:"Line 1 Label Applicator",line:"Line 1",interval:"8 weeks",lastPM:"Feb 10, 2026",nextPM:"Apr 7, 2026",daysOverdue:null,status:"On Track",woCoverage:null,notes:"Current cycle appropriate"},
+	  {id:"PM-005",asset:"Line 2 Conveyor Belt",line:"Line 2",interval:"4 weeks",lastPM:"Feb 20, 2026",nextPM:"Mar 20, 2026",daysOverdue:null,status:"On Track",woCoverage:"WO-4425 (In Progress)",notes:"Strategy Agent recommends extending to 10-week cycle"},
+	  {id:"PM-006",asset:"Line 3 Crimping Unit",line:"Line 3",interval:"6 weeks",lastPM:"Feb 5, 2026",nextPM:"Mar 19, 2026",daysOverdue:null,status:"On Track",woCoverage:null,notes:"Continue monitoring"},
+	  {id:"PM-007",asset:"Line 1 Mixing Motor",line:"Line 1",interval:"4 weeks",lastPM:"Feb 1, 2026",nextPM:"Mar 1, 2026",daysOverdue:null,status:"Upcoming",woCoverage:"WO-4426 (Consider cancelling)",notes:"Strategy Agent recommends run-to-failure — cancel PM WO"},
+	  {id:"PM-008",asset:"Line 2 Heat Tunnel Filters",line:"Line 2",interval:"12 weeks",lastPM:"Nov 20, 2025",nextPM:"Feb 12, 2026",daysOverdue:16,status:"Overdue",woCoverage:null,notes:"No WO raised — needs immediate attention"},
+	];
+	
+	// ── VIEW ALL BUTTON ───────────────────────────────────────────────────────────
+	function ViewAllBtn({label,total}){
+	  return(
+	    <div style={{padding:"12px 20px",borderTop:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+	      <span style={{fontSize:11,color:T.gray400}}>{total!=null?`Showing priority items · ${total} total`:"Full view available in production"}</span>
+	      <button style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"5px 14px",fontSize:11,fontWeight:700,color:T.gray900,cursor:"pointer"}}>{label||"View All →"}</button>
+	    </div>
+	  );
+	}
+	
+	// ── COLLAPSIBLE SECTION ───────────────────────────────────────────────────────
+	function Section({title,subtitle,icon,count,countColor,defaultOpen=true,children}){
+	  const [open,setOpen]=useState(defaultOpen);
+	  return(
+	    <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",overflow:"hidden"}}>
+	      <div onClick={()=>setOpen(o=>!o)} style={{padding:"14px 20px",borderBottom:open?`1px solid ${T.border}`:"none",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",userSelect:"none"}}>
+	        <div style={{display:"flex",alignItems:"center",gap:10}}>
+	          <span style={{fontSize:16}}>{icon}</span>
+	          <div>
+	            <div style={{display:"flex",alignItems:"center",gap:8}}>
+	              <span style={{fontSize:13,fontWeight:800,color:T.black}}>{title}</span>
+	              {count!=null&&<span style={{background:(countColor||T.negative)+"18",color:countColor||T.negative,border:`1px solid ${(countColor||T.negative)}40`,borderRadius:10,padding:"1px 8px",fontSize:11,fontWeight:700}}>{count}</span>}
+	            </div>
+	            {subtitle&&<div style={{fontSize:11,color:T.gray900,marginTop:1}}>{subtitle}</div>}
+	          </div>
+	        </div>
+	        <div style={{fontSize:12,color:T.gray400,fontWeight:700}}>{open?"▲":"▼"}</div>
+	      </div>
+	      {open&&<div>{children}</div>}
+	    </div>
+	  );
+	}
+	
+	// ── PROMETHEUS INTEGRATION BANNER ────────────────────────────────────────────
+	function PrometheusBanner({entity="data"}){
+	  return(
+	    <div style={{background:"#EEF2FF",border:`1px solid #C7D2FE`,borderRadius:4,padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+	      <div style={{display:"flex",alignItems:"center",gap:10}}>
+	        <div style={{width:8,height:8,borderRadius:"50%",background:"#4F46E5",boxShadow:"0 0 0 2px #C7D2FE"}}/>
+	        <div>
+	          <span style={{fontSize:12,fontWeight:700,color:"#3730A3"}}>🔗 Live from Prometheus CMMS</span>
+	          <span style={{fontSize:11,color:"#6366F1",marginLeft:8}}>Last synced 7:02am · {entity} pulled directly from your system of record</span>
+	        </div>
+	      </div>
+	      <div style={{display:"flex",alignItems:"center",gap:8}}>
+	        <span style={{fontSize:11,color:"#6366F1"}}>Agents read from Prometheus — recommendations surface here</span>
+	        <button style={{background:"#4F46E5",color:"#FFFFFF",border:"none",borderRadius:4,padding:"4px 12px",fontSize:11,fontWeight:700,cursor:"pointer"}}>Open Prometheus →</button>
+	      </div>
+	    </div>
+	  );
+	}
+	
+	// ── MAINTENANCE DASHBOARD ─────────────────────────────────────────────────────
+	function MaintenanceDashboard({onSelectRec}){
+	  const [activeTab,setActiveTab]=useState("overview");
+	  const [appliedWOs,setAppliedWOs]=useState({});
+	  const [appliedPOs,setAppliedPOs]=useState({});
+	  const [pmFilter,setPmFilter]=useState("Action Required");
+	  const assignWO=(woId)=>setAppliedWOs(prev=>({...prev,[woId]:true}));
+	  const raisePO=(partId)=>setAppliedPOs(prev=>({...prev,[partId]:true}));
+	
+	  const critColor=(c)=>c==="Critical"?T.negative:c==="High"?T.warning:c==="Medium"?T.info:T.neutral;
+	  const healthColor=(s)=>s>=80?T.positive:s>=60?T.warning:T.negative;
+	  const recColor=(r)=>r==="Run to Failure"?T.neutral:r==="Increase PM Frequency"?T.negative:r==="Initiate PM Program"?T.negative:r==="Reduce Frequency"?T.positive:T.info;
+	  const pmStatusColor=(s)=>s==="Overdue"?T.negative:s==="No Program"?T.negative:s==="Upcoming"?T.warning:T.positive;
+	  const effColor=(r)=>r<=1.0?T.positive:r<=1.2?T.warning:T.negative;
+	
+	  const attentionWOs=maintWorkOrders.filter(wo=>!wo.assignedTo||wo.status==="Overdue"||wo.agentSuggestion);
+	  const stockIssues=spareParts.filter(p=>p.status==="Stock-Out"||p.status==="Low Stock"||p.status==="At Min");
+	  const changeAssets=maintAssets.filter(a=>a.agentRec!=="Maintain Current");
+	  const alertAssets=maintAssets.filter(a=>a.healthScore<80||a.failureRisk==="Critical"||a.failureRisk==="High"||a.trend==="Degrading"||a.trend==="Unknown");
+	  const displayPMs=pmFilter==="Action Required"?pmSchedule.filter(p=>p.status==="Overdue"||p.status==="No Program"||p.status==="Upcoming"):pmSchedule;
+	
+	  const TABS=[
+	    {id:"overview",label:"Overview",icon:"▦",alert:crossDomainMaintRecs.length+maintOnlyRecs.length},
+	    {id:"workorders",label:"Work Orders",icon:"📋",alert:attentionWOs.length},
+	    {id:"technicians",label:"Technicians",icon:"👷",alert:maintTechnicians.filter(t=>t.utilization<30).length},
+	    {id:"assets",label:"Asset Health",icon:"📡",alert:alertAssets.length},
+	    {id:"parts",label:"Spare Parts",icon:"📦",alert:stockIssues.filter(p=>p.status==="Stock-Out").length},
+	    {id:"pm",label:"PM Schedule",icon:"🗓",alert:pmSchedule.filter(p=>p.status==="Overdue"||p.status==="No Program").length},
+	    {id:"strategy",label:"Strategy",icon:"⚙️",alert:changeAssets.length},
+	    {id:"performance",label:"My Team",icon:"📊",alert:techPerformance.filter(t=>t.coachingSuggestions.length>0).length},
+	  ];
+	
+	  const Tab=({tab})=>{
+	    const isActive=activeTab===tab.id;
+	    const alertColor=tab.alert>0?(tab.id==="overview"?T.negative:tab.id==="technicians"?T.warning:T.negative):null;
+	    return(
+	      <button onClick={()=>setActiveTab(tab.id)} style={{display:"flex",alignItems:"center",gap:6,padding:"12px 16px",border:"none",borderBottom:isActive?`2px solid ${T.primary}`:"2px solid transparent",background:"transparent",cursor:"pointer",fontWeight:isActive?800:500,fontSize:12,color:isActive?T.primary:T.gray900,whiteSpace:"nowrap",position:"relative"}}>
+	        <span>{tab.icon}</span>
+	        <span>{tab.label}</span>
+	        {tab.alert>0&&<span style={{background:alertColor||T.negative,color:T.white,borderRadius:10,padding:"1px 6px",fontSize:10,fontWeight:800,minWidth:16,textAlign:"center"}}>{tab.alert}</span>}
+	      </button>
+	    );
+	  };
+	
+	  return(<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
+	    {/* Header */}
+	    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px 0",flexShrink:0}}>
+	      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+	        <div>
+	          <div style={{fontSize:18,fontWeight:800,color:T.black}}>Maintenance Dashboard</div>
+	          <div style={{fontSize:12,color:T.gray900,marginTop:2}}>Austin Plant · Feb 28, 2026 · Good morning, Carlos 👋</div>
+	        </div>
+	      </div>
+	      {/* Tab bar */}
+	      <div style={{display:"flex",gap:0,overflowX:"auto"}}>
+	        {TABS.map(t=><Tab key={t.id} tab={t}/>)}
+	      </div>
+	    </div>
+	
+	    {/* Tab content */}
+	    <div style={{flex:1,overflowY:"auto",background:T.gray100}}>
+	
+	      {/* ── OVERVIEW TAB ── */}
+	      {activeTab==="overview"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+	        {/* KPI strip */}
+	        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+	          {[
+	            {label:"Open Work Orders",value:6,sub:"2 unassigned",color:T.negative,tab:"workorders"},
+	            {label:"Overdue PMs",value:2,sub:"Line 3 sealer, Line 2 tunnel",color:T.negative,tab:"pm"},
+	            {label:"Planned vs Unplanned",value:"58%",sub:"planned · target 80%",color:T.negative,tab:"workorders"},
+	            {label:"Avg Technician Utilization",value:"27%",sub:"across 4 technicians",color:T.negative,tab:"technicians"},
+	            {label:"Assets at Risk",value:3,sub:"Critical or High failure risk",color:T.negative,tab:"assets"},
+	            {label:"Parts Stock-Outs",value:3,sub:"2 blocking active WOs",color:T.negative,tab:"parts"},
+	          ].map(k=>(<div key={k.label} onClick={()=>setActiveTab(k.tab)} style={{flex:1,minWidth:120,background:T.white,borderRadius:4,borderLeft:`4px solid ${k.color}`,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",padding:"10px 14px",cursor:"pointer"}}>
+	            <div style={{fontSize:10,color:T.gray900,fontWeight:600,marginBottom:4}}>{k.label}</div>
+	            <div style={{fontSize:20,fontWeight:800,color:k.color}}>{k.value}</div>
+	            <div style={{fontSize:10,color:T.gray400,marginTop:2}}>{k.sub}</div>
+	            <div style={{fontSize:10,color:T.primary,marginTop:4,fontWeight:600}}>View details →</div>
+	          </div>))}
+	        </div>
+	        {/* Cross-domain recs */}
+	        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+	          <div style={{background:T.primary,padding:"12px 20px",borderRadius:"4px 4px 0 0",display:"flex",alignItems:"center",gap:10}}>
+	            <span style={{fontSize:14}}>🌐</span>
+	            <div>
+	              <div style={{fontSize:13,fontWeight:800,color:T.white}}>Plant Orchestration Agent — Cross-Domain Recommendations</div>
+	              <div style={{fontSize:11,color:"#ffffff99",marginTop:1}}>Issues where maintenance intersects with production, quality, planning & scheduling, or safety</div>
+	            </div>
+	          </div>
+	          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:10}}>
+	            {crossDomainMaintRecs.map(r=>(<div key={r.id} onClick={()=>onSelectRec(r)} style={{background:T.gray100,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,padding:"12px 16px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+	              <div style={{flex:1}}>
+	                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label="Cross-Domain" color={T.primary}/>{r.agents.slice(0,2).map(a=><Badge key={a} label={a} color={T.neutral}/>)}</div>
+	                <div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:3}}>{r.title}</div>
+	                <div style={{fontSize:12,color:T.gray900}}>{r.summary}</div>
+	                <div style={{fontSize:12,color:T.primary,fontWeight:600,marginTop:4}}>💡 {r.suggestedAction}</div>
+	              </div>
+	              <div style={{fontSize:12,color:T.primary,fontWeight:700,whiteSpace:"nowrap"}}>View Detail →</div>
+	            </div>))}
+	          </div>
+	          <ViewAllBtn label="View All Recommendations →" total={crossDomainMaintRecs.length+maintOnlyRecs.length}/>
+	        </div>
+	        {/* Maintenance-only recs */}
+	        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+	          <div style={{background:"#673AB7",padding:"12px 20px",borderRadius:"4px 4px 0 0",display:"flex",alignItems:"center",gap:10}}>
+	            <span style={{fontSize:14}}>⚙️</span>
+	            <div>
+	              <div style={{fontSize:13,fontWeight:800,color:T.white}}>Maintenance Orchestrator — Maintenance Recommendations</div>
+	              <div style={{fontSize:11,color:"#ffffff99",marginTop:1}}>Synthesised from Strategy Agent, Asset Health Agent, and Planning & Scheduling Agent</div>
+	            </div>
+	          </div>
+	          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:10}}>
+	            {maintOnlyRecs.map(r=>(<div key={r.id} onClick={()=>onSelectRec(r)} style={{background:T.gray100,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,padding:"12px 16px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+	              <div style={{flex:1}}>
+	                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label="Maintenance" color="#673AB7"/>{r.agents.map(a=><Badge key={a} label={a} color={T.neutral}/>)}</div>
+	                <div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:3}}>{r.icon} {r.title}</div>
+	                <div style={{fontSize:12,color:T.gray900}}>{r.summary}</div>
+	                <div style={{fontSize:12,color:"#673AB7",fontWeight:600,marginTop:4}}>💡 {r.suggestedAction}</div>
+	              </div>
+	              <div style={{fontSize:12,color:"#673AB7",fontWeight:700,whiteSpace:"nowrap"}}>View Detail →</div>
+	            </div>))}
+	          </div>
+	          <ViewAllBtn label="View All Recommendations →" total={crossDomainMaintRecs.length+maintOnlyRecs.length}/>
+	        </div>
+	      </div>}
+	
+	      {/* ── WORK ORDERS TAB ── */}
+	      {activeTab==="workorders"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+	        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+	          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+	            <div>
+	              <div style={{fontSize:13,fontWeight:800,color:T.black}}>📋 Work Orders — Requiring Attention</div>
+	              <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Unassigned, overdue, or agent-flagged · {attentionWOs.length} of {maintWorkOrders.length} total</div>
+	            </div>
+	          </div>
+	          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:10}}>
+	            {attentionWOs.map(wo=>(
+	              <div key={wo.id} style={{background:T.gray100,borderRadius:4,borderLeft:`4px solid ${wo.priority==="Critical"?T.negative:wo.priority==="High"?T.warning:wo.priority==="Medium"?T.info:T.neutral}`,padding:"12px 16px"}}>
+	                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
+	                  <div style={{flex:1}}>
+	                    <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
+	                      <span style={{fontSize:12,fontWeight:800,color:T.black}}>{wo.id}</span>
+	                      <Badge label={wo.priority} color={wo.priority==="Critical"?T.negative:wo.priority==="High"?T.warning:wo.priority==="Medium"?T.info:T.neutral}/>
+	                      <Badge label={wo.type} color={wo.type==="Corrective"?T.negative:T.primary}/>
+	                      <Badge label={wo.status} color={statusColor(wo.status)}/>
+	                    </div>
+	                    <div style={{fontSize:12,fontWeight:700,color:T.black,marginBottom:2}}>{wo.asset} — {wo.line}</div>
+	                    <div style={{fontSize:11,color:T.gray900,marginBottom:4}}>{wo.description}</div>
+	                    <div style={{display:"flex",gap:12,fontSize:11,color:T.gray900,flexWrap:"wrap",alignItems:"center"}}>
+	                      <span>👤 {wo.assignedTo?wo.assignedTo:<span style={{color:T.negative,fontWeight:700}}>⚠ Unassigned</span>}</span>
+	                      <span>⏱ Est: {wo.estimatedHrs}h{wo.actualHrs>0?` · Actual: ${wo.actualHrs}h`:""}</span>
+	                      <span>📅 Due: {wo.dueDate}</span>
+	                      <button style={{background:"none",border:`1px solid #C7D2FE`,borderRadius:3,padding:"2px 8px",fontSize:10,fontWeight:700,color:"#4F46E5",cursor:"pointer"}}>Open in Prometheus →</button>
+	                    </div>
+	                  </div>
+	                </div>
+	                {wo.agentSuggestion&&!appliedWOs[wo.id]&&(
+	                  <div style={{marginTop:10,background:T.white,border:`1px solid ${T.primary}40`,borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"8px 12px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
+	                    <div style={{flex:1}}>
+	                      <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:2}}>🧠 Maintenance Planning & Scheduling Agent</div>
+	                      <div style={{fontSize:11,color:T.black}}>{wo.agentSuggestion}</div>
+	                    </div>
+	                    <button onClick={()=>assignWO(wo.id)} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"5px 12px",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>Apply</button>
+	                  </div>
+	                )}
+	                {appliedWOs[wo.id]&&<div style={{marginTop:8,background:"#F0FDF4",border:`1px solid ${T.positive}`,borderRadius:4,padding:"6px 12px"}}><span style={{fontSize:11,fontWeight:700,color:T.positive}}>✅ Assignment applied — synced to Prometheus · technician notified via Co-Pilot</span></div>}
+	              </div>
+	            ))}
+	          </div>
+	          <ViewAllBtn label="View All Work Orders in Prometheus →" total={maintWorkOrders.length}/>
+	        </div>
+	      </div>}
+	
+	      {/* ── TECHNICIANS TAB ── */}
+	      {activeTab==="technicians"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+	        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+	          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
+	            <div style={{fontSize:13,fontWeight:800,color:T.black}}>👷 Technician Load & Assignments</div>
+	            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Today's capacity, current jobs, and agent-recommended reallocation · {maintTechnicians.length} technicians on shift</div>
+	          </div>
+	          <div style={{padding:"16px 20px",display:"flex",gap:12,flexWrap:"wrap"}}>
+	            {maintTechnicians.map(t=>{
+	              const utilColor=t.utilization>=70?T.positive:t.utilization>=40?T.warning:T.negative;
+	              const hasAgentFlag=t.utilization<30;
+	              return(<div key={t.name} style={{flex:"1 1 200px",background:T.gray100,borderRadius:4,borderLeft:`4px solid ${utilColor}`,padding:"12px 14px"}}>
+	                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+	                  <div><div style={{fontSize:12,fontWeight:800,color:T.black}}>{t.name}</div><div style={{fontSize:10,color:T.gray900}}>{t.role}</div></div>
+	                  <Badge label={t.status} color={t.status==="On Job"?T.info:t.status==="Available"?T.positive:T.negative}/>
+	                </div>
+	                <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:11,color:T.gray900}}>Utilization</span><span style={{fontSize:13,fontWeight:800,color:utilColor}}>{t.utilization}%</span></div>
+	                <div style={{height:6,background:T.border,borderRadius:3,marginBottom:8}}><div style={{height:6,width:`${t.utilization}%`,background:utilColor,borderRadius:3}}/></div>
+	                <div style={{fontSize:11,color:T.gray900,marginBottom:4}}>{t.allocatedHrs}h allocated · <strong>{t.availableHrs}h free</strong> today</div>
+	                <div style={{fontSize:10,color:T.gray400,marginBottom:6}}>Certified: {t.certifications.join(", ")}</div>
+	                {t.currentWOs.length>0&&<div style={{fontSize:11,color:T.gray900,marginBottom:4}}>Active: {t.currentWOs.join(", ")}</div>}
+	                {hasAgentFlag&&<div style={{background:T.warning+"18",border:`1px solid ${T.warning}40`,borderRadius:3,padding:"4px 8px",fontSize:10,fontWeight:700,color:T.warning}}>⚠ Under-utilised — agent has reallocation suggestion in Overview</div>}
+	              </div>);
+	            })}
+	          </div>
+	          <ViewAllBtn label="View Full Technician Schedule in Prometheus →" total={maintTechnicians.length}/>
+	        </div>
+	      </div>}
+	
+	      {/* ── ASSET HEALTH TAB ── */}
+	      {activeTab==="assets"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+	        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+	          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
+	            <div style={{fontSize:13,fontWeight:800,color:T.black}}>📡 Asset Health Monitoring Agent — Live Degradation Signals</div>
+	            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Showing {alertAssets.length} assets with active alerts or degradation signals · Real-time sensor data</div>
+	          </div>
+	          <div style={{padding:"16px 20px",display:"flex",gap:12,flexWrap:"wrap"}}>
+	            {alertAssets.map(a=>(
+	              <div key={a.id} style={{flex:"1 1 200px",background:T.gray100,borderRadius:4,borderTop:`4px solid ${healthColor(a.healthScore)}`,padding:"12px 14px"}}>
+	                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+	                  <div style={{fontSize:12,fontWeight:800,color:T.black,flex:1,paddingRight:8}}>{a.name}</div>
+	                  <div style={{textAlign:"right"}}>
+	                    <div style={{fontSize:22,fontWeight:900,color:healthColor(a.healthScore),lineHeight:1}}>{a.healthScore}</div>
+	                    <div style={{fontSize:9,color:T.gray400}}>Health Score</div>
+	                  </div>
+	                </div>
+	                <div style={{height:4,background:T.border,borderRadius:2,marginBottom:8}}><div style={{height:4,width:`${a.healthScore}%`,background:healthColor(a.healthScore),borderRadius:2}}/></div>
+	                <div style={{display:"flex",flexDirection:"column",gap:4}}>
+	                  <div style={{display:"flex",justifyContent:"space-between",fontSize:11}}><span style={{color:T.gray900}}>Vibration</span><span style={{fontWeight:700,color:a.vibration>=7?T.negative:a.vibration>=5?T.warning:T.positive}}>{a.vibration}<span style={{color:T.gray400,fontWeight:400}}>/7.0</span></span></div>
+	                  <div style={{display:"flex",justifyContent:"space-between",fontSize:11}}><span style={{color:T.gray900}}>Temp Variance</span><span style={{fontWeight:700,color:a.tempVariance>=5?T.negative:a.tempVariance>=3?T.warning:T.positive}}>±{a.tempVariance}°C</span></div>
+	                  <div style={{display:"flex",justifyContent:"space-between",fontSize:11}}><span style={{color:T.gray900}}>Next PM</span><span style={{fontWeight:700,color:a.nextPM==="Overdue"||a.nextPM==="Not scheduled"||a.nextPM==="Never"?T.negative:T.gray900}}>{a.nextPM}</span></div>
+	                </div>
+	                <div style={{marginTop:8,display:"flex",gap:4,flexWrap:"wrap"}}>
+	                  <Badge label={a.trend} color={a.trend==="Degrading"?T.negative:a.trend==="Unknown"?T.warning:T.positive}/>
+	                  <Badge label={`${a.failureRisk} Risk`} color={a.failureRisk==="Critical"?T.negative:a.failureRisk==="High"?T.warning:T.positive}/>
+	                </div>
+	              </div>
+	            ))}
+	          </div>
+	          <ViewAllBtn label="View All Assets →" total={maintAssets.length}/>
+	        </div>
+	      </div>}
+	
+	      {/* ── SPARE PARTS TAB ── */}
+	      {activeTab==="parts"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+	        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+	          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
+	            <div style={{fontSize:13,fontWeight:800,color:T.black}}>📦 Spare Parts — Stock-Outs & Low Stock</div>
+	            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Parts at zero or below minimum · Blocked work orders · Agent PO recommendations</div>
+	          </div>
+	          <div style={{overflowX:"auto"}}>
+	            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+	              <thead><tr style={{background:T.gray100}}>
+	                {["Part","Part No.","Asset / Line","Stock","Status","Blocking WOs","Supplier","Lead Time","Agent Recommendation","Action"].map(h=>(<th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>))}
+	              </tr></thead>
+	              <tbody>{stockIssues.map((p,i)=>(<tr key={p.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
+	                <td style={{padding:"10px 14px",fontWeight:700,color:T.black}}>{p.name}</td>
+	                <td style={{padding:"10px 14px",color:T.gray400,fontFamily:"monospace",fontSize:11}}>{p.partNo}</td>
+	                <td style={{padding:"10px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{p.asset}<br/><span style={{fontSize:10,color:T.gray400}}>{p.line}</span></td>
+	                <td style={{padding:"10px 14px",fontWeight:800,color:p.stock===0?T.negative:T.warning}}>{p.stock} units</td>
+	                <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}><Badge label={p.status} color={p.status==="Stock-Out"?T.negative:p.status==="Low Stock"?T.warning:T.info}/></td>
+	                <td style={{padding:"10px 14px"}}>{p.blockedWOs.length>0?p.blockedWOs.map(wo=><div key={wo} style={{fontSize:11,color:T.negative,fontWeight:700}}>⚠ {wo}</div>):<span style={{fontSize:11,color:T.gray400}}>None</span>}</td>
+	                <td style={{padding:"10px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{p.supplier}</td>
+	                <td style={{padding:"10px 14px",color:T.gray900,whiteSpace:"nowrap"}}>
+	                  <div style={{fontSize:11}}>Standard: {p.leadTimeDays}d</div>
+	                  {p.emergencyLeadTimeDays&&<div style={{fontSize:11,color:T.warning}}>Emergency: {p.emergencyLeadTimeDays}d (${p.emergencyUnitCost}/unit)</div>}
+	                </td>
+	                <td style={{padding:"10px 14px",fontSize:11,color:T.gray900,maxWidth:200}}>{p.agentRec}</td>
+	                <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}>
+	                  {p.poRaised||appliedPOs[p.id]?<Badge label="✓ PO Raised" color={T.positive}/>:
+	                  p.emergencyLeadTimeDays?<button onClick={()=>raisePO(p.id)} style={{background:T.negative,color:T.white,border:"none",borderRadius:4,padding:"5px 10px",fontSize:11,fontWeight:700,cursor:"pointer"}}>Raise Emergency PO</button>:
+	                  <button onClick={()=>raisePO(p.id)} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"5px 10px",fontSize:11,fontWeight:700,cursor:"pointer"}}>Raise PO</button>}
+	                </td>
+	              </tr>))}</tbody>
+	            </table>
+	          </div>
+	          <ViewAllBtn label="View Full Parts Catalog in Prometheus →" total={spareParts.length}/>
+	        </div>
+	      </div>}
+	
+	      {/* ── PM SCHEDULE TAB ── */}
+	      {activeTab==="pm"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+	        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+	          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+	            <div>
+	              <div style={{fontSize:13,fontWeight:800,color:T.black}}>🗓 Preventive Maintenance Schedule</div>
+	              <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Upcoming, overdue, and program-less assets needing attention</div>
+	            </div>
+	            <div style={{display:"flex",gap:4}}>
+	              {["Action Required","All PMs"].map(f=>(<button key={f} onClick={()=>setPmFilter(f)} style={{padding:"4px 10px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",border:`1px solid ${pmFilter===f?T.primary:T.border}`,background:pmFilter===f?T.primary:T.white,color:pmFilter===f?T.white:T.gray900}}>{f}</button>))}
+	            </div>
+	          </div>
+	          <div style={{overflowX:"auto"}}>
+	            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+	              <thead><tr style={{background:T.gray100}}>
+	                {["Asset","Line","PM Interval","Last PM","Next PM","Status","WO Coverage","Agent Note",""].map(h=>(<th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>))}
+	              </tr></thead>
+	              <tbody>{displayPMs.map((p,i)=>(<tr key={p.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
+	                <td style={{padding:"9px 14px",fontWeight:700,color:T.black,whiteSpace:"nowrap"}}>{p.asset}</td>
+	                <td style={{padding:"9px 14px",color:T.gray900}}>{p.line}</td>
+	                <td style={{padding:"9px 14px",color:T.gray900}}>{p.interval}</td>
+	                <td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{p.lastPM}</td>
+	                <td style={{padding:"9px 14px",fontWeight:700,color:p.status==="Overdue"||p.status==="No Program"?T.negative:T.gray900,whiteSpace:"nowrap"}}>{p.nextPM}{p.daysOverdue&&<span style={{color:T.negative,fontSize:10,marginLeft:4}}>({p.daysOverdue}d overdue)</span>}</td>
+	                <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}><Badge label={p.status} color={pmStatusColor(p.status)}/></td>
+	                <td style={{padding:"9px 14px",fontSize:11,color:p.woCoverage?T.primary:T.gray400}}>{p.woCoverage||"No WO raised"}</td>
+	                <td style={{padding:"9px 14px",fontSize:11,color:T.gray900,maxWidth:200}}>{p.notes}</td>
+	                <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}><button style={{background:"none",border:`1px solid #C7D2FE`,borderRadius:3,padding:"3px 8px",fontSize:10,fontWeight:700,color:"#4F46E5",cursor:"pointer"}}>Open in Prometheus →</button></td>
+	              </tr>))}</tbody>
+	            </table>
+	          </div>
+	          <ViewAllBtn label="View Full PM Schedule in Prometheus →" total={pmSchedule.length}/>
+	        </div>
+	      </div>}
+	
+	      {/* ── STRATEGY TAB ── */}
+	      {activeTab==="strategy"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+	        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+	          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+	            <div>
+	              <div style={{fontSize:13,fontWeight:800,color:T.black}}>⚙️ Maintenance Strategy Agent — Assets Requiring Strategy Change</div>
+	              <div style={{fontSize:11,color:T.gray900,marginTop:2}}>{changeAssets.length} assets where agent recommends a strategy change · Driven by criticality and consequence of failure</div>
+	            </div>
+	          </div>
+	          <div style={{overflowX:"auto"}}>
+	            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+	              <thead><tr style={{background:T.gray100}}>
+	                {["Asset","Line","Criticality","Failure Impact","Current Strategy","Recommended Change","Reason"].map(h=>(<th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>))}
+	              </tr></thead>
+	              <tbody>{changeAssets.map((a,i)=>(<tr key={a.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
+	                <td style={{padding:"10px 14px",fontWeight:700,color:T.black,whiteSpace:"nowrap"}}>{a.name}</td>
+	                <td style={{padding:"10px 14px",color:T.gray900}}>{a.line}</td>
+	                <td style={{padding:"10px 14px"}}><Badge label={a.criticality} color={critColor(a.criticality)}/></td>
+	                <td style={{padding:"10px 14px",fontSize:11,color:T.gray900,lineHeight:1.6}}>
+	                  <span style={{color:a.safetyImpact!=="Low"?T.warning:T.gray400}}>Safety: {a.safetyImpact}</span>{" · "}
+	                  <span style={{color:a.qualityImpact==="High"?T.negative:T.gray900}}>Quality: {a.qualityImpact}</span>{" · "}
+	                  <span style={{color:a.productionImpact==="High"?T.negative:T.gray900}}>Prod: {a.productionImpact}</span>
+	                  <div style={{color:T.gray400}}>Failure cost: <strong style={{color:a.failureCost>10000?T.negative:T.gray900}}>${a.failureCost.toLocaleString()}</strong></div>
+	                </td>
+	                <td style={{padding:"10px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{a.currentStrategy}</td>
+	                <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}><Badge label={a.agentRec} color={recColor(a.agentRec)}/></td>
+	                <td style={{padding:"10px 14px",maxWidth:240,fontSize:11,color:T.gray900,lineHeight:1.5}}>{a.recReason}</td>
+	              </tr>))}</tbody>
+	            </table>
+	          </div>
+	          <ViewAllBtn label="View All Assets →" total={maintAssets.length}/>
+	        </div>
+	      </div>}
+	
+	      {/* ── MY TEAM TAB ── */}
+	      {activeTab==="performance"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:20}}>
+	
+	        {/* ── SECTION 1: PERFORMANCE & COACHING ── */}
+	        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+	          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
+	            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Performance & Coaching</div>
+	            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>On-time completion rate, efficiency vs. estimate, and Co-Pilot coaching suggestions</div>
+	          </div>
+	          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:16}}>
+	            {techPerformance.map(t=>(
+	              <div key={t.name} style={{background:T.gray100,borderRadius:4,padding:"14px 16px"}}>
+	                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap",marginBottom:12}}>
+	                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+	                    <div style={{width:36,height:36,borderRadius:"50%",background:T.primary,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,color:T.white,flexShrink:0}}>{t.avatar}</div>
+	                    <div><div style={{fontSize:13,fontWeight:800,color:T.black}}>{t.name}</div><div style={{fontSize:11,color:T.gray900}}>{t.role}</div></div>
+	                  </div>
+	                  <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
+	                    <div style={{textAlign:"center"}}>
+	                      <div style={{fontSize:10,color:T.gray900,marginBottom:2}}>WOs Completed</div>
+	                      <div style={{fontSize:16,fontWeight:800,color:t.thisWeek.completed>=t.thisWeek.target?T.positive:T.warning}}>{t.thisWeek.completed}<span style={{fontSize:11,color:T.gray400,fontWeight:400}}>/{t.thisWeek.target}</span></div>
+	                    </div>
+	                    <div style={{textAlign:"center"}}>
+	                      <div style={{fontSize:10,color:T.gray900,marginBottom:2}}>On-Time Rate</div>
+	                      <div style={{fontSize:16,fontWeight:800,color:t.thisWeek.onTime/Math.max(t.thisWeek.completed,1)>=0.8?T.positive:T.warning}}>{Math.round(t.thisWeek.onTime/Math.max(t.thisWeek.completed,1)*100)}%</div>
+	                    </div>
+	                    <div style={{textAlign:"center"}}>
+	                      <div style={{fontSize:10,color:T.gray900,marginBottom:2}}>Avg Efficiency</div>
+	                      <div style={{fontSize:16,fontWeight:800,color:effColor(t.efficiency.avgActualVsEstimate)}}>{t.efficiency.avgActualVsEstimate}x</div>
+	                      <div style={{fontSize:9,color:T.gray400}}>actual vs. est.</div>
+	                    </div>
+	                    <div style={{textAlign:"center"}}>
+	                      <div style={{fontSize:10,color:T.gray900,marginBottom:2}}>Trend</div>
+	                      <div style={{fontSize:12,fontWeight:700,color:t.efficiency.trend==="Improving"?T.positive:t.efficiency.trend==="Stable"?T.info:T.negative}}>{t.efficiency.trend==="Improving"?"↑ Improving":t.efficiency.trend==="Stable"?"→ Stable":t.efficiency.trend==="Declining"?"↓ Declining":"⚠ Needs Support"}</div>
+	                    </div>
+	                  </div>
+	                </div>
+	                <div style={{marginBottom:t.coachingSuggestions.length>0?12:0}}>
+	                  <div style={{fontSize:11,fontWeight:700,color:T.gray900,marginBottom:6}}>This Week's Work Orders</div>
+	                  <div style={{display:"flex",flexDirection:"column",gap:3}}>
+	                    {t.wosThisWeek.map(wo=>(
+	                      <div key={wo.id} style={{display:"flex",gap:8,alignItems:"center",fontSize:11,background:T.white,borderRadius:3,padding:"5px 10px"}}>
+	                        <span style={{fontWeight:700,color:T.black,minWidth:70}}>{wo.id}</span>
+	                        <span style={{flex:1,color:T.gray900}}>{wo.asset}</span>
+	                        <span style={{color:T.gray900,minWidth:80}}>Est: {wo.estHrs}h</span>
+	                        <span style={{fontWeight:700,color:wo.actualHrs===0?T.gray400:effColor(wo.actualHrs/wo.estHrs),minWidth:80}}>{wo.actualHrs>0?`Actual: ${wo.actualHrs}h`:"In progress"}</span>
+	                        <span>{wo.onTime===null?<Badge label="In Progress" color={T.info}/>:wo.onTime?<Badge label="On Time" color={T.positive}/>:<Badge label="Late" color={T.negative}/>}</span>
+	                      </div>
+	                    ))}
+	                  </div>
+	                </div>
+	                {t.coachingSuggestions.length>0&&(
+	                  <div style={{background:T.white,borderRadius:4,border:`1px solid ${"#673AB7"}40`,borderLeft:`3px solid ${"#673AB7"}`,padding:"10px 14px"}}>
+	                    <div style={{fontSize:11,fontWeight:700,color:"#673AB7",marginBottom:6}}>🤖 Co-Pilot Coaching Suggestions</div>
+	                    {t.coachingSuggestions.map((c,i)=>(
+	                      <div key={i} style={{display:"flex",gap:8,alignItems:"flex-start",marginBottom:i<t.coachingSuggestions.length-1?6:0}}>
+	                        <Badge label={c.type} color={c.type==="SOP"?T.primary:c.type==="Training"?T.info:c.type==="Pairing"?T.warning:"#673AB7"}/>
+	                        <span style={{fontSize:11,color:T.gray900,flex:1}}>{c.note}</span>
+	                      </div>
+	                    ))}
+	                  </div>
+	                )}
+	                {t.strengths.length>0&&(
+	                  <div style={{marginTop:8,display:"flex",gap:6,flexWrap:"wrap"}}>
+	                    {t.strengths.map(s=><span key={s} style={{fontSize:10,color:T.positive,background:T.positive+"12",border:`1px solid ${T.positive}30`,borderRadius:3,padding:"2px 8px"}}>✓ {s}</span>)}
+	                  </div>
+	                )}
+	              </div>
+	            ))}
+	          </div>
+	          <ViewAllBtn label="View Full Performance History →" total={techPerformance.length}/>
+	        </div>
+	
+	        {/* ── SECTION 2: SKILLS MATRIX ── */}
+	        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+	          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
+	            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Skills Matrix — Certified Competency by Asset Type</div>
+	            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Certification status per technician · Agent flags gaps and single points of failure</div>
+	          </div>
+	          <div style={{overflowX:"auto"}}>
+	            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+	              <thead>
+	                <tr style={{background:T.gray100}}>
+	                  <th style={{padding:"10px 16px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,minWidth:160}}>Technician</th>
+	                  {["Heat Sealer","Heat Tunnel","Filler / Calibration","Conveyor / Belt","Packaging","Electrical","General Mechanical"].map(skill=>(
+	                    <th key={skill} style={{padding:"10px 12px",textAlign:"center",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,minWidth:100,whiteSpace:"nowrap"}}>{skill}</th>
+	                  ))}
+	                </tr>
+	              </thead>
+	              <tbody>
+	                {[
+	                  {name:"Carlos Rivera",role:"Senior Technician",avatar:"CR",skills:{"Heat Sealer":"certified","Heat Tunnel":"in-progress","Filler / Calibration":"certified","Conveyor / Belt":"certified","Packaging":"certified","Electrical":"certified","General Mechanical":"certified"}},
+	                  {name:"Marcus Webb",role:"Technician",avatar:"MW",skills:{"Heat Sealer":"none","Heat Tunnel":"certified","Filler / Calibration":"none","Conveyor / Belt":"certified","Packaging":"certified","Electrical":"none","General Mechanical":"certified"}},
+	                  {name:"Priya Singh",role:"Technician",avatar:"PS",skills:{"Heat Sealer":"none","Heat Tunnel":"none","Filler / Calibration":"certified","Conveyor / Belt":"in-progress","Packaging":"none","Electrical":"none","General Mechanical":"certified"}},
+	                  {name:"James Okafor",role:"Junior Technician",avatar:"JO",skills:{"Heat Sealer":"none","Heat Tunnel":"none","Filler / Calibration":"none","Conveyor / Belt":"certified","Packaging":"none","Electrical":"none","General Mechanical":"certified"}},
+	                ].map((tech,i)=>(
+	                  <tr key={tech.name} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
+	                    <td style={{padding:"10px 16px"}}>
+	                      <div style={{display:"flex",alignItems:"center",gap:8}}>
+	                        <div style={{width:28,height:28,borderRadius:"50%",background:T.primary,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:T.white,flexShrink:0}}>{tech.avatar}</div>
+	                        <div>
+	                          <div style={{fontSize:12,fontWeight:700,color:T.black}}>{tech.name}</div>
+	                          <div style={{fontSize:10,color:T.gray400}}>{tech.role}</div>
+	                        </div>
+	                      </div>
+	                    </td>
+	                    {["Heat Sealer","Heat Tunnel","Filler / Calibration","Conveyor / Belt","Packaging","Electrical","General Mechanical"].map(skill=>{
+	                      const status=tech.skills[skill];
+	                      return(
+	                        <td key={skill} style={{padding:"10px 12px",textAlign:"center"}}>
+	                          {status==="certified"&&<div style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:28,height:28,borderRadius:"50%",background:T.positive+"18",border:`2px solid ${T.positive}`}}><span style={{fontSize:13,color:T.positive,fontWeight:800}}>✓</span></div>}
+	                          {status==="in-progress"&&<div style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:28,height:28,borderRadius:"50%",background:T.warning+"18",border:`2px solid ${T.warning}`}}><span style={{fontSize:10,color:T.warning,fontWeight:800}}>~</span></div>}
+	                          {status==="none"&&<div style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:28,height:28,borderRadius:"50%",background:T.gray100,border:`1px solid ${T.border}`}}><span style={{fontSize:13,color:T.gray400}}>—</span></div>}
+	                        </td>
+	                      );
+	                    })}
+	                  </tr>
+	                ))}
+	              </tbody>
+	            </table>
+	          </div>
+	          {/* Legend */}
+	          <div style={{padding:"12px 20px",borderTop:`1px solid ${T.border}`,display:"flex",gap:16,flexWrap:"wrap",alignItems:"center"}}>
+	            <span style={{fontSize:11,fontWeight:700,color:T.gray900}}>Legend:</span>
+	            {[{color:T.positive,label:"Certified",symbol:"✓"},{color:T.warning,label:"In Training",symbol:"~"},{color:T.gray400,label:"Not Certified",symbol:"—"}].map(l=>(
+	              <div key={l.label} style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:T.gray900}}>
+	                <div style={{width:20,height:20,borderRadius:"50%",background:l.color+"18",border:`2px solid ${l.color}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:l.color,fontWeight:800}}>{l.symbol}</div>
+	                {l.label}
+	              </div>
+	            ))}
+	          </div>
+	          {/* Agent gap analysis */}
+	          <div style={{padding:"0 20px 20px",display:"flex",flexDirection:"column",gap:8}}>
+	            <div style={{fontSize:12,fontWeight:800,color:T.black,marginBottom:4}}>🧠 Skills Gap Analysis — Maintenance Strategy Agent</div>
+	            {[
+	              {priority:"High",flag:"Single point of failure — Heat Sealer",detail:"Only Carlos Rivera is certified on Heat Sealer. If Carlos is unavailable, no other technician can execute sealer work. Recommend cross-training Marcus Webb as backup.",action:"Initiate Heat Sealer certification for Marcus Webb"},
+	              {priority:"High",flag:"Single point of failure — Electrical",detail:"Only Carlos Rivera holds Electrical certification. Critical for fault diagnosis across all lines. Recommend cross-training at least one additional technician.",action:"Identify candidate for Electrical certification — recommend Priya Singh"},
+	              {priority:"Medium",flag:"Heat Tunnel coverage — only one certified technician",detail:"Only Marcus Webb is certified on Heat Tunnel. With WO-4422 requiring Heat Tunnel PM, if Marcus is unavailable this WO cannot be assigned. Carlos Rivera is currently in training.",action:"Accelerate Carlos Rivera's Heat Tunnel certification (currently in training)"},
+	              {priority:"Medium",flag:"James Okafor — limited certification scope",detail:"Only certified in Conveyor and General Mechanical. Current scope limits assignment flexibility significantly. Structured upskilling plan recommended.",action:"Prioritise Filler / Calibration or Packaging certification next — broadens daily assignment range"},
+	            ].map((gap,i)=>(
+	              <div key={i} style={{background:T.gray100,borderRadius:4,borderLeft:`4px solid ${gap.priority==="High"?T.negative:T.warning}`,padding:"10px 14px"}}>
+	                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
+	                  <Badge label={gap.priority} color={gap.priority==="High"?T.negative:T.warning}/>
+	                  <span style={{fontSize:12,fontWeight:700,color:T.black}}>{gap.flag}</span>
+	                </div>
+	                <div style={{fontSize:12,color:T.gray900,marginBottom:6}}>{gap.detail}</div>
+	                <div style={{fontSize:11,color:T.primary,fontWeight:600}}>💡 {gap.action}</div>
+	              </div>
+	            ))}
+	          </div>
+	        </div>
+	
+	      </div>}
+	
+	    </div>
+	  </div>);
+	}
+	
+	
+	
+	const COPILOT_SYSTEM_PROMPT = `You are the Technician Co-Pilot for Austin Plant. You help maintenance technicians, operators, and supervisors with on-the-job tasks. You are practical, direct, and safety-first. You do NOT do strategic analysis — that's the Scenario Simulation's job. Your job is to help the person in front of you get their work done safely and correctly right now.
+	
+	You help with:
+	- Step-by-step SOP guidance for specific work orders
+	- Fault code lookups and troubleshooting
+	- LOTO procedures before any maintenance task
+	- Tool and parts lists for specific jobs
+	- Safe work practices and safety checks
+	- Work order context and history
+	- Technician assignment questions
+	
+	PLANT CONTEXT (today, Feb 28, 2026):
+	- Line 3 Heat Sealer (A-001): WO-4421 open, Carlos Rivera assigned, vibration 8.4/7.0 threshold, Part #SE-441 out of stock (arriving tomorrow 7am)
+	- Line 2 Heat Tunnel (A-006): WO-4422 open, unassigned, first PM ever — Marcus Webb recommended
+	- Line 3 Packaging Filler (A-004): WO-4423 open, unassigned, calibration drift — Priya Singh recommended
+	- Line 1 Label Applicator (A-002): WO-4424 open, Priya Singh assigned
+	- Line 2 Conveyor Belt (A-003): WO-4425 in progress, Marcus Webb assigned
+	
+	TECHNICIANS ON SHIFT:
+	- Carlos Rivera (Senior): On WO-4421, certified Heat Sealer/Filler/Electrical, 4hrs available after current job
+	- Marcus Webb: On WO-4425 (done ~1pm), certified Heat Tunnel/Conveyor/Packaging
+	- Priya Singh: On WO-4424, certified Filler/Label Applicator/Mixing, 6.5hrs available
+	- James Okafor (Junior): Unassigned, certified Conveyor/General only
+	
+	SOPs AVAILABLE:
+	- Heat Sealer Inspection & Replacement SOP v3.2 — covers vibration diagnosis, element replacement, calibration
+	- Heat Tunnel PM Checklist v1.1 — covers heating element inspection, safety interlock check, temp calibration
+	- Packaging Filler Calibration Procedure v2.4 — covers zero-point calibration, seal weight check
+	- LOTO Procedure — All Lines v4.0 — mandatory before ANY maintenance task
+	- Emergency Shutdown Protocol v2.1
+	
+	Always start any maintenance task response with the LOTO step. Be concise. Use numbered steps where helpful. If you don't know something specific, say so clearly.`;
+	
+	const COPILOT_SUGGESTIONS = [
+	  "I'm starting WO-4421 on the Line 3 sealer — walk me through the LOTO steps first",
+	  "What tools and parts do I need for the Line 2 heat tunnel PM (WO-4422)?",
+	  "The Line 3 sealer is showing fault code E-14 — what does that mean?",
+	  "I'm calibrating the Line 3 filler (WO-4423) — what's the zero-point calibration procedure?",
+	];
+	const COPILOT_SUGGESTION_LABELS = [
+	  "🔒 WO-4421 sealer — walk me through LOTO first",
+	  "🔧 WO-4422 heat tunnel PM — tools and parts list?",
+	  "⚠️ Line 3 sealer fault code E-14 — what is it?",
+	  "📋 WO-4423 filler calibration — zero-point procedure",
+	];
+	
+	// ── LINE DATA (same as before) ─────────────────────────────────────────────
+	const lineData = {
+	  "All":{ oee:75,oeeTarget:85,availability:81,downtimeMins:142,downtimeTarget:60,qualityRate:95,qualityTarget:98,firstPassYield:93,unitsProduced:18400,unitsTarget:21000,scrap:2.8,scrapTarget:1.5,openWorkOrders:7,overdueWorkOrders:2,plannedUnplannedRatio:58,scheduleAdherence:82,scheduleTarget:95,safetyIncidents:0,nearMisses:1,otif:87,otifTarget:95,planStatus:-3.8,
+	    shifts:[{shift:"Night (Feb 27)",oee:71,units:5800,target:7000,quality:94,downtime:58,status:"Below Target"},{shift:"Afternoon (Feb 27)",oee:76,units:6200,target:7000,quality:95,downtime:49,status:"Below Target"},{shift:"Day (Feb 27)",oee:79,units:6400,target:7000,quality:96,downtime:35,status:"Below Target"}],
+	    alerts:["Line 3 sealer degradation unresolved across all 3 shifts","Labor shortage flagged for afternoon shift","Inbound materials out of spec for SKU 4412"]},
+	  "Line 1":{ oee:80,oeeTarget:85,availability:88,downtimeMins:44,downtimeTarget:30,qualityRate:97,qualityTarget:98,firstPassYield:96,unitsProduced:6800,unitsTarget:7000,scrap:1.4,scrapTarget:1.5,openWorkOrders:2,overdueWorkOrders:0,plannedUnplannedRatio:80,scheduleAdherence:91,scheduleTarget:95,safetyIncidents:0,nearMisses:0,otif:93,otifTarget:95,planStatus:-0.7,
+	    shifts:[{shift:"Night (Feb 27)",oee:78,units:2180,target:2333,quality:96,downtime:18,status:"Near Target"},{shift:"Afternoon (Feb 27)",oee:80,units:2260,target:2333,quality:97,downtime:15,status:"Near Target"},{shift:"Day (Feb 27)",oee:83,units:2360,target:2333,quality:98,downtime:11,status:"On Target"}],
+	    alerts:["Label misalignment recurred on afternoon shift","Inbound seasoning blend out of spec — SKU 4412 at risk"]},
+	  "Line 2":{ oee:87,oeeTarget:85,availability:93,downtimeMins:22,downtimeTarget:30,qualityRate:99,qualityTarget:98,firstPassYield:98,unitsProduced:7200,unitsTarget:7000,scrap:0.8,scrapTarget:1.5,openWorkOrders:1,overdueWorkOrders:0,plannedUnplannedRatio:91,scheduleAdherence:97,scheduleTarget:95,safetyIncidents:0,nearMisses:0,otif:98,otifTarget:95,planStatus:0.6,
+	    shifts:[{shift:"Night (Feb 27)",oee:86,units:2380,target:2333,quality:99,downtime:8,status:"On Target"},{shift:"Afternoon (Feb 27)",oee:87,units:2400,target:2333,quality:99,downtime:7,status:"On Target"},{shift:"Day (Feb 27)",oee:89,units:2420,target:2333,quality:99,downtime:7,status:"On Target"}],
+	    alerts:["3 operators overdue on safety recertification"]},
+	  "Line 3":{ oee:55,oeeTarget:85,availability:62,downtimeMins:276,downtimeTarget:60,qualityRate:89,qualityTarget:98,firstPassYield:86,unitsProduced:4400,unitsTarget:7000,scrap:6.1,scrapTarget:1.5,openWorkOrders:4,overdueWorkOrders:2,plannedUnplannedRatio:22,scheduleAdherence:58,scheduleTarget:95,safetyIncidents:0,nearMisses:1,otif:71,otifTarget:95,planStatus:-5.2,
+	    shifts:[{shift:"Night (Feb 27)",oee:52,units:1240,target:2333,quality:88,downtime:104,status:"Critical"},{shift:"Afternoon (Feb 27)",oee:55,units:1540,target:2333,quality:89,downtime:92,status:"Critical"},{shift:"Day (Feb 27)",oee:59,units:1620,target:2333,quality:90,downtime:80,status:"Critical"}],
+	    alerts:["Sealer temperature instability across all 3 shifts — 9 escalations","Spare part #SE-441 out of stock","Schedule adherence critically low"]},
+	};
+	
+	const domainActions = {
+	  "All":{
+	    Safety:[{id:"s1",text:"Conduct pre-shift safety briefing — all 3 lines",status:"Complete",owner:"Shift Supervisors"},{id:"s2",text:"LOTO recertification scheduled for J. Park, D. Williams, M. Santos",status:"In Progress",owner:"Tom Kowalski"},{id:"s3",text:"Near miss report filed — Line 3 overnight",status:"Complete",owner:"Safety Lead"}],
+	    Quality:[{id:"q1",text:"Inbound materials inspection — Lot #SB-2291 flagged, hold placed",status:"Action Required",owner:"Quality Manager"},{id:"q2",text:"First pass yield review — Line 3 below threshold 3rd consecutive shift",status:"Action Required",owner:"Quality Manager"},{id:"q3",text:"Deviation report submitted for Line 1 label misalignment",status:"Complete",owner:"Line 1 Supervisor"}],
+	    Production:[{id:"p1",text:"Shift handover completed — Line 3 sealer issue carried forward",status:"Complete",owner:"Shift Supervisors"},{id:"p2",text:"Afternoon shift coverage gap — 2 operators short",status:"Action Required",owner:"Tom Kowalski"},{id:"p3",text:"Line 2 changeover executed on schedule — no issues",status:"Complete",owner:"Line 2 Supervisor"}],
+	    Maintenance:[{id:"m1",text:"Work order raised — Line 3 sealer inspection (WO-4421)",status:"In Progress",owner:"Carlos Rivera"},{id:"m2",text:"Emergency PO initiated — Part #SE-441 from Supplier B",status:"Action Required",owner:"Carlos Rivera"},{id:"m3",text:"PM checks completed on Line 1 and Line 2",status:"Complete",owner:"Maintenance Team"}],
+	    Planning:[{id:"pl1",text:"Production plan reviewed — Line 3 shortfall flagged to scheduling",status:"Complete",owner:"Priya Nair"},{id:"pl2",text:"Customer order CO-8821 at risk — SKU 4412 materials issue",status:"Action Required",owner:"Priya Nair"},{id:"pl3",text:"Labor plan updated for afternoon shift — voluntary OT requested",status:"In Progress",owner:"Priya Nair"}],
+	  },
+	  "Line 1":{Safety:[{id:"s1",text:"Pre-shift safety briefing completed",status:"Complete",owner:"Line 1 Supervisor"},{id:"s2",text:"No incidents or near misses overnight",status:"Complete",owner:"Line 1 Supervisor"}],Quality:[{id:"q1",text:"Label misalignment deviation report filed",status:"Complete",owner:"Quality Lead"},{id:"q2",text:"Inbound seasoning blend Lot #SB-2291 on hold — affects SKU 4412",status:"Action Required",owner:"Quality Manager"}],Production:[{id:"p1",text:"Shift handover completed — no open escalations",status:"Complete",owner:"Line 1 Supervisor"},{id:"p2",text:"3pm changeover requires 2 operators — coverage at risk",status:"Action Required",owner:"Tom Kowalski"}],Maintenance:[{id:"m1",text:"PM checks completed — no issues found",status:"Complete",owner:"Maintenance Team"}],Planning:[{id:"pl1",text:"SKU 4412 volume at risk — plan adjustment needed",status:"Action Required",owner:"Priya Nair"}]},
+	  "Line 2":{Safety:[{id:"s1",text:"LOTO recertification overdue — 3 operators flagged",status:"Action Required",owner:"Tom Kowalski"},{id:"s2",text:"Pre-shift briefing completed — no incidents",status:"Complete",owner:"Line 2 Supervisor"}],Quality:[{id:"q1",text:"Quality rate at 99% — no deviations to report",status:"Complete",owner:"Quality Lead"}],Production:[{id:"p1",text:"Best OEE of the week — no escalations",status:"Complete",owner:"Line 2 Supervisor"},{id:"p2",text:"Changeover completed ahead of schedule",status:"Complete",owner:"Line 2 Supervisor"}],Maintenance:[{id:"m1",text:"1 open work order — non-urgent belt inspection",status:"In Progress",owner:"Maintenance Team"}],Planning:[{id:"pl1",text:"Schedule adherence at 97% — on track for Friday orders",status:"Complete",owner:"Priya Nair"}]},
+	  "Line 3":{Safety:[{id:"s1",text:"Near miss filed — operator exposure during sealer fault",status:"Complete",owner:"Safety Lead"},{id:"s2",text:"Pre-shift briefing included sealer risk advisory",status:"Complete",owner:"Line 3 Supervisor"}],Quality:[{id:"q1",text:"FPY below 90% — 3rd consecutive shift. Escalated to QM",status:"Action Required",owner:"Quality Manager"},{id:"q2",text:"Scrap rate at 6.1% — root cause linked to sealer instability",status:"Action Required",owner:"Quality Manager"}],Production:[{id:"p1",text:"Sealer issue carried forward from all 3 overnight shifts",status:"Action Required",owner:"Line 3 Supervisor"},{id:"p2",text:"Production 37% below target — schedule impact flagged",status:"Action Required",owner:"Tom Kowalski"}],Maintenance:[{id:"m1",text:"WO-4421 open — sealer inspection in progress",status:"In Progress",owner:"Carlos Rivera"},{id:"m2",text:"Part #SE-441 out of stock — emergency PO raised",status:"Action Required",owner:"Carlos Rivera"},{id:"m3",text:"2 overdue work orders — need immediate review",status:"Action Required",owner:"Carlos Rivera"}],Planning:[{id:"pl1",text:"Schedule adherence at 58% — customer orders at risk",status:"Action Required",owner:"Priya Nair"},{id:"pl2",text:"SKU 3801 run conflicting with maintenance window",status:"Action Required",owner:"Priya Nair"}]},
+	};
+	
+	const domainRecMap = { Safety:[5], Quality:[], Production:[3,4], Maintenance:[1,2], "Planning & Scheduling":[3,4] };
+	
+	const VALID_AGENTS = ["Asset Health Monitoring Agent","Maintenance Planning & Scheduling Agent","Technician Co-Pilot","Maintenance Strategy Agent","Scheduling Agent","Planning Agent","Supervisor & Operator Co-Pilot","Quality Monitoring Agent","Inbound Materials Agent","Final Quality Agent","Setpoint & Recipe Optimization Agent","Root Cause Analysis Agent","Safety Agent","Plant Orchestration Agent"];
+	const VALID_APPROVERS = {"Plant Leader":{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},"Maintenance Manager":{name:"Carlos Rivera",role:"Maintenance Manager",avatar:"MM"},"Scheduler":{name:"Priya Nair",role:"Scheduler",avatar:"SC"},"Production Supervisor":{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"},"Quality Manager":{name:"Quality Manager",role:"Quality Manager",avatar:"QM"}};
+	const DOMAIN_ICONS = { Safety:"🦺", Quality:"✅", Production:"⚙️", Maintenance:"🔧", Planning:"📋" };
+	
+	const initialRecommendations = [
+	  {id:1,lines:["All","Line 3"],priority:"Critical",domain:"Maintenance",icon:"🔧",fromChat:false,title:"Line 3 Sealer — Unplanned Failure Risk Within 48hrs",summary:"Asset Health Monitoring Agent detected vibration index 8.4 (threshold 7.0) and temp variance ±6°C on the Line 3 heat sealer. Unplanned failure likely within 48 hours.",agents:["Asset Health Monitoring Agent","Maintenance Planning & Scheduling Agent","Scheduling Agent"],suggestedAction:"Perform planned maintenance during today's 2–4pm changeover window and expedite spare part procurement.",detail:{issue:"Asset Health Monitoring Agent has detected vibration index 8.4 (threshold: 7.0) and temperature variance of ±6°C on the Line 3 heat sealer.",compounding:"Part #SE-441 is out of stock. Emergency procurement from Supplier B can deliver by tomorrow 7am.",risk:"Unplanned failure would result in 4–6 hours unplanned downtime and ~8,000 units of lost output.",action:"Perform planned maintenance during today's 2:00–4:00pm changeover window. Raise emergency PO for Part #SE-441.",steps:[{agent:"Asset Health Monitoring Agent",domain:"Maintenance",action:"Confirm degradation signal — vibration index 8.4, temp variance ±6°C.",status:"complete"},{agent:"Maintenance Planning & Scheduling Agent",domain:"Maintenance",action:"Check Part #SE-441 inventory — out of stock. Raise emergency PO.",status:"complete"},{agent:"Scheduling Agent",domain:"Planning",action:"Identify 2:00–4:00pm changeover slot on Line 3.",status:"complete"},{agent:"Planning Agent",domain:"Planning",action:"Reallocate 1 operator from Line 2 to Line 1 Thursday afternoon.",status:"pending"},{agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Notify supervisors of maintenance window and schedule change.",status:"pending"},{agent:"Technician Co-Pilot",domain:"Maintenance",action:"Pre-load sealer maintenance SOP for technician.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Carlos Rivera",role:"Maintenance Manager",avatar:"MM"},{name:"Priya Nair",role:"Scheduler",avatar:"SC"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"}]}},
+	  {id:2,lines:["All","Line 3"],priority:"Critical",domain:"Maintenance",icon:"🔩",fromChat:false,title:"Spare Part Stock-Out — Sealer Heating Element Unavailable",summary:"Part #SE-441 is out of stock. Standard lead time 3 days. Emergency procurement available for next-morning delivery.",agents:["Maintenance Planning & Scheduling Agent","Technician Co-Pilot"],suggestedAction:"Raise emergency PO to approved supplier for next-day delivery.",detail:{issue:"Part #SE-441 has zero inventory. Required for the Line 3 maintenance intervention.",compounding:"Without the part, planned maintenance cannot be completed during today's window.",risk:"If not raised today, earliest arrival is Tuesday — by which time failure is highly likely.",action:"Raise emergency PO to Supplier B ($340/unit). Confirm next-day AM delivery.",steps:[{agent:"Maintenance Planning & Scheduling Agent",domain:"Maintenance",action:"Confirm Part #SE-441 stock — zero units on hand.",status:"complete"},{agent:"Maintenance Planning & Scheduling Agent",domain:"Maintenance",action:"Raise emergency PO to Supplier B — next-day AM delivery confirmed.",status:"pending"},{agent:"Technician Co-Pilot",domain:"Maintenance",action:"Flag part dependency in maintenance work order.",status:"pending"}],approvers:[{name:"Carlos Rivera",role:"Maintenance Manager",avatar:"MM"},{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"}]}},
+	  {id:3,lines:["All","Line 3","Line 1"],priority:"High",domain:"Planning",icon:"📋",fromChat:false,title:"Scheduling Conflict — Maintenance Window vs. Friday Customer Order",summary:"Conflict between proposed Line 3 maintenance window and high-priority customer order for SKU 3801 due Friday.",agents:["Scheduling Agent","Planning Agent","Supervisor & Operator Co-Pilot"],suggestedAction:"Shift SKU 3801 run to Line 1 for Thursday afternoon.",detail:{issue:"Line 3 maintenance window conflicts with SKU 3801 order — 6,200 units due Friday.",compounding:"Line 3 capacity already constrained due to sealer issue.",risk:"Either maintenance is missed or customer order is late.",action:"Move SKU 3801 to Line 1, Thursday 1–5pm slot.",steps:[{agent:"Scheduling Agent",domain:"Planning",action:"Model SKU 3801 on Line 1 Thursday — capacity confirmed.",status:"complete"},{agent:"Planning Agent",domain:"Planning",action:"Reallocate operator from Line 2 to Line 1.",status:"pending"},{agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Notify supervisors of schedule change.",status:"pending"}],approvers:[{name:"Priya Nair",role:"Scheduler",avatar:"SC"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"},{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"}]}},
+	  {id:4,lines:["All","Line 1","Line 3"],priority:"High",domain:"Planning",icon:"👷",fromChat:false,title:"Labor Shortage — Afternoon Shift Short 2 Operators",summary:"Afternoon shift is short 2 operators. Lines 1 and 3 will have coverage gaps unless resolved before 2pm handover.",agents:["Planning Agent","Supervisor & Operator Co-Pilot"],suggestedAction:"Offer voluntary overtime to 3 identified Day shift operators.",detail:{issue:"Two afternoon shift operators called out — Lines 1 and 3 under-staffed.",compounding:"Labor shortage coincides with planned maintenance window on Line 3.",risk:"Line 1 changeover may be delayed and Line 3 requires minimum 1 operator during maintenance.",action:"Contact 3 Day shift operators for voluntary overtime.",steps:[{agent:"Planning Agent",domain:"Planning",action:"Identify Day shift operators for voluntary overtime — 3 candidates.",status:"complete"},{agent:"Planning Agent",domain:"Planning",action:"Send overtime offer. Response required by 12pm.",status:"pending"},{agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"If declined, activate single-operator protocol on Line 3.",status:"pending"}],approvers:[{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"},{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"}]}},
+	  {id:5,lines:["All","Line 2"],priority:"Medium",domain:"Safety",icon:"🦺",fromChat:false,title:"Safety Recertification Overdue — 3 Operators on Line 2",summary:"3 Line 2 operators have overdue LOTO recertification. Policy requires completion within 5 working days.",agents:["Safety Agent","Supervisor & Operator Co-Pilot"],suggestedAction:"Schedule 45-minute recertification session during Line 2 downtime window.",detail:{issue:"J. Park, D. Williams, M. Santos have not completed annual LOTO recertification.",compounding:"Non-compliance creates audit risk on the best-performing line.",risk:"If not completed by Mar 4, operators removed from LOTO-related tasks.",action:"Schedule recertification session Wednesday 10–11am.",steps:[{agent:"Safety Agent",domain:"Safety",action:"Flag 3 overdue LOTO recertifications. Deadline Mar 4.",status:"complete"},{agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Training slot confirmed — Wed 10–11am.",status:"complete"},{agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Book trainer, notify 3 operators.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"}]}},
+	];
+	
+	const actionLog = [
+	  {id:"a1",source:"Routine",domain:"Safety",line:"Line 2",description:"LOTO recertification — J. Park, D. Williams, M. Santos",owner:"Tom Kowalski",dueDate:"Mar 4, 2026",status:"In Progress",daysOpen:5},
+	  {id:"a2",source:"Routine",domain:"Safety",line:"All",description:"Near miss investigation report — Line 3 overnight incident",owner:"Safety Lead",dueDate:"Mar 1, 2026",status:"In Progress",daysOpen:2},
+	  {id:"a3",source:"Routine",domain:"Quality",line:"Line 1",description:"Deviation report closed — label misalignment root cause confirmed",owner:"Quality Lead",dueDate:"Feb 28, 2026",status:"Complete",daysOpen:1},
+	  {id:"a4",source:"Routine",domain:"Quality",line:"Line 1",description:"Inbound materials hold — Lot #SB-2291 disposition decision required",owner:"Quality Manager",dueDate:"Feb 28, 2026",status:"Open",daysOpen:1},
+	  {id:"a5",source:"Routine",domain:"Production",line:"Line 3",description:"Shift handover — sealer issue formal escalation to maintenance",owner:"Line 3 Supervisor",dueDate:"Feb 28, 2026",status:"Complete",daysOpen:1},
+	  {id:"a6",source:"Routine",domain:"Production",line:"All",description:"Afternoon shift coverage gap — voluntary OT offers sent",owner:"Tom Kowalski",dueDate:"Feb 28, 2026",status:"In Progress",daysOpen:1},
+	  {id:"a7",source:"Routine",domain:"Maintenance",line:"Line 3",description:"WO-4421 raised — Line 3 sealer inspection initiated",owner:"Carlos Rivera",dueDate:"Feb 28, 2026",status:"In Progress",daysOpen:1},
+	  {id:"a8",source:"Routine",domain:"Maintenance",line:"Line 1",description:"PM checks completed — Line 1 and Line 2 signed off",owner:"Maintenance Team",dueDate:"Feb 28, 2026",status:"Complete",daysOpen:1},
+	  {id:"a9",source:"Routine",domain:"Planning",line:"Line 3",description:"Customer order CO-8821 at risk — procurement notified",owner:"Priya Nair",dueDate:"Feb 28, 2026",status:"In Progress",daysOpen:1},
+	  {id:"a10",source:"Routine",domain:"Planning",line:"All",description:"Labor plan updated — voluntary OT requested for afternoon shift",owner:"Priya Nair",dueDate:"Feb 28, 2026",status:"In Progress",daysOpen:1},
+	  {id:"a11",source:"Recommendation",domain:"Maintenance",line:"Line 3",description:"Emergency PO raised — Part #SE-441 from Supplier B",owner:"Carlos Rivera",dueDate:"Mar 1, 2026",status:"In Progress",daysOpen:1},
+	  {id:"a12",source:"Recommendation",domain:"Maintenance",line:"Line 3",description:"Planned maintenance window confirmed — Line 3 sealer, today 2–4pm",owner:"Carlos Rivera",dueDate:"Feb 28, 2026",status:"Open",daysOpen:1},
+	  {id:"a13",source:"Recommendation",domain:"Planning",line:"Line 3",description:"SKU 3801 rescheduled to Line 1 — Thursday 1–5pm",owner:"Priya Nair",dueDate:"Mar 5, 2026",status:"Open",daysOpen:1},
+	  {id:"a14",source:"Recommendation",domain:"Planning",line:"Line 1",description:"Operator reallocation — Line 2 to Line 1 Thursday afternoon",owner:"Tom Kowalski",dueDate:"Mar 5, 2026",status:"Open",daysOpen:1},
+	  {id:"a15",source:"Recommendation",domain:"Safety",line:"Line 2",description:"LOTO recertification session booked — Wed 10–11am",owner:"Tom Kowalski",dueDate:"Mar 4, 2026",status:"In Progress",daysOpen:3},
+	  {id:"a16",source:"Recommendation",domain:"Maintenance",line:"Line 3",description:"Sealer maintenance SOP pre-loaded for technician",owner:"Maintenance Team",dueDate:"Feb 28, 2026",status:"Open",daysOpen:1},
+	  {id:"a17",source:"Recommendation",domain:"Quality",line:"Line 1",description:"SKU swap to 3802 executed — quality checks completed",owner:"Quality Manager",dueDate:"Feb 28, 2026",status:"Complete",daysOpen:1},
+	  {id:"a18",source:"Routine",domain:"Safety",line:"All",description:"Monthly safety walk scheduled — all supervisors required",owner:"Safety Lead",dueDate:"Mar 7, 2026",status:"Open",daysOpen:8},
+	  {id:"a19",source:"Routine",domain:"Maintenance",line:"Line 2",description:"Quarterly belt inspection overdue — WO to be raised this week",owner:"Carlos Rivera",dueDate:"Mar 3, 2026",status:"Open",daysOpen:4},
+	  {id:"a20",source:"Recommendation",domain:"Production",line:"Line 3",description:"Single-operator protocol activated on Line 3 for afternoon shift",owner:"Tom Kowalski",dueDate:"Feb 28, 2026",status:"In Progress",daysOpen:1},
+	];
+	
+	const disruptionAlert = {id:"RT-001",severity:"Critical",time:"07:43am",title:"Inbound Materials Out of Spec — SKU 4412 at Risk",description:"Inbound Materials Agent has flagged that the arriving seasoning blend batch (Lot #SB-2291) for SKU 4412 is out of spec. Sodium content is 14% above acceptable range.",impacts:["Line 1 Day shift production plan cannot proceed as scheduled","Quality Monitoring Agent will reject batch at intake","SKU 4412 volume of 4,200 units at risk for today","Customer order #CO-8821 (due Thursday) may be impacted"],options:[{id:"A",label:"Swap to SKU 3802",description:"SKU 3802 materials confirmed in stock. Feasible with 35-min changeover. Minor OEE impact (~3%). Recommended.",recommended:true,impact:"Low"},{id:"B",label:"Source replacement batch",description:"Emergency same-day delivery. 60% confidence on timing. Line 1 idle 2–3 hours.",recommended:false,impact:"Medium"},{id:"C",label:"Hold Line 1 until tomorrow",description:"Safest quality option but results in full Day shift loss on Line 1.",recommended:false,impact:"High"}],notifyList:["Plant Leader","Production Supervisor","Quality Manager","Scheduler","Procurement Lead"]};
+	
+	const generateDays=(n,label)=>Array.from({length:n},(_,i)=>{const d=new Date(2026,1,28);d.setDate(d.getDate()-(n-1-i));return label==="24h"?`${String(i*2).padStart(2,"0")}:00`:`${d.getMonth()+1}/${d.getDate()}`;});
+	const seed=(base,variance,n)=>Array.from({length:n},()=>Math.round((base+(Math.random()-0.5)*variance*2)*10)/10);
+	const buildLinePerf=(n,label)=>({days:generateDays(n,label),oee:{"Line 1":seed(80,5,n),"Line 2":seed(87,4,n),"Line 3":seed(57,8,n)},availability:{"Line 1":seed(88,4,n),"Line 2":seed(93,3,n),"Line 3":seed(63,9,n)},units:{"Line 1":seed(6800,400,n),"Line 2":seed(7200,300,n),"Line 3":seed(4400,600,n)},quality:{"Line 1":seed(97,1.5,n),"Line 2":seed(99,0.8,n),"Line 3":seed(89,2.5,n)},scrap:{"Line 1":seed(1.4,0.4,n),"Line 2":seed(0.8,0.3,n),"Line 3":seed(6.1,1.2,n)},plannedRatio:{"Line 1":seed(80,6,n),"Line 2":seed(91,4,n),"Line 3":seed(22,8,n)},downtime:{"Line 1":seed(44,15,n),"Line 2":seed(22,8,n),"Line 3":seed(276,40,n)},schedAdherence:{"Line 1":seed(91,5,n),"Line 2":seed(97,3,n),"Line 3":seed(58,10,n)},otif:{"Line 1":seed(93,4,n),"Line 2":seed(98,2,n),"Line 3":seed(71,8,n)}});
+	const perfDatasets={"24h":buildLinePerf(12,"24h"),"2w":buildLinePerf(14,"2w"),"1m":buildLinePerf(30,"1m")};
+	const LINE_COLORS_PERF={"Line 1":T.primary,"Line 2":T.positive,"Line 3":T.negative};
+	
+	const INIT_ORDERS=[{id:"RUN-1021",line:"Line 1",sku:"SKU 3802",desc:"Original Chips",units:4200,target:4500,start:"Feb 28 06:00",end:"Feb 28 11:30",dueDate:"Feb 28",dc:"DC-East"},{id:"RUN-1022",line:"Line 1",sku:"SKU 4412",desc:"Seasoned Chips",units:4200,target:4500,start:"Feb 28 12:00",end:"Feb 28 17:30",dueDate:"Feb 28",dc:"DC-West",riskReason:"Inbound materials out of spec"},{id:"RUN-1023",line:"Line 1",sku:"SKU 2204",desc:"Crimped Seal Chips",units:3800,target:4000,start:"Mar 1 06:00",end:"Mar 1 11:00",dueDate:"Mar 3",dc:"DC-South"},{id:"RUN-1024",line:"Line 1",sku:"SKU 3801",desc:"Premium Chips",units:6200,target:6200,start:"Mar 1 13:00",end:"Mar 1 18:00",dueDate:"Mar 7",dc:"DC-East",riskReason:"Moved from Line 3 per orchestration rec"},{id:"RUN-1025",line:"Line 1",sku:"SKU 3804",desc:"BBQ Chips",units:5000,target:5000,start:"Mar 2 06:00",end:"Mar 2 12:30",dueDate:"Mar 5",dc:"DC-West"},{id:"RUN-1026",line:"Line 2",sku:"SKU 3802",desc:"Original Chips",units:7000,target:7000,start:"Feb 28 06:00",end:"Feb 28 14:00",dueDate:"Feb 28",dc:"DC-North"},{id:"RUN-1027",line:"Line 2",sku:"SKU 2204",desc:"Crimped Seal Chips",units:6500,target:6500,start:"Mar 1 06:00",end:"Mar 1 13:00",dueDate:"Mar 4",dc:"DC-East"},{id:"RUN-1028",line:"Line 2",sku:"SKU 3804",desc:"BBQ Chips",units:7000,target:7000,start:"Mar 2 06:00",end:"Mar 2 14:00",dueDate:"Mar 6",dc:"DC-South"},{id:"RUN-1029",line:"Line 2",sku:"SKU 3801",desc:"Premium Chips",units:3500,target:3500,start:"Mar 3 08:00",end:"Mar 3 12:30",dueDate:"Mar 7",dc:"DC-West"},{id:"RUN-1030",line:"Line 3",sku:"SKU 2204",desc:"Crimped Seal Chips",units:2800,target:4500,start:"Feb 28 10:00",end:"Feb 28 14:00",dueDate:"Mar 1",dc:"DC-North",riskReason:"Sealer downtime constraining output"},{id:"RUN-1031",line:"Line 3",sku:"SKU 2204",desc:"Crimped Seal Chips",units:4000,target:4000,start:"Mar 1 06:00",end:"Mar 1 14:00",dueDate:"Mar 3",dc:"DC-East"},{id:"RUN-1032",line:"Line 3",sku:"SKU 3804",desc:"BBQ Chips",units:5500,target:5500,start:"Mar 2 08:00",end:"Mar 2 16:00",dueDate:"Mar 5",dc:"DC-South",riskReason:"Dependent on sealer repair"}];
+	const schedAgentRecs=[{id:"sa1",priority:"High",title:"Sequence Optimisation — Line 1 Thursday",impact:"Save 45 min changeover",action:"Resequence RUN-1023 → RUN-1025 on Line 1 Thursday",detail:"Grouping RUN-1023 (SKU 2204) and RUN-1025 (SKU 3804) back-to-back on Line 1 Thursday saves an estimated 45 min of changeover time."},{id:"sa2",priority:"Medium",title:"Idle Capacity — Line 2 Friday Afternoon",impact:"~1,800 units buffer stock",action:"Add SKU 2204 buffer run to Line 2, Mar 6 1–3:30pm",detail:"Line 2 has 2.5 hours of unallocated capacity Friday afternoon."},{id:"sa3",priority:"Medium",title:"Changeover Reduction — Line 3 Next Week",impact:"Save ~1.5 hrs changeover",action:"Regroup Line 3 schedule Mar 2–3 by SKU family",detail:"Current Line 3 schedule alternates between incompatible SKU families."}];
+	const orchSchedulingRecs=[{id:3,priority:"High",title:"SKU 3801 Rescheduled to Line 1 — Thursday Afternoon",status:"Partially Executed",detail:"SKU 3801 (RUN-1024) moved from Line 3 to Line 1, Thursday 1–5pm due to Line 3 sealer risk."},{id:1,priority:"Critical",title:"Line 3 Maintenance Window — Today 2–4pm",status:"Action Required",detail:"Planned maintenance window approved on Line 3 today 2–4pm. RUN-1030 volume shortfall of ~1,700 units vs DC-North target."}];
+	const GANTT_SKUS={"SKU 3802":T.primary,"SKU 4412":T.negative,"SKU 2204":T.positive,"SKU 3801":"#673AB7","SKU 3804":T.warning};
+	const GANTT_DAYS=["Feb 28","Mar 1","Mar 2","Mar 3"];
+	const GANTT_HOURS=[6,8,10,12,14,16,18];
+	const DAY_START=6;const DAY_END=18;
+	
+	function timeToFrac(str){if(!str)return null;const parts=str.trim().split(" ");if(parts.length<3)return null;const date=parts[0]+" "+parts[1];const time=parts[2];const timeParts=time.split(":");const h=parseInt(timeParts[0],10);const m=timeParts[1]?parseInt(timeParts[1],10):0;const dayIdx=GANTT_DAYS.indexOf(date);if(dayIdx<0)return null;return dayIdx+(h-DAY_START+m/60)/(DAY_END-DAY_START);}
+	
+	const PERSONA_DOMAINS={plant_leader:["Safety","Quality","Production","Maintenance","Planning & Scheduling"],maint_manager:["Maintenance","Safety"],scheduler:["Planning & Scheduling"],quality_manager:["Quality"],safety_lead:["Safety"]};
+	const PERSONA_ROLES={plant_leader:["Plant Leader","Plant Manager"],maint_manager:["Maintenance Manager"],scheduler:["Scheduler","Scheduling Manager"],quality_manager:["Quality Manager"],safety_lead:["Safety Lead"]};
+	function recVisibleToPersona(rec,persona){if(persona==="plant_leader")return true;const roles=PERSONA_ROLES[persona]||[];const domains=PERSONA_DOMAINS[persona]||[];const isApprover=(rec.detail?.approvers||[]).some(a=>roles.includes(a.role));const domainMatch=domains.includes(rec.domain);const stepMatch=(rec.detail?.steps||[]).some(s=>domains.includes(s.domain));const agentMatch=(rec.agents||[]).some(a=>domains.some(d=>a.toLowerCase().includes(d.toLowerCase())));return isApprover||domainMatch||stepMatch||agentMatch;}
+	
+	const SCENARIO_SYSTEM_PROMPT=`You are the Plant Orchestration Agent for Austin Plant, a snack food manufacturing facility with 3 production lines. You have full visibility across Safety, Quality, Production, Maintenance, and Planning & Scheduling.
+	PLANT DATA: ${JSON.stringify(lineData).substring(0,2000)}
+	TODAY: Friday Feb 28, 2026 — 7:00am DDS. Be direct, concise, use lean manufacturing language.
+	AVAILABLE AGENTS: Asset Health Monitoring Agent, Maintenance Planning & Scheduling Agent, Technician Co-Pilot, Maintenance Strategy Agent, Scheduling Agent, Planning Agent, Supervisor & Operator Co-Pilot, Quality Monitoring Agent, Inbound Materials Agent, Safety Agent, Plant Orchestration Agent
+	When you reach a clear actionable conclusion, output BOTH blocks EXACTLY:
+	---RECOMMENDATION---
+	TITLE: [short title]
+	PRIORITY: [Critical / High / Medium]
+	DOMAIN: [Safety / Quality / Production / Maintenance / Planning]
+	LINES: [All / Line 1 / Line 2 / Line 3]
+	ACTION: [one sentence recommended action]
+	AGENTS: [comma-separated]
+	SUMMARY: [2-3 sentences]
+	---END---
+	---STEPS---
+	[{"agent":"Agent Name","domain":"Domain","action":"Specific action","status":"pending"},...]
+	---ENDSTEPS---
+	---APPROVERS---
+	[{"role":"Role Name"},...]
+	---ENDAPPROVERS---`;
+	
+	// ── SHARED COMPONENTS ─────────────────────────────────────────────────────────
+	
+	function DetailPage({rec,onBack}){
+	  const d=rec.detail||{};
+	  const [approverState,setApproverState]=useState((d.approvers||[]).map(a=>({...a,status:"pending"})));
+	  const [executed,setExecuted]=useState(false);const [executing,setExecuting]=useState(false);
+	  const allApproved=approverState.length>0&&approverState.every(a=>a.status==="approved");
+	  const approve=i=>{const u=[...approverState];u[i].status="approved";setApproverState(u);};
+	  const execute=()=>{setExecuting(true);setTimeout(()=>{setExecuting(false);setExecuted(true);},2000);};
+	  return(<div>
+	    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+	      <button onClick={onBack} style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"6px 12px",fontSize:12,cursor:"pointer",color:T.gray900,fontWeight:700}}>← Back</button>
+	      <div style={{flex:1}}><div style={{fontSize:16,fontWeight:800,color:T.black}}>{rec.icon} {rec.title}</div><div style={{fontSize:12,color:T.gray900,marginTop:2}}>Recommendation Detail & Orchestrated Response Plan</div></div>
+	      <Badge label={rec.priority} color={PriorityColor(rec.priority)}/>
+	    </div>
+	    <div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16,background:T.gray100}}>
+	      {executed&&<div style={{background:"#F0FDF4",border:`2px solid ${T.positive}`,borderRadius:4,padding:"14px 18px"}}><div style={{fontSize:14,fontWeight:800,color:T.positive}}>✅ Orchestrated Response Executed</div><div style={{fontSize:12,color:T.black,marginTop:4}}>All agent actions dispatched. Relevant supervisors and managers notified.</div></div>}
+	      <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",overflow:"hidden"}}>
+	        <div style={{background:PriorityColor(rec.priority),padding:"10px 18px",display:"flex",gap:10,alignItems:"center"}}><Badge label={rec.priority} color={T.white}/><span style={{fontSize:13,fontWeight:800,color:T.white}}>{rec.domain}</span></div>
+	        <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:12}}>
+	          {[["ISSUE",d.issue],["COMPOUNDING FACTOR",d.compounding],["RISK IF NOT ACTED ON",d.risk]].filter(([,v])=>v).map(([lbl,txt])=>(<div key={lbl}><div style={{fontSize:11,fontWeight:700,color:T.gray900,marginBottom:3}}>{lbl}</div><div style={{fontSize:12,color:T.black,lineHeight:1.6}}>{txt}</div></div>))}
+	          {!d.issue&&<div style={{fontSize:12,color:T.black,lineHeight:1.6}}>{rec.summary}</div>}
+	          <div style={{background:T.primary+"10",borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"10px 14px"}}><div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:3}}>RECOMMENDED ACTION</div><div style={{fontSize:12,color:T.black,lineHeight:1.6}}>{d.action||rec.suggestedAction}</div></div>
+	        </div>
+	      </div>
+	      {(d.steps||[]).length>0&&<div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+	        <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>🌐 Orchestrated Agent Response Plan</div></div>
+	        <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:8}}>
+	          {d.steps.map((s,i)=>(<div key={i} style={{display:"flex",gap:12,alignItems:"flex-start",padding:"10px 14px",background:T.gray100,borderRadius:4}}>
+	            <div style={{width:24,height:24,borderRadius:"50%",background:executed||s.status==="complete"?T.positive:T.gray400,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:T.white,fontWeight:800,flexShrink:0}}>{executed||s.status==="complete"?"✓":i+1}</div>
+	            <div style={{flex:1}}><div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:3}}><Badge label={s.agent} color={T.primary}/><Badge label={s.domain} color={T.neutral}/></div><div style={{fontSize:12,color:T.black}}>{s.action}</div></div>
+	            <Badge label={executed?"dispatched":s.status} color={executed||s.status==="complete"?T.positive:T.warning}/>
+	          </div>))}
+	        </div>
+	      </div>}
+	      {approverState.length>0&&<div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+	        <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>✍️ Approval Required Before Execution</div></div>
+	        <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:8}}>
+	          {approverState.map((a,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:T.gray100,borderRadius:4,gap:8,flexWrap:"wrap"}}>
+	            <div style={{display:"flex",alignItems:"center",gap:10}}><div style={{width:32,height:32,borderRadius:"50%",background:T.primary,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:T.white,fontWeight:800}}>{a.avatar}</div><div><div style={{fontSize:13,fontWeight:700,color:T.black}}>{a.name}</div><div style={{fontSize:11,color:T.gray900}}>{a.role}</div></div></div>
+	            {a.status==="approved"||executed?<Badge label="✓ Approved" color={T.positive}/>:<button onClick={()=>approve(i)} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Approve</button>}
+	          </div>))}
+	        </div>
+	        <div style={{padding:"0 20px 20px"}}><button onClick={execute} disabled={!allApproved||executed||executing} style={{width:"100%",padding:"12px",background:allApproved&&!executed?T.primary:T.gray400,color:T.white,border:"none",borderRadius:4,fontSize:14,fontWeight:800,cursor:allApproved&&!executed?"pointer":"not-allowed"}}>{executing?"⏳ Dispatching...":executed?"✅ Response Executed":allApproved?"🚀 Execute Orchestrated Response":`Waiting for approvals (${approverState.filter(a=>a.status==="approved").length}/${approverState.length})`}</button></div>
+	      </div>}
+	    </div>
+	  </div>);
+	}
+	
+	function DomainColumn({domain,icon,metrics,actions,recCount,onScrollToRecs}){
+	  const [expanded,setExpanded]=useState(false);
+	  const actionRequired=actions.filter(a=>a.status==="Action Required").length;
+	  return(<div style={{flex:1,minWidth:130,display:"flex",flexDirection:"column",gap:6}}>
+	    <div style={{fontSize:11,fontWeight:800,color:T.gray900,borderBottom:`2px solid ${T.border}`,paddingBottom:6,marginBottom:2}}>{icon} {domain}</div>
+	    {metrics.map(m=>(<div key={m.label} style={{padding:"10px 12px",background:T.gray100,borderRadius:4,borderLeft:`3px solid ${m.bad?T.negative:m.good?T.positive:T.warning}`}}><Metric {...m}/></div>))}
+	    <div style={{marginTop:4}}>
+	      <button onClick={()=>setExpanded(e=>!e)} style={{width:"100%",background:actionRequired>0?"#FEF2F2":T.gray100,border:`1px solid ${actionRequired>0?T.negative+"40":T.border}`,borderRadius:4,padding:"6px 10px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:4}}>
+	        <span style={{fontSize:11,fontWeight:700,color:actionRequired>0?T.negative:T.gray900}}>{actionRequired>0?`⚠ ${actionRequired} Action Required`:`📋 ${actions.length} Actions`}</span>
+	        <span style={{fontSize:10,color:T.gray400}}>{expanded?"▲":"▼"}</span>
+	      </button>
+	      {expanded&&<div style={{display:"flex",flexDirection:"column",gap:4,marginTop:4}}>{actions.map(a=>(<div key={a.id} style={{background:T.white,borderRadius:4,padding:"8px 10px",borderLeft:`3px solid ${statusColor(a.status)}`,fontSize:11}}><div style={{color:T.black,marginBottom:3,lineHeight:1.4}}>{a.text}</div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:4}}><span style={{color:T.gray900,fontSize:10}}>{a.owner}</span><Badge label={a.status} color={statusColor(a.status)}/></div></div>))}</div>}
+	    </div>
+	    {recCount>0&&<button onClick={onScrollToRecs} style={{marginTop:2,background:T.primary+"10",border:`1px solid ${T.primary}40`,borderRadius:4,padding:"6px 10px",cursor:"pointer",textAlign:"left",width:"100%"}}><span style={{fontSize:11,fontWeight:700,color:T.primary}}>🧠 {recCount} recommendation{recCount>1?"s":""} below ↓</span></button>}
+	  </div>);
+	}
+	
+	
+	// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+	function Dashboard({recs,onSelectRec,onShowDisruption,disruptionActive,persona}){
+	  const [lineFilter,setLineFilter]=useState("All");
+	  const recsRef=useRef();
+	  const d=lineData[lineFilter];const actions=domainActions[lineFilter]||domainActions["All"];
+	  const pct=(v,t)=>v>=t;const inv=(v,t)=>v<=t;
+	  const personaDomains=PERSONA_DOMAINS[persona]||PERSONA_DOMAINS.plant_leader;
+	  const filteredRecs=recs.filter(r=>r.lines.includes(lineFilter)).filter(r=>recVisibleToPersona(r,persona));
+	  const chatRecs=filteredRecs.filter(r=>r.fromChat);
+	  const disruptionRecs=filteredRecs.filter(r=>r.fromDisruption);
+	  const standardRecs=filteredRecs.filter(r=>!r.fromChat&&!r.fromDisruption);
+	  const scrollToRecs=()=>recsRef.current?.scrollIntoView({behavior:"smooth",block:"start"});
+	  const allDomainColumns=[
+	    {domain:"Safety",icon:"🦺",metrics:[{label:"Safety Incidents",value:d.safetyIncidents,target:0,unit:"",good:d.safetyIncidents===0,bad:d.safetyIncidents>0},{label:"Near Misses",value:d.nearMisses,target:0,unit:"",good:d.nearMisses===0,bad:d.nearMisses>1}],actions:actions.Safety||[]},
+	    {domain:"Quality",icon:"✅",metrics:[{label:"Quality Rate",value:d.qualityRate,target:d.qualityTarget,unit:"%",good:pct(d.qualityRate,d.qualityTarget),bad:!pct(d.qualityRate,d.qualityTarget)},{label:"First Pass Yield",value:d.firstPassYield,target:95,unit:"%",good:pct(d.firstPassYield,95),bad:!pct(d.firstPassYield,95)}],actions:actions.Quality||[]},
+	    {domain:"Production",icon:"⚙️",metrics:[{label:"Units Produced",value:d.unitsProduced.toLocaleString(),target:d.unitsTarget.toLocaleString(),unit:"",good:pct(d.unitsProduced,d.unitsTarget),bad:!pct(d.unitsProduced,d.unitsTarget)},{label:"OEE",value:d.oee,target:d.oeeTarget,unit:"%",good:pct(d.oee,d.oeeTarget),bad:!pct(d.oee,d.oeeTarget)},{label:"Availability",value:d.availability,target:85,unit:"%",good:pct(d.availability,85),bad:!pct(d.availability,85)},{label:"Downtime",value:d.downtimeMins,target:d.downtimeTarget,unit:" min",good:inv(d.downtimeMins,d.downtimeTarget),bad:!inv(d.downtimeMins,d.downtimeTarget)},{label:"Scrap / Waste",value:d.scrap,target:d.scrapTarget,unit:"%",good:inv(d.scrap,d.scrapTarget),bad:!inv(d.scrap,d.scrapTarget)}],actions:actions.Production||[]},
+	    {domain:"Maintenance",icon:"🔧",metrics:[{label:"Planned/Unplanned",value:`${d.plannedUnplannedRatio}% / ${100-d.plannedUnplannedRatio}%`,target:null,unit:"",good:d.plannedUnplannedRatio>=80,bad:d.plannedUnplannedRatio<60},{label:"Open Work Orders",value:d.openWorkOrders,target:null,unit:"",good:d.openWorkOrders<=2,bad:d.openWorkOrders>4},{label:"Overdue WOs",value:d.overdueWorkOrders,target:0,unit:"",good:d.overdueWorkOrders===0,bad:d.overdueWorkOrders>0}],actions:actions.Maintenance||[]},
+	    {domain:"Planning & Scheduling",icon:"📋",metrics:[{label:"Plan Status",value:d.planStatus>0?`${d.planStatus} hrs ahead`:`${Math.abs(d.planStatus)} hrs behind`,target:null,unit:"",good:d.planStatus>=0,bad:d.planStatus<-2},{label:"Sched. Adherence",value:d.scheduleAdherence,target:d.scheduleTarget,unit:"%",good:pct(d.scheduleAdherence,d.scheduleTarget),bad:!pct(d.scheduleAdherence,d.scheduleTarget)},{label:"OTIF",value:d.otif,target:d.otifTarget,unit:"%",good:pct(d.otif,d.otifTarget),bad:!pct(d.otif,d.otifTarget)}],actions:actions.Planning||[]},
+	  ];
+	  const visibleDomainColumns=allDomainColumns.map(col=>({...col,actions:personaDomains.includes(col.domain)?col.actions:[]}));
+	  return(<div>
+	    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
+	      <div><div style={{fontSize:18,fontWeight:800,color:T.black}}>Good morning, Austin Plant 👋</div><div style={{fontSize:12,color:T.gray900,marginTop:2}}>Daily Direction Setting · Friday Feb 28, 2026 · 7:00am · Prior 24 hours</div></div>
+	      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{["All","Line 1","Line 2","Line 3"].map(l=>(<button key={l} onClick={()=>setLineFilter(l)} style={{padding:"6px 14px",borderRadius:4,fontSize:12,fontWeight:700,cursor:"pointer",border:`1px solid ${lineFilter===l?T.primary:T.border}`,background:lineFilter===l?T.primary:T.white,color:lineFilter===l?T.white:T.gray900}}>{l}</button>))}</div>
+	    </div>
+	    <div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:20,background:T.gray100}}>
+	      {disruptionActive&&persona==="plant_leader"&&<div onClick={onShowDisruption} style={{background:"#FEF2F2",border:`2px solid ${T.negative}`,borderRadius:4,padding:"12px 18px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+	        <div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:18}}>🚨</span><div><div style={{fontSize:13,fontWeight:800,color:T.negative}}>REAL-TIME DISRUPTION · {disruptionAlert.time}</div><div style={{fontSize:12,color:T.black,marginTop:2}}>{disruptionAlert.title}</div></div></div>
+	        <Badge label="View & Respond →" color={T.negative}/>
+	      </div>}
+	      <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+	        <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:8}}>
+	          <div><div style={{fontSize:13,fontWeight:800,color:T.black}}>Performance Scorecard — {lineFilter==="All"?"All Lines":lineFilter}</div><div style={{fontSize:11,color:T.gray900,marginTop:2}}>Prior 24 hours · 3 shifts</div></div>
+	          {lineFilter!=="All"&&d.alerts.length>0&&<div style={{display:"flex",flexDirection:"column",gap:4}}>{d.alerts.map((a,i)=><div key={i} style={{fontSize:11,color:T.negative,fontWeight:600}}>⚠ {a}</div>)}</div>}
+	        </div>
+	        <div style={{padding:"16px 20px",overflowX:"auto"}}><div style={{display:"flex",gap:12,minWidth:500}}>{visibleDomainColumns.map(col=>{const recIds=domainRecMap[col.domain]||[];const colRecCount=standardRecs.filter(r=>recIds.includes(r.id)).length;return(<DomainColumn key={col.domain} {...col} recCount={colRecCount} onScrollToRecs={scrollToRecs}/>);})}</div></div>
+	        <div style={{borderTop:`1px solid ${T.border}`,padding:"14px 20px"}}>
+	          <div style={{fontSize:12,fontWeight:700,color:T.gray900,marginBottom:10}}>Shift Breakdown</div>
+	          <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+	            <thead><tr style={{background:T.gray100}}>{["Shift","OEE","Units","Target","Quality","Downtime","Status"].map(h=>(<th key={h} style={{padding:"7px 12px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>))}</tr></thead>
+	            <tbody>{d.shifts.map((s,i)=>(<tr key={i} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
+	              <td style={{padding:"8px 12px",fontWeight:700,color:T.black,whiteSpace:"nowrap"}}>{s.shift}</td>
+	              <td style={{padding:"8px 12px",fontWeight:700,color:s.oee>=85?T.positive:s.oee>=75?T.warning:T.negative}}>{s.oee}%</td>
+	              <td style={{padding:"8px 12px",color:T.black}}>{s.units.toLocaleString()}</td>
+	              <td style={{padding:"8px 12px",color:T.gray900}}>{s.target.toLocaleString()}</td>
+	              <td style={{padding:"8px 12px",color:s.quality>=98?T.positive:s.quality>=95?T.warning:T.negative}}>{s.quality}%</td>
+	              <td style={{padding:"8px 12px",color:s.downtime>60?T.negative:T.gray900}}>{s.downtime} min</td>
+	              <td style={{padding:"8px 12px"}}><Badge label={s.status} color={s.status==="On Target"?T.positive:s.status==="Near Target"||s.status==="Below Target"?T.warning:T.negative}/></td>
+	            </tr>))}</tbody>
+	          </table></div>
+	        </div>
+	      </div>
+	      <div ref={recsRef}>
+	        {disruptionRecs.length>0&&<div style={{marginBottom:16}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>🚨 From Disruption Response</div><Badge label={`${disruptionRecs.length} active`} color={T.negative}/></div><div style={{display:"flex",flexDirection:"column",gap:8}}>{disruptionRecs.map(r=>(<div key={r.id} onClick={()=>onSelectRec(r)} style={{background:T.white,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,boxShadow:`0 0 0 2px ${T.negative}22`,padding:"14px 18px",cursor:"pointer"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}><div style={{flex:1}}><div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label={r.domain} color={T.primary}/><Badge label="🚨 Disruption" color={T.negative}/></div><div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:4}}>{r.icon} {r.title}</div><div style={{fontSize:12,color:T.gray900}}>{r.summary}</div><div style={{fontSize:12,color:T.primary,fontWeight:600,marginTop:6}}>💡 {r.suggestedAction}</div></div><div style={{fontSize:12,color:T.primary,fontWeight:700}}>View Detail →</div></div></div>))}</div></div>}
+	        {chatRecs.length>0&&<div style={{marginBottom:16}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>✦ From Scenario Simulation</div><Badge label={`${chatRecs.length} new`} color={T.info}/></div><div style={{display:"flex",flexDirection:"column",gap:8}}>{chatRecs.map(r=>(<div key={r.id} onClick={()=>onSelectRec(r)} style={{background:T.white,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,boxShadow:`0 0 0 2px ${T.info}22`,padding:"14px 18px",cursor:"pointer"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}><div style={{flex:1}}><div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label={r.domain} color={T.primary}/><Badge label="✦ From Chat" color={T.info}/></div><div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:4}}>{r.icon} {r.title}</div><div style={{fontSize:12,color:T.gray900}}>{r.summary}</div><div style={{fontSize:12,color:T.primary,fontWeight:600,marginTop:6}}>💡 {r.suggestedAction}</div></div><div style={{fontSize:12,color:T.primary,fontWeight:700}}>View Detail →</div></div></div>))}</div></div>}
+	        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4,flexWrap:"wrap",gap:8}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>🧠 Orchestration Agent — Recommendations</div>{persona!=="plant_leader"&&<Badge label={`Filtered for your role · ${standardRecs.length} relevant`} color={T.primary}/>}</div>
+	        <div style={{fontSize:11,color:T.gray900,marginBottom:12}}>{persona==="plant_leader"?"Synthesized across all domain agents · Ranked by urgency and cross-domain impact":"Showing recommendations where you are tagged as an approver or your domain is impacted"}</div>
+	        {standardRecs.length===0&&<div style={{background:T.white,borderRadius:4,padding:"20px",textAlign:"center",color:T.gray400,fontSize:13,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>No recommendations currently require your attention.</div>}
+	        <div style={{display:"flex",flexDirection:"column",gap:10}}>{standardRecs.map(r=>(<div key={r.id} onClick={()=>onSelectRec(r)} style={{background:T.white,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",padding:"14px 18px",cursor:"pointer"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}><div style={{flex:1}}><div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label={r.domain} color={T.primary}/>{r.agents.slice(0,2).map(a=><Badge key={a} label={a} color={T.neutral}/>)}{r.agents.length>2&&<Badge label={`+${r.agents.length-2} more`} color={T.neutral}/>}</div><div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:4}}>{r.icon} {r.title}</div><div style={{fontSize:12,color:T.gray900}}>{r.summary}</div><div style={{fontSize:12,color:T.primary,fontWeight:600,marginTop:6}}>💡 {r.suggestedAction}</div></div><div style={{fontSize:12,color:T.primary,fontWeight:700}}>View Detail →</div></div></div>))}</div>
+	      </div>
+	    </div>
+	  </div>);
+	}
+	
+	// ── ACTION LOG ────────────────────────────────────────────────────────────────
+	function ActionLog(){
+	  const [filterDomain,setFilterDomain]=useState("All");const [filterSource,setFilterSource]=useState("All");const [filterStatus,setFilterStatus]=useState("Open & In Progress");const [filterLine,setFilterLine]=useState("All");
+	  const [localActions,setLocalActions]=useState(actionLog);
+	  const filtered=localActions.filter(a=>{if(filterDomain!=="All"&&a.domain!==filterDomain)return false;if(filterSource!=="All"&&a.source!==filterSource)return false;if(filterLine!=="All"&&a.line!==filterLine&&a.line!=="All")return false;if(filterStatus==="Open & In Progress")return a.status==="Open"||a.status==="In Progress";if(filterStatus!=="All"&&a.status!==filterStatus)return false;return true;});
+	  const cycleStatus=id=>setLocalActions(prev=>prev.map(a=>{if(a.id!==id)return a;const next=a.status==="Open"?"In Progress":a.status==="In Progress"?"Complete":"Open";return{...a,status:next};}));
+	  const FB=({label,value,current,onChange})=>(<button onClick={()=>onChange(value)} style={{padding:"5px 12px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",border:`1px solid ${current===value?T.primary:T.border}`,background:current===value?T.primary:T.white,color:current===value?T.white:T.gray900}}>{label}</button>);
+	  return(<div>
+	    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
+	      <div><div style={{fontSize:18,fontWeight:800,color:T.black}}>Action Log</div><div style={{fontSize:12,color:T.gray900,marginTop:2}}>All open actions across domains · Austin Plant</div></div>
+	      <div style={{display:"flex",gap:12,fontSize:12}}><span style={{color:T.negative,fontWeight:700}}>● {localActions.filter(a=>a.status==="Open").length} Open</span><span style={{color:T.info,fontWeight:700}}>● {localActions.filter(a=>a.status==="In Progress").length} In Progress</span><span style={{color:T.positive,fontWeight:700}}>● {localActions.filter(a=>a.status==="Complete").length} Complete</span></div>
+	    </div>
+	    <div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16,background:T.gray100}}>
+	      <div style={{background:T.white,borderRadius:4,padding:"14px 16px",boxShadow:"0 1px 3px rgba(0,0,0,0.07)",display:"flex",flexDirection:"column",gap:10}}>
+	        {[{opts:["All","Open & In Progress","Open","In Progress","Complete"],cur:filterStatus,setter:setFilterStatus,lbl:"STATUS"},{opts:["All","Safety","Quality","Production","Maintenance","Planning & Scheduling"],cur:filterDomain,setter:setFilterDomain,lbl:"DOMAIN"},{opts:["All","Routine","Recommendation"],cur:filterSource,setter:setFilterSource,lbl:"SOURCE"},{opts:["All","Line 1","Line 2","Line 3"],cur:filterLine,setter:setFilterLine,lbl:"LINE"}].map(({opts,cur,setter,lbl})=>(
+	          <div key={lbl} style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}><span style={{fontSize:11,fontWeight:700,color:T.gray900,width:60}}>{lbl}</span>{opts.map(o=><FB key={o} label={o} value={o} current={cur} onChange={setter}/>)}</div>
+	        ))}
+	      </div>
+	      <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",overflow:"hidden"}}>
+	        <div style={{padding:"12px 20px",borderBottom:`1px solid ${T.border}`,fontSize:12,color:T.gray900,fontWeight:600}}>Showing {filtered.length} of {localActions.length} actions</div>
+	        <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+	          <thead><tr style={{background:T.gray100}}>{["Action","Domain","Line","Owner","Source","Due Date","Days Open","Status"].map(h=>(<th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>))}</tr></thead>
+	          <tbody>{filtered.length===0&&<tr><td colSpan={8} style={{padding:"24px",textAlign:"center",color:T.gray400}}>No actions match current filters</td></tr>}{filtered.map((a,i)=>(<tr key={a.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
+	            <td style={{padding:"10px 14px",color:T.black,maxWidth:280,lineHeight:1.5}}>{a.description}</td>
+	            <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}><Badge label={a.domain} color={a.domain==="Safety"?T.warning:a.domain==="Quality"?T.positive:a.domain==="Production"?T.info:a.domain==="Maintenance"?"#673AB7":T.primary}/></td>
+	            <td style={{padding:"10px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{a.line}</td>
+	            <td style={{padding:"10px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{a.owner}</td>
+	            <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}><span style={{fontSize:11,fontWeight:700,color:a.source==="Recommendation"?T.primary:T.neutral}}>{a.source==="Recommendation"?"🧠 Rec":"📋 Routine"}</span></td>
+	            <td style={{padding:"10px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{a.dueDate}</td>
+	            <td style={{padding:"10px 14px",fontWeight:700,color:a.daysOpen>=5?T.negative:a.daysOpen>=3?T.warning:T.gray900,whiteSpace:"nowrap"}}>{a.daysOpen}d</td>
+	            <td style={{padding:"10px 14px"}}><button onClick={()=>cycleStatus(a.id)} style={{background:statusColor(a.status)+"18",color:statusColor(a.status),border:`1px solid ${statusColor(a.status)}40`,borderRadius:3,padding:"3px 10px",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>{a.status}</button></td>
+	          </tr>))}</tbody>
+	        </table></div>
+	      </div>
+	    </div>
+	  </div>);
+	}
+	
+	// ── LINE PERFORMANCE ──────────────────────────────────────────────────────────
+	function MiniLineChart({data,lines,yMin=0,yMax=100,height=80,target}){
+	  const w=320,h=height,pad=4;
+	  const targetY=target!=null?h-pad-((target-yMin)/(yMax-yMin))*(h-pad*2):null;
+	  return(<svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height,display:"block"}}>
+	    {targetY!=null&&<line x1={pad} y1={targetY} x2={w-pad} y2={targetY} stroke={T.gray400} strokeWidth={1} strokeDasharray="4,3"/>}
+	    {lines.map(line=>{const vals=data[line]||[];const n=vals.length;const color=LINE_COLORS_PERF[line]||T.neutral;const d=vals.map((v,i)=>{const x=pad+(i/(n-1||1))*(w-pad*2);const y=h-pad-((v-yMin)/(yMax-yMin))*(h-pad*2);return`${i===0?"M":"L"}${x.toFixed(1)},${y.toFixed(1)}`;}).join(" ");const lx=n>0?pad+((n-1)/(n-1||1))*(w-pad*2):0;const ly=n>0?h-pad-((vals[n-1]-yMin)/(yMax-yMin))*(h-pad*2):0;return(<g key={line}><path d={d} stroke={color} strokeWidth={2} fill="none" strokeLinejoin="round" strokeLinecap="round"/>{n>0&&<circle cx={lx} cy={ly} r={3} fill={color}/>}</g>);})}
+	  </svg>);
+	}
+	function MiniBarChart({data,lines,yMax=100,height=80,target}){
+	  const w=320,h=height,pad=4;const n=data[lines[0]]?.length||1;const barW=Math.max(2,(w-pad*2)/n/lines.length-1);const groupW=(w-pad*2)/n;const targetY=target!=null?h-pad-(target/yMax)*(h-pad*2):null;const rects=[];
+	  if(targetY!=null)rects.push(<line key="tgt" x1={pad} y1={targetY} x2={w-pad} y2={targetY} stroke={T.gray400} strokeWidth={1} strokeDasharray="4,3"/>);
+	  lines.forEach((line,li)=>{const vals=data[line]||[];const color=LINE_COLORS_PERF[line]||T.neutral;vals.forEach((v,i)=>{const bh=Math.max(1,(v/yMax)*(h-pad*2));const x=pad+i*groupW+li*(barW+1);rects.push(<rect key={`${line}-${i}`} x={x} y={h-pad-bh} width={barW} height={bh} fill={color} opacity={0.85} rx={1}/>);});});
+	  return(<svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height,display:"block"}}>{rects}</svg>);
+	}
+	function MiniStackedBar({data,height=80}){
+	  const w=320,h=height,pad=4;const lines=["Line 1","Line 2","Line 3"];const n=data[lines[0]]?.length||1;const barW=Math.max(2,(w-pad*2)/n/lines.length-1);const groupW=(w-pad*2)/n;const rects=[];
+	  lines.forEach((line,li)=>{const vals=data[line]||[];vals.forEach((v,i)=>{const planned=v/100*(h-pad*2);const x=pad+i*groupW+li*(barW+1);rects.push(<rect key={`p-${line}-${i}`} x={x} y={h-pad-planned} width={barW} height={Math.max(1,planned)} fill={LINE_COLORS_PERF[line]} opacity={0.85} rx={1}/>);rects.push(<rect key={`u-${line}-${i}`} x={x} y={pad} width={barW} height={Math.max(1,(h-pad*2)-planned)} fill={LINE_COLORS_PERF[line]} opacity={0.25} rx={1}/>);});});
+	  return(<svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height,display:"block"}}>{rects}</svg>);
+	}
+	function ChartCard({title,subtitle,children,legend,lines}){
+	  return(<div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",padding:"14px 16px",display:"flex",flexDirection:"column",gap:8}}>
+	    <div><div style={{fontSize:12,fontWeight:800,color:T.black}}>{title}</div>{subtitle&&<div style={{fontSize:10,color:T.gray900,marginTop:1}}>{subtitle}</div>}</div>
+	    {children}
+	    {legend&&<div style={{display:"flex",gap:12,flexWrap:"wrap"}}>{lines.map(l=>(<div key={l} style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:T.gray900}}><span style={{width:16,height:3,background:LINE_COLORS_PERF[l],display:"inline-block",borderRadius:2}}/>{l}</div>))}</div>}
+	  </div>);
+	}
+	function LinePerformanceView(){
+	  const [timeframe,setTimeframe]=useState("2w");const [selLines,setSelLines]=useState(["Line 1","Line 2","Line 3"]);const [startDate,setStartDate]=useState("2026-02-14");const [endDate,setEndDate]=useState("2026-02-28");const [useCustom,setUseCustom]=useState(false);
+	  const allLines=["Line 1","Line 2","Line 3"];
+	  const toggleLine=l=>setSelLines(prev=>prev.includes(l)?prev.length>1?prev.filter(x=>x!==l):prev:[...prev,l]);
+	  const tfLabels={"24h":"Last 24 Hours","2w":"Last 2 Weeks","1m":"Last Month"};
+	  const customDays=Math.max(1,Math.round((new Date(endDate)-new Date(startDate))/(1000*60*60*24))+1);
+	  const perf=useCustom?buildLinePerf(Math.min(customDays,30),"2w"):perfDatasets[timeframe];
+	  const displayLabel=useCustom?`${startDate} → ${endDate}`:tfLabels[timeframe];
+	  const avg=(metric,line)=>{const v=perf[metric][line];return v?Math.round(v.reduce((a,b)=>a+b,0)/v.length*10)/10:0;};
+	  const kpis=selLines.map(l=>({line:l,oee:avg("oee",l),quality:avg("quality",l),downtime:Math.round(avg("downtime",l)),otif:avg("otif",l)}));
+	  return(<div>
+	    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
+	      <div><div style={{fontSize:18,fontWeight:800,color:T.black}}>Line Performance</div><div style={{fontSize:12,color:T.gray900,marginTop:2}}>Historical trends · Austin Plant · {displayLabel}</div></div>
+	      <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+	        <div style={{display:"flex",gap:4}}>{allLines.map(l=>(<button key={l} onClick={()=>toggleLine(l)} style={{padding:"5px 12px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",border:`1px solid ${selLines.includes(l)?LINE_COLORS_PERF[l]:T.border}`,background:selLines.includes(l)?LINE_COLORS_PERF[l]+"15":T.white,color:selLines.includes(l)?LINE_COLORS_PERF[l]:T.gray900}}>{l}</button>))}</div>
+	        <div style={{display:"flex",gap:4}}>{[["24h","24 hrs"],["2w","2 wks"],["1m","1 mo"]].map(([v,lbl])=>(<button key={v} onClick={()=>{setTimeframe(v);setUseCustom(false);}} style={{padding:"5px 12px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",border:`1px solid ${!useCustom&&timeframe===v?T.primary:T.border}`,background:!useCustom&&timeframe===v?T.primary:T.white,color:!useCustom&&timeframe===v?T.white:T.gray900}}>{lbl}</button>))}</div>
+	        <div style={{display:"flex",alignItems:"center",gap:6,background:useCustom?T.primary+"10":T.white,border:`1px solid ${useCustom?T.primary:T.border}`,borderRadius:4,padding:"4px 10px"}}>
+	          <span style={{fontSize:11,fontWeight:700,color:useCustom?T.primary:T.gray900}}>Custom</span>
+	          <input type="date" value={startDate} onChange={e=>{setStartDate(e.target.value);setUseCustom(true);}} style={{border:"none",outline:"none",fontSize:11,color:T.black,background:"transparent",cursor:"pointer"}}/>
+	          <span style={{fontSize:11,color:T.gray400}}>→</span>
+	          <input type="date" value={endDate} onChange={e=>{setEndDate(e.target.value);setUseCustom(true);}} style={{border:"none",outline:"none",fontSize:11,color:T.black,background:"transparent",cursor:"pointer"}}/>
+	        </div>
+	      </div>
+	    </div>
+	    <div style={{padding:"20px 24px",background:T.gray100,display:"flex",flexDirection:"column",gap:16}}>
+	      <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>{kpis.map(k=>(<div key={k.line} style={{flex:1,minWidth:140,background:T.white,borderRadius:4,borderLeft:`4px solid ${LINE_COLORS_PERF[k.line]}`,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",padding:"12px 14px"}}><div style={{fontSize:11,fontWeight:800,color:LINE_COLORS_PERF[k.line],marginBottom:6}}>{k.line}</div><div style={{display:"flex",gap:16,flexWrap:"wrap"}}><div><div style={{fontSize:10,color:T.gray900}}>Avg OEE</div><div style={{fontSize:18,fontWeight:800,color:k.oee>=80?T.positive:T.negative}}>{k.oee}%</div></div><div><div style={{fontSize:10,color:T.gray900}}>Avg Quality</div><div style={{fontSize:18,fontWeight:800,color:k.quality>=97?T.positive:T.warning}}>{k.quality}%</div></div><div><div style={{fontSize:10,color:T.gray900}}>Avg Downtime</div><div style={{fontSize:18,fontWeight:800,color:k.downtime>60?T.negative:T.gray900}}>{k.downtime}m</div></div><div><div style={{fontSize:10,color:T.gray900}}>Avg OTIF</div><div style={{fontSize:18,fontWeight:800,color:k.otif>=95?T.positive:T.warning}}>{k.otif}%</div></div></div></div>))}</div>
+	      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
+	        <ChartCard title="OEE Trend" subtitle="Overall Equipment Effectiveness %" legend lines={selLines}><MiniLineChart data={perf.oee} lines={selLines} yMin={40} yMax={100} target={85}/></ChartCard>
+	        <ChartCard title="Availability Trend" subtitle="% scheduled time running" legend lines={selLines}><MiniLineChart data={perf.availability} lines={selLines} yMin={40} yMax={100} target={90}/></ChartCard>
+	        <ChartCard title="Units Produced vs Target" subtitle="Daily units produced" legend lines={selLines}><MiniBarChart data={perf.units} lines={selLines} yMax={8500} target={7000}/></ChartCard>
+	        <ChartCard title="Quality Rate / FPY" subtitle="% product meeting spec" legend lines={selLines}><MiniLineChart data={perf.quality} lines={selLines} yMin={75} yMax={100} target={98}/></ChartCard>
+	        <ChartCard title="Scrap & Waste %" subtitle="% of output scrapped" legend lines={selLines}><MiniLineChart data={perf.scrap} lines={selLines} yMin={0} yMax={10} target={1.5}/></ChartCard>
+	        <ChartCard title="Downtime Minutes" subtitle="Unplanned downtime per period" legend lines={selLines}><MiniBarChart data={perf.downtime} lines={selLines} yMax={350} target={60}/></ChartCard>
+	        <ChartCard title="Planned vs Unplanned Maintenance" subtitle="Solid = planned, faded = unplanned" legend lines={selLines}><MiniStackedBar data={perf.plannedRatio}/></ChartCard>
+	        <ChartCard title="Schedule Adherence" subtitle="% of schedule executed as planned" legend lines={selLines}><MiniLineChart data={perf.schedAdherence} lines={selLines} yMin={40} yMax={100} target={95}/></ChartCard>
+	        <ChartCard title="OTIF" subtitle="On Time In Full %" legend lines={selLines}><MiniLineChart data={perf.otif} lines={selLines} yMin={50} yMax={100} target={95}/></ChartCard>
+	      </div>
+	    </div>
+	  </div>);
+	}
+	
+	// ── GANTT & SCHEDULE ──────────────────────────────────────────────────────────
+	function GanttChart({filterLine,orders}){
+	  const lines=filterLine==="All"?["Line 1","Line 2","Line 3"]:[filterLine];const totalCols=GANTT_DAYS.length;
+	  const buildBlocks=(lineOrders)=>{const blocks=[];GANTT_DAYS.forEach((day,di)=>{const dayOrders=lineOrders.filter(o=>o.start.startsWith(day)).sort((a,b)=>timeToFrac(a.start)-timeToFrac(b.start));const dayEnd=di+1;let cursor=di;dayOrders.forEach(o=>{const s=timeToFrac(o.start);const e=timeToFrac(o.end);if(s===null||e===null)return;if(s>cursor+0.005)blocks.push({type:"gap",start:cursor,end:s});blocks.push({type:"order",order:o,start:s,end:e});cursor=e;});if(cursor<dayEnd-0.005)blocks.push({type:"gap",start:cursor,end:dayEnd});});return blocks;};
+	  return(<div style={{overflowX:"auto"}}><div style={{minWidth:700}}>
+	    <div style={{display:"flex",marginLeft:80,marginBottom:4}}>{GANTT_DAYS.map(d=>(<div key={d} style={{flex:1,textAlign:"center",fontSize:11,fontWeight:700,color:T.gray900,borderLeft:`1px solid ${T.border}`,paddingLeft:4}}>{d}</div>))}</div>
+	    <div style={{display:"flex",marginLeft:80,marginBottom:8}}>{GANTT_DAYS.map(d=>(<div key={d} style={{flex:1,display:"flex",justifyContent:"space-between"}}>{GANTT_HOURS.map(h=><span key={h} style={{fontSize:9,color:T.gray400}}>{h}:00</span>)}</div>))}</div>
+	    {lines.map(line=>{const lineOrders=orders.filter(o=>o.line===line);const blocks=buildBlocks(lineOrders);const ms=line==="Line 3"?timeToFrac("Feb 28 14:00"):null;const me=line==="Line 3"?timeToFrac("Feb 28 16:00"):null;const showMaint=line==="Line 3"&&ms!==null&&me!==null;const ml=showMaint?(ms/totalCols)*100:0;const mw=showMaint?((me-ms)/totalCols)*100:0;return(<div key={line} style={{display:"flex",alignItems:"center",marginBottom:8}}><div style={{width:80,fontSize:11,fontWeight:800,color:T.black,flexShrink:0}}>{line}</div><div style={{flex:1,height:36,background:T.gray100,borderRadius:4,position:"relative",border:`1px solid ${T.border}`}}>{GANTT_DAYS.map((_,i)=>(<div key={i} style={{position:"absolute",left:`${(i/totalCols)*100}%`,top:0,bottom:0,borderLeft:`1px dashed ${T.border}40`,zIndex:0}}/>))}{showMaint&&<div key="maint" style={{position:"absolute",left:`${ml}%`,width:`${mw}%`,top:0,bottom:0,background:"#ef444430",borderLeft:`2px dashed ${T.negative}`,borderRight:`2px dashed ${T.negative}`,zIndex:4,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:8,color:T.negative,fontWeight:800,whiteSpace:"nowrap"}}>MAINT</span></div>}{blocks.map((b,bi)=>{const left=(b.start/totalCols)*100;const width=((b.end-b.start)/totalCols)*100;if(b.type==="gap")return(<div key={bi} title="Changeover / Sanitation" style={{position:"absolute",left:`${left}%`,width:`${width}%`,top:3,bottom:3,background:"#cbd5e1",borderRadius:3,zIndex:1,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>{width>2&&<span style={{fontSize:8,color:"#64748b",fontWeight:600}}>⟳</span>}</div>);const o=b.order;const color=GANTT_SKUS[o.sku]||T.neutral;return(<div key={bi} title={`${o.id} · ${o.sku} · ${o.units.toLocaleString()} units${o.riskReason?"\n"+o.riskReason:""}`} style={{position:"absolute",left:`${left}%`,width:`${width}%`,top:3,bottom:3,background:color,borderRadius:3,opacity:0.88,zIndex:2,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}><span style={{fontSize:9,color:T.white,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",padding:"0 3px"}}>{o.sku}</span></div>);})}
+	    </div></div>);})}
+	    <div style={{display:"flex",gap:12,marginLeft:80,marginTop:8,flexWrap:"wrap"}}>{Object.entries(GANTT_SKUS).map(([sku,color])=>(<div key={sku} style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:T.gray900}}><span style={{width:12,height:12,borderRadius:2,background:color,display:"inline-block"}}/>{sku}</div>))}<div style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:T.gray900}}><span style={{width:12,height:12,borderRadius:2,background:"#cbd5e1",display:"inline-block"}}/>Changeover</div><div style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:T.gray900}}><span style={{width:12,height:12,borderRadius:2,background:"#ef444430",border:`1px dashed ${T.negative}`,display:"inline-block"}}/>Maintenance Window</div></div>
+	  </div></div>);
+	}
+	
+	function ProductionScheduleView({onViewDashboardRec}){
+	  const [filterLine,setFilterLine]=useState("All");const [expandedOrch,setExpandedOrch]=useState(null);const [expandedSched,setExpandedSched]=useState(null);const [appliedRecs,setAppliedRecs]=useState([]);const [orders,setOrders]=useState(INIT_ORDERS);
+	  const filteredOrders=filterLine==="All"?orders:orders.filter(o=>o.line===filterLine);
+	  const applyRec=(id)=>{setAppliedRecs(prev=>[...prev,id]);setExpandedSched(null);if(id==="sa1"){setOrders(prev=>prev.map(o=>{if(o.id==="RUN-1023")return{...o,start:"Mar 1 13:00",end:"Mar 1 18:00",desc:"Crimped Seal Chips (resequenced)"};if(o.id==="RUN-1025")return{...o,start:"Mar 1 06:00",end:"Mar 1 12:00",desc:"BBQ Chips (resequenced)"};return o;}));}if(id==="sa2"){setOrders(prev=>[...prev,{id:"RUN-1033",line:"Line 2",sku:"SKU 2204",desc:"Buffer Run (added)",units:1800,target:1800,start:"Mar 3 13:00",end:"Mar 3 15:30",dueDate:"Mar 10",dc:"DC-East Buffer"}]);}if(id==="sa3"){setOrders(prev=>prev.map(o=>{if(o.id==="RUN-1032")return{...o,start:"Mar 3 06:00",end:"Mar 3 14:00",desc:"BBQ Chips (regrouped)"};return o;}));}};
+	  return(<div>
+	    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
+	      <div><div style={{fontSize:18,fontWeight:800,color:T.black}}>Production Schedule</div><div style={{fontSize:12,color:T.gray900,marginTop:2}}>Feb 28 – Mar 3, 2026 · Austin Plant</div></div>
+	      <div style={{display:"flex",gap:6}}>{["All","Line 1","Line 2","Line 3"].map(l=>(<button key={l} onClick={()=>setFilterLine(l)} style={{padding:"6px 14px",borderRadius:4,fontSize:12,fontWeight:700,cursor:"pointer",border:`1px solid ${filterLine===l?T.primary:T.border}`,background:filterLine===l?T.primary:T.white,color:filterLine===l?T.white:T.gray900}}>{l}</button>))}</div>
+	    </div>
+	    <div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16,background:T.gray100}}>
+	      <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>{[{label:"Total Units Today",value:"18,400",sub:"vs 21,000 target",good:false},{label:"Total Units This Week",value:"85,400",sub:"vs 105,000 target",good:false},{label:"Total Changeover Today",value:"3 hrs 20 min",sub:"across all lines",good:null},{label:"Overall Schedule Adherence",value:"82%",sub:"vs 95% target",good:false},{label:"Overall OTIF",value:"87%",sub:"vs 95% target",good:false}].map(k=>(<div key={k.label} style={{flex:1,minWidth:130,background:T.white,borderRadius:4,borderLeft:`4px solid ${k.good===true?T.positive:k.good===false?T.negative:T.warning}`,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",padding:"10px 14px"}}><div style={{fontSize:10,color:T.gray900,fontWeight:600,marginBottom:4}}>{k.label}</div><div style={{fontSize:18,fontWeight:800,color:k.good===true?T.positive:k.good===false?T.negative:T.warning}}>{k.value}</div><div style={{fontSize:10,color:T.gray400,marginTop:2}}>{k.sub}</div></div>))}</div>
+	      <div style={{display:"flex",flexDirection:"column",gap:8}}><div style={{fontSize:12,fontWeight:800,color:T.black}}>🌐 From Plant Orchestration Agent</div>{orchSchedulingRecs.map(r=>(<div key={r.id} style={{background:T.white,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",overflow:"hidden"}}><div style={{padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap",cursor:"pointer"}} onClick={()=>setExpandedOrch(expandedOrch===r.id?null:r.id)}><div style={{display:"flex",gap:8,alignItems:"center",flex:1,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label="🌐 Orchestration" color={T.info}/><Badge label={r.status} color={r.status==="Action Required"?T.negative:T.warning}/><span style={{fontSize:13,fontWeight:700,color:T.black}}>{r.title}</span></div><span style={{fontSize:11,color:T.gray400}}>{expandedOrch===r.id?"▲":"▼"}</span></div>{expandedOrch===r.id&&<div style={{padding:"12px 16px 14px",borderTop:`1px solid ${T.border}`}}><div style={{fontSize:12,color:T.black,lineHeight:1.6,marginBottom:10}}>{r.detail}</div><button onClick={()=>onViewDashboardRec(r.id)} style={{background:T.info,color:T.white,border:"none",borderRadius:4,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>View in Dashboard →</button></div>}</div>))}</div>
+	      <div style={{display:"flex",flexDirection:"column",gap:8}}><div style={{fontSize:12,fontWeight:800,color:T.black}}>🗓 Scheduling Agent — Optimisation Opportunities</div>{schedAgentRecs.map(r=>(<div key={r.id} style={{background:T.white,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",overflow:"hidden",opacity:appliedRecs.includes(r.id)?0.6:1}}><div style={{padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap",cursor:"pointer"}} onClick={()=>!appliedRecs.includes(r.id)&&setExpandedSched(expandedSched===r.id?null:r.id)}><div style={{display:"flex",gap:8,alignItems:"center",flex:1,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label="🗓 Scheduling Agent" color={T.primary}/><Badge label={r.impact} color={T.positive}/>{appliedRecs.includes(r.id)&&<Badge label="✓ Applied" color={T.positive}/>}<span style={{fontSize:13,fontWeight:700,color:T.black}}>{r.title}</span></div>{!appliedRecs.includes(r.id)&&<span style={{fontSize:11,color:T.gray400}}>{expandedSched===r.id?"▲":"▼"}</span>}</div>{expandedSched===r.id&&!appliedRecs.includes(r.id)&&<div style={{padding:"12px 16px 14px",borderTop:`1px solid ${T.border}`}}><div style={{fontSize:12,color:T.black,lineHeight:1.6,marginBottom:6}}>{r.detail}</div><div style={{background:T.primary+"10",borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"8px 12px",marginBottom:10}}><div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:2}}>RECOMMENDED ACTION</div><div style={{fontSize:12,color:T.black}}>{r.action}</div></div><div style={{display:"flex",gap:8}}><button onClick={()=>applyRec(r.id)} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>✓ Apply to Schedule</button><button onClick={()=>setExpandedSched(null)} style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"6px 14px",fontSize:12,fontWeight:600,cursor:"pointer",color:T.gray900}}>Dismiss</button></div></div>}</div>))}</div>
+	      {appliedRecs.length>0&&<div style={{background:"#F0FDF4",border:`2px solid ${T.positive}`,borderRadius:4,padding:"12px 16px",display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:16}}>✅</span><div><div style={{fontSize:13,fontWeight:800,color:T.positive}}>Schedule Updated</div><div style={{fontSize:12,color:T.black,marginTop:2}}>{appliedRecs.length} optimisation{appliedRecs.length>1?"s":""} applied.</div></div></div>}
+	      <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}><div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>Production Schedule — Gantt View</div></div><div style={{padding:"16px 20px"}}><GanttChart filterLine={filterLine} orders={orders}/></div></div>
+	      <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}><div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>Production Run Schedule</div><div style={{fontSize:11,color:T.gray900,marginTop:2}}>{filteredOrders.length} runs scheduled</div></div><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}><thead><tr style={{background:T.gray100}}>{["Run","Line","SKU","Description","Units","Target","% vs Target","Start","End","DC","Notes"].map(h=>(<th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>))}</tr></thead><tbody>{filteredOrders.map((o,i)=>{const pct=o.target?Math.round(o.units/o.target*100):100;const volColor=pct>=100?T.positive:pct>=85?T.warning:T.negative;return(<tr key={o.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}><td style={{padding:"9px 14px",fontWeight:700,color:T.black}}>{o.id}</td><td style={{padding:"9px 14px"}}><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{width:8,height:8,borderRadius:"50%",background:LINE_COLORS_PERF[o.line],display:"inline-block"}}/>{o.line}</div></td><td style={{padding:"9px 14px"}}><span style={{background:(GANTT_SKUS[o.sku]||T.neutral)+"20",color:GANTT_SKUS[o.sku]||T.neutral,border:`1px solid ${(GANTT_SKUS[o.sku]||T.neutral)}40`,borderRadius:3,padding:"2px 7px",fontSize:11,fontWeight:700}}>{o.sku}</span></td><td style={{padding:"9px 14px",color:T.gray900}}>{o.desc}</td><td style={{padding:"9px 14px",fontWeight:700,color:T.black}}>{o.units.toLocaleString()}</td><td style={{padding:"9px 14px",color:T.gray400}}>{o.target?o.target.toLocaleString():"-"}</td><td style={{padding:"9px 14px",fontWeight:700,color:volColor}}>{pct}%</td><td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{o.start}</td><td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{o.end}</td><td style={{padding:"9px 14px",color:T.gray900}}>{o.dc||"-"}</td><td style={{padding:"9px 14px"}}>{o.riskReason&&<div style={{fontSize:10,color:T.negative}}>⚠ {o.riskReason}</div>}</td></tr>);})}</tbody></table></div></div>
+	    </div>
+	  </div>);
+	}
+	
+	// ── SCENARIO SIMULATION CHAT ──────────────────────────────────────────────────
+	function parseRec(text){
+	  if(!text.includes("---RECOMMENDATION---"))return null;
+	  try{const block=text.split("---RECOMMENDATION---")[1].split("---END---")[0];const get=key=>{const m=block.match(new RegExp(`${key}:\\s*(.+)`));return m?m[1].trim():"";};const ls=get("LINES").split(",").map(l=>l.trim()).filter(Boolean);if(!ls.includes("All"))ls.push("All");const domain=get("DOMAIN")||"Production";const agents=get("AGENTS").split(",").map(a=>a.trim()).filter(a=>VALID_AGENTS.includes(a));let steps=[];if(text.includes("---STEPS---")){try{const stepsRaw=text.split("---STEPS---")[1].split("---ENDSTEPS---")[0].trim();const parsed=JSON.parse(stepsRaw);steps=parsed.map(s=>({agent:VALID_AGENTS.includes(s.agent)?s.agent:(agents[0]||"Supervisor & Operator Co-Pilot"),domain:s.domain||domain,action:s.action||"Review and execute recommended action.",status:"pending"}));}catch(e){steps=[];}}if(steps.length===0&&agents.length>0){steps=agents.map(agent=>({agent,domain,action:`Review recommendation and execute assigned action within ${domain} domain.`,status:"pending"}));}let approvers=[];if(text.includes("---APPROVERS---")){try{const appRaw=text.split("---APPROVERS---")[1].split("---ENDAPPROVERS---")[0].trim();const parsed=JSON.parse(appRaw);approvers=parsed.map(a=>VALID_APPROVERS[a.role]).filter(Boolean);}catch(e){approvers=[];}}if(approvers.length===0){const defaultRoles={Safety:["Plant Leader","Production Supervisor"],Quality:["Plant Leader","Quality Manager"],Production:["Plant Leader","Production Supervisor"],Maintenance:["Plant Leader","Maintenance Manager"],Planning:["Plant Leader","Scheduler"]};approvers=(defaultRoles[domain]||["Plant Leader"]).map(r=>VALID_APPROVERS[r]).filter(Boolean);}return{id:Date.now(),fromChat:true,title:get("TITLE"),priority:get("PRIORITY"),domain,icon:DOMAIN_ICONS[domain]||"🧠",lines:ls,agents,suggestedAction:get("ACTION"),summary:get("SUMMARY"),detail:{issue:get("SUMMARY"),action:get("ACTION"),steps,approvers}};}catch{return null;}}
+	const stripRec=text=>text.replace(/---RECOMMENDATION---[\s\S]*?---END---/,"").replace(/---STEPS---[\s\S]*?---ENDSTEPS---/,"").replace(/---APPROVERS---[\s\S]*?---ENDAPPROVERS---/,"").trim();
+	
+	const SCENARIO_SUGGESTIONS=["The Line 3 heat sealer has just failed completely and cannot be repaired until tomorrow morning. SKU 3801 requires the sealer. We have SKU 2204 which uses a crimped seal. What do I do with Line 3 for the rest of the day?","If I take Line 3 offline today, what's the impact on Friday's orders?","How should I prioritize the afternoon shift labor shortage?","What's the fastest path to resolving the sealer issue?"];
+	const SCENARIO_LABELS=["🔧 Line 3 sealer failed — swap to SKU 2204?","📋 Take Line 3 offline — Friday order impact?","👷 How to handle afternoon labor shortage?","⚡ Fastest path to fix the sealer?"];
+	
+	function ScenarioChat({recs,onAddRec}){
+	  const [msgs,setMsgs]=useState([{role:"assistant",content:"👋 I'm the Plant Orchestration Agent. I have full visibility across all domains.\n\nAsk me anything — scenario simulations, trade-off analysis, or what to prioritize. When I reach a clear recommendation, I'll ask if you want to add it to the dashboard."}]);
+	  const [input,setInput]=useState("");const [loading,setLoading]=useState(false);const [pendingRec,setPendingRec]=useState(null);
+	  const bottomRef=useRef();
+	  useEffect(()=>bottomRef.current?.scrollIntoView({behavior:"smooth"}),[msgs]);
+	  const send=async(text)=>{
+	    const q=(text||input).trim();if(!q||loading)return;
+	    const userMsg={role:"user",content:q};setMsgs(prev=>[...prev,userMsg]);setInput("");setLoading(true);setPendingRec(null);
+	    try{
+	      const history=[...msgs.slice(1),userMsg].map(m=>({role:m.role,content:m.content}));
+	      const sys=SCENARIO_SYSTEM_PROMPT+`\nACTIVE RECOMMENDATIONS: ${JSON.stringify(recs.map(r=>({id:r.id,title:r.title,priority:r.priority})))}`;
+	      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1500,system:sys,messages:history})});
+	      const data=await res.json();const raw=data.content?.[0]?.text||"No response.";const rec=parseRec(raw);
+	      setMsgs(prev=>[...prev,{role:"assistant",content:stripRec(raw)}]);if(rec)setPendingRec(rec);
+	    }catch{setMsgs(prev=>[...prev,{role:"assistant",content:"⚠️ Connection error. Please try again."}]);}
+	    setLoading(false);
+	  };
+	  const confirmAdd=()=>{if(pendingRec){onAddRec(pendingRec);setPendingRec(null);setMsgs(prev=>[...prev,{role:"assistant",content:"✅ Recommendation added to the dashboard."}]);}};
+	  return(<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
+	    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px"}}><div style={{fontSize:18,fontWeight:800,color:T.black}}>Scenario Simulation</div><div style={{fontSize:12,color:T.gray900,marginTop:2}}>Ask the Plant Orchestration Agent to model any scenario or trade-off</div></div>
+	    <div style={{flex:1,padding:"20px 24px",display:"flex",flexDirection:"column",gap:16,background:T.gray100,overflow:"hidden"}}>
+	      {msgs.length<=1&&<div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{SCENARIO_LABELS.map((label,i)=><button key={i} onClick={()=>send(SCENARIO_SUGGESTIONS[i])} style={{background:T.white,border:`1px solid ${T.border}`,borderRadius:4,padding:"7px 12px",fontSize:11,color:T.gray900,cursor:"pointer",fontWeight:600}}>{label}</button>)}</div>}
+	      <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:12}}>
+	        {msgs.map((m,i)=>(<div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
+	          {m.role==="assistant"&&<div style={{width:28,height:28,borderRadius:"50%",background:T.primary,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:T.white,fontWeight:800,flexShrink:0,marginRight:8,marginTop:2}}>POA</div>}
+	          <div style={{maxWidth:"75%",padding:"11px 15px",borderRadius:4,fontSize:13,lineHeight:1.65,whiteSpace:"pre-wrap",background:m.role==="user"?T.primary:T.white,color:m.role==="user"?T.white:T.black,boxShadow:"0 1px 3px rgba(0,0,0,0.08)",borderLeft:m.role==="assistant"?`3px solid ${T.primary}`:"none"}}>{m.content}</div>
+	        </div>))}
+	        {loading&&<div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:28,height:28,borderRadius:"50%",background:T.primary,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:T.white,fontWeight:800,flexShrink:0}}>POA</div><div style={{background:T.white,borderRadius:4,padding:"11px 15px",fontSize:13,color:T.gray900,borderLeft:`3px solid ${T.primary}`,boxShadow:"0 1px 3px rgba(0,0,0,0.08)"}}>Modelling scenario across all domains...</div></div>}
+	        {pendingRec&&!loading&&<div style={{background:T.white,border:`2px solid ${T.info}`,borderRadius:4,padding:"14px 16px"}}>
+	          <div style={{fontSize:12,fontWeight:800,color:T.info,marginBottom:8}}>✦ Recommendation Ready — Add to Dashboard?</div>
+	          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:6}}><Badge label={pendingRec.priority} color={PriorityColor(pendingRec.priority)}/><Badge label={pendingRec.domain} color={T.primary}/></div>
+	          <div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:4}}>{pendingRec.icon} {pendingRec.title}</div>
+	          <div style={{fontSize:12,color:T.gray900,marginBottom:10}}>{pendingRec.summary}</div>
+	          <div style={{display:"flex",gap:8}}><button onClick={confirmAdd} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"8px 18px",fontSize:13,fontWeight:700,cursor:"pointer"}}>✦ Add to Dashboard</button><button onClick={()=>setPendingRec(null)} style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"8px 18px",fontSize:13,fontWeight:600,cursor:"pointer",color:T.gray900}}>Dismiss</button></div>
+	        </div>}
+	        <div ref={bottomRef}/>
+	      </div>
+	      <div style={{display:"flex",gap:8,background:T.white,border:`1px solid ${T.border}`,borderRadius:4,padding:"8px 12px"}}>
+	        <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="Describe a scenario or ask a what-if question..." style={{flex:1,border:"none",outline:"none",fontSize:13,color:T.black,background:"transparent"}}/>
+	        <button onClick={()=>send()} disabled={loading||!input.trim()} style={{background:loading||!input.trim()?T.gray400:T.primary,color:T.white,border:"none",borderRadius:4,padding:"7px 16px",fontWeight:700,cursor:loading||!input.trim()?"not-allowed":"pointer",fontSize:13}}>Send</button>
+	      </div>
+	    </div>
+	  </div>);
+	}
+	
+	// ── CO-PILOT CHAT ─────────────────────────────────────────────────────────────
+	function CoPilotChat({activeTab}){
+	  const contextLabel = activeTab==="maintenance"?"🔧 Technician Co-Pilot":activeTab==="lineperf"||activeTab==="dashboard"?"👷 Supervisor Co-Pilot":"🤖 Co-Pilot";
+	  const introMsg = activeTab==="maintenance"
+	    ? "👋 I'm your Technician Co-Pilot. I can walk you through SOPs, help with LOTO procedures, look up fault codes, give you tools and parts lists for your work orders, and troubleshoot equipment issues.\n\nTell me what you're working on and I'll help you get it done safely."
+	    : "👋 I'm your Co-Pilot. Tell me what you're working on and I'll help.";
+	  const [msgs,setMsgs]=useState([{role:"assistant",content:introMsg}]);
+	  const [input,setInput]=useState("");const [loading,setLoading]=useState(false);
+	  const bottomRef=useRef();
+	  useEffect(()=>bottomRef.current?.scrollIntoView({behavior:"smooth"}),[msgs]);
+	  const send=async(text)=>{
+	    const q=(text||input).trim();if(!q||loading)return;
+	    const userMsg={role:"user",content:q};setMsgs(prev=>[...prev,userMsg]);setInput("");setLoading(true);
+	    try{
+	      const history=[...msgs.slice(1),userMsg].map(m=>({role:m.role,content:m.content}));
+	      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:COPILOT_SYSTEM_PROMPT,messages:history})});
+	      const data=await res.json();const raw=data.content?.[0]?.text||"No response.";
+	      setMsgs(prev=>[...prev,{role:"assistant",content:raw}]);
+	    }catch{setMsgs(prev=>[...prev,{role:"assistant",content:"⚠️ Connection error. Please try again."}]);}
+	    setLoading(false);
+	  };
+	  return(<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
+	    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px"}}><div style={{fontSize:18,fontWeight:800,color:T.black}}>{contextLabel}</div><div style={{fontSize:12,color:T.gray900,marginTop:2}}>SOP guidance · LOTO procedures · Fault code lookup · Work order help · Parts lists</div></div>
+	    <div style={{flex:1,padding:"20px 24px",display:"flex",flexDirection:"column",gap:16,background:T.gray100,overflow:"hidden"}}>
+	      {msgs.length<=1&&<div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{COPILOT_SUGGESTION_LABELS.map((label,i)=><button key={i} onClick={()=>send(COPILOT_SUGGESTIONS[i])} style={{background:T.white,border:`1px solid ${T.border}`,borderRadius:4,padding:"7px 12px",fontSize:11,color:T.gray900,cursor:"pointer",fontWeight:600}}>{label}</button>)}</div>}
+	      <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:12}}>
+	        {msgs.map((m,i)=>(<div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
+	          {m.role==="assistant"&&<div style={{width:28,height:28,borderRadius:"50%",background:"#673AB7",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:T.white,fontWeight:800,flexShrink:0,marginRight:8,marginTop:2}}>CP</div>}
+	          <div style={{maxWidth:"75%",padding:"11px 15px",borderRadius:4,fontSize:13,lineHeight:1.65,whiteSpace:"pre-wrap",background:m.role==="user"?"#673AB7":T.white,color:m.role==="user"?T.white:T.black,boxShadow:"0 1px 3px rgba(0,0,0,0.08)",borderLeft:m.role==="assistant"?"3px solid #673AB7":"none"}}>{m.content}</div>
+	        </div>))}
+	        {loading&&<div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:28,height:28,borderRadius:"50%",background:"#673AB7",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:T.white,fontWeight:800,flexShrink:0}}>CP</div><div style={{background:T.white,borderRadius:4,padding:"11px 15px",fontSize:13,color:T.gray900,borderLeft:"3px solid #673AB7",boxShadow:"0 1px 3px rgba(0,0,0,0.08)"}}>Looking up guidance...</div></div>}
+	        <div ref={bottomRef}/>
+	      </div>
+	      <div style={{display:"flex",gap:8,background:T.white,border:`1px solid ${T.border}`,borderRadius:4,padding:"8px 12px"}}>
+	        <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="Ask for guidance, SOP help, or troubleshooting..." style={{flex:1,border:"none",outline:"none",fontSize:13,color:T.black,background:"transparent"}}/>
+	        <button onClick={()=>send()} disabled={loading||!input.trim()} style={{background:loading||!input.trim()?T.gray400:"#673AB7",color:T.white,border:"none",borderRadius:4,padding:"7px 16px",fontWeight:700,cursor:loading||!input.trim()?"not-allowed":"pointer",fontSize:13}}>Send</button>
+	      </div>
+	    </div>
+	  </div>);
+	}
+	
+	// ── TECHNICIAN DASHBOARD DATA ─────────────────────────────────────────────────
+	const TECH_WOS = [
+	  {id:"WO-4421",asset:"Line 3 Heat Sealer",assetId:"A-001",line:"Line 3",location:"Line 3 — Zone B",type:"Corrective",priority:"Critical",status:"In Execution",estimatedHrs:4,actualHrs:1.5,startedAt:"07:15am",dueDate:"Today",description:"Sealer inspection — vibration index 8.4 exceeds threshold (7.0), temp variance ±6°C. Full component check required. Part #SE-441 in transit (arriving tomorrow 7am).",safetyFlags:["LOTO required before any work","PPE: heat-resistant gloves, safety glasses","Burn risk — allow sealer to cool 15 min before touching elements"],partsKitting:[{part:"Sealer Heating Element",partNo:"SE-441",qty:1,status:"In Stock",eta:null},{part:"Sealer Temperature Probe",partNo:"SE-442",qty:1,status:"In Stock",eta:null}],toolKitting:[{tool:"Digital multimeter",required:true,available:true},{tool:"Torque wrench (20–100 Nm)",required:true,available:true},{tool:"Infrared thermometer",required:true,available:true},{tool:"Insulated screwdriver set",required:true,available:true}],sopSteps:[{phase:"Pre-Execution",step:"Complete LOTO procedure — Line 3 sealer (LOTO SOP v4.0)",done:true},{phase:"Pre-Execution",step:"Allow sealer to cool for minimum 15 minutes",done:true},{phase:"Execution",step:"Inspect heating element for visible damage or discolouration",done:false},{phase:"Execution",step:"Check thermocouple connections — fault code E-14 indicates thermocouple fault",done:false},{phase:"Execution",step:"Measure element resistance — spec: 8–12 Ω",done:false},{phase:"Execution",step:"Inspect sealing jaw alignment — check for wear marks",done:false},{phase:"Execution",step:"Test temperature uniformity across sealing bar",done:false},{phase:"Execution",step:"Re-calibrate temperature controller to ±2°C tolerance",done:false},{phase:"Post-Execution",step:"Run test seals on scrap material and inspect seal integrity",done:false},{phase:"Post-Execution",step:"Remove LOTO and restore to service — notify supervisor",done:false}],assetHistory:{lastPM:"Jan 15, 2026",lastFailure:"Nov 3, 2025 — element replacement",openIssues:"Vibration trend increasing since Jan 20",healthScore:34,mtbf:"6.2 months"},agentNote:"Part #SE-441 is in transit — arriving tomorrow 7am. Complete inspection steps 1–6 today to prepare. Do not attempt element replacement until part arrives.",followUpNeeded:false},
+	  {id:"WO-4425",asset:"Line 2 Conveyor Belt",assetId:"A-003",line:"Line 2",location:"Line 2 — Zone A",type:"Preventive",priority:"Low",status:"In Execution",estimatedHrs:1,actualHrs:0.5,startedAt:"06:00am",dueDate:"Today",description:"Routine belt inspection — tension check, wear assessment, lubrication.",safetyFlags:["LOTO required before tension adjustment","PPE: safety glasses"],partsKitting:[{part:"Belt Lubricant",partNo:"LUB-012",qty:1,status:"In Stock",eta:null}],toolKitting:[{tool:"Belt tension gauge",required:true,available:true},{tool:"Torque wrench (10–50 Nm)",required:true,available:true},{tool:"Lubricant applicator",required:true,available:true}],sopSteps:[{phase:"Pre-Execution",step:"Complete LOTO procedure if adjusting tension",done:true},{phase:"Pre-Execution",step:"Inspect belt surface for cracks, fraying, or wear",done:true},{phase:"Execution",step:"Check belt tension — spec: 15–20 N/mm",done:true},{phase:"Execution",step:"Apply lubricant to rollers per schedule",done:false},{phase:"Execution",step:"Check roller alignment — all rollers must spin freely",done:false},{phase:"Execution",step:"Inspect belt tracking — should run centred within 5mm",done:false},{phase:"Post-Execution",step:"Remove LOTO and run belt at slow speed for 2 minutes to verify",done:false}],assetHistory:{lastPM:"Feb 20, 2026",lastFailure:"None in 12 months",openIssues:"None",healthScore:81,mtbf:"Not applicable — no failures recorded"},agentNote:"Routine inspection — no anomalies flagged. Current PM cycle appropriate. Strategy Agent recommends extending to 10-week cycle at next review.",followUpNeeded:false},
+	  {id:"WO-4422",asset:"Line 2 Heat Tunnel",assetId:"A-006",line:"Line 2",location:"Line 2 — Zone C",type:"Preventive",priority:"High",status:"Pre-Work",estimatedHrs:2,actualHrs:0,startedAt:null,dueDate:"Mar 3",description:"Initiate first PM cycle — inspect heating elements, check safety interlocks, calibrate temp controls.",safetyFlags:["LOTO required","PPE: heat-resistant gloves, safety glasses, face shield","Burn risk — high voltage heating elements"],partsKitting:[{part:"Heat Tunnel Igniter",partNo:"HT-209",qty:1,status:"Low Stock",eta:null}],toolKitting:[{tool:"Multimeter",required:true,available:true},{tool:"Thermocouple calibrator",required:true,available:false},{tool:"Infrared thermometer",required:true,available:true},{tool:"Safety interlock test kit",required:true,available:true}],sopSteps:[{phase:"Pre-Execution",step:"Complete LOTO procedure — Line 2 heat tunnel (LOTO SOP v4.0)",done:false},{phase:"Pre-Execution",step:"Allow tunnel to cool — minimum 20 minutes",done:false},{phase:"Execution",step:"Inspect heating elements for damage or corrosion",done:false},{phase:"Execution",step:"Check all safety interlock switches — must trip at 280°C",done:false},{phase:"Execution",step:"Inspect igniter — check for carbon deposits",done:false},{phase:"Execution",step:"Calibrate temperature controller — set points: 220°C / 240°C / 220°C",done:false},{phase:"Execution",step:"Check conveyor belt tracking through tunnel",done:false},{phase:"Post-Execution",step:"Remove LOTO and run empty at 50% speed for 5 minutes",done:false},{phase:"Post-Execution",step:"Verify temperature uniformity — max variance ±5°C",done:false}],assetHistory:{lastPM:"Never",lastFailure:"No recorded failures",openIssues:"No PM program previously — this is first inspection",healthScore:67,mtbf:"Unknown"},agentNote:"This is the first PM ever on this asset. Take extra time on steps 3–5 to establish a baseline condition report. Note any anomalies for the PM program record.",followUpNeeded:false},
+	];
+	
+	const TECH_SUB_WOS = [
+	  {id:"SUB-201",asset:"Line 3 Cooling System",priority:"High",status:"In Progress",contractor:"Apex Refrigeration Ltd",onSiteDate:"Feb 28, 2026",supervisor:"Carlos Rivera",description:"Annual refrigerant recharge and compressor inspection — specialist contractor required.",permitNo:"PTW-2026-041"},
+	  {id:"SUB-202",asset:"Plant HVAC — Roof Units",priority:"Medium",status:"Not Started",contractor:"BuildAir Services",onSiteDate:"Mar 2, 2026",supervisor:"James Okafor",description:"Quarterly filter replacement and duct inspection.",permitNo:"PTW-2026-042"},
+	];
+	
+	const TECH_COPILOT_PROMPTS = {
+	  "WO-4421":{
+	    suggestions:["Walk me through the LOTO procedure for the Line 3 sealer","What does fault code E-14 mean on the sealer?","How do I measure element resistance correctly?","What do I do if the thermocouple connection looks damaged?"],
+	    labels:["🔒 LOTO procedure for Line 3 sealer","⚠️ Fault code E-14 — what is it?","🔧 How to measure element resistance","❓ Damaged thermocouple — what next?"],
+	    context:"You are helping a technician with WO-4421 — Line 3 Heat Sealer inspection. The sealer has vibration index 8.4 (threshold 7.0) and fault code E-14 (thermocouple fault). Part #SE-441 is in transit. The technician has completed LOTO and cooling steps.",
+	  },
+	  "WO-4425":{
+	    suggestions:["What's the correct belt tension spec for Line 2?","How do I apply lubricant to the rollers?","What should I look for when checking belt tracking?","How do I know if the belt needs replacing?"],
+	    labels:["📏 Belt tension spec for Line 2","🛢️ How to lubricate the rollers","👁️ Checking belt tracking — what to look for","🔄 Does the belt need replacing?"],
+	    context:"You are helping a technician with WO-4425 — Line 2 Conveyor Belt routine PM inspection. The belt is in good condition with health score 81. This is a standard preventive inspection.",
+	  },
+	  "WO-4422":{
+	    suggestions:["Walk me through the LOTO procedure for the Line 2 heat tunnel","What are the correct temperature set points for the tunnel?","How do I check the safety interlock switches?","What should I note for the first-ever PM record?"],
+	    labels:["🔒 LOTO procedure for Line 2 heat tunnel","🌡️ Correct temperature set points","⚡ How to check safety interlocks","📋 What to record for first PM"],
+	    context:"You are helping a technician with WO-4422 — Line 2 Heat Tunnel first-ever PM inspection. There is no PM history on this asset. The technician needs to establish a baseline condition report.",
+	  },
+	};
+	
+	// ── TECHNICIAN DASHBOARD ─────────────────────────────────────────────────────
+	// Daily schedule data
+	const TECH_DAILY_SCHEDULE = [
+	  {time:"06:00",label:"Shift Start & Safety Check",type:"routine",desc:"Review overnight alerts, check PPE, sign in"},
+	  {time:"06:15",label:"Maintenance Team Huddle",type:"meeting",desc:"15-min standup — review day's WOs, parts status, any safety flags"},
+	  {time:"06:30",label:"Join Line 3 Production Huddle",type:"meeting",desc:"Align with Line 3 supervisor on sealer issue and maintenance window"},
+	  {time:"07:00",label:"Work Orders Block",type:"work",desc:"Execute assigned WOs — WO-4421 (sealer inspection) priority, then WO-4425 (belt PM)"},
+	  {time:"13:00",label:"Lunch & Parts Check",type:"routine",desc:"Confirm Part #SE-441 delivery status for tomorrow's sealer repair"},
+	  {time:"13:30",label:"Work Orders Block (cont.)",type:"work",desc:"Continue WOs — WO-4422 (heat tunnel PM) if time permits"},
+	  {time:"15:45",label:"WO Documentation & Close-out",type:"routine",desc:"Update SAP PM with WO progress, log findings, raise any follow-ups"},
+	  {time:"16:00",label:"Handover to Night Shift Tech",type:"handover",desc:"Brief incoming technician on WO-4421 status, Part #SE-441 ETA, and any open items"},
+	];
+	
+	// All WOs (full history + current)
+	const ALL_WOS = [
+	  {id:"WO-4421",asset:"Line 3 Heat Sealer",line:"Line 3",type:"Corrective",priority:"Critical",status:"In Execution",assignedTo:"You",estHrs:4,actualHrs:1.5,dueDate:"Feb 28, 2026",description:"Sealer inspection — vibration and temp variance above threshold."},
+	  {id:"WO-4425",asset:"Line 2 Conveyor Belt",line:"Line 2",type:"Preventive",priority:"Low",status:"In Execution",assignedTo:"You",estHrs:1,actualHrs:0.5,dueDate:"Feb 28, 2026",description:"Routine belt inspection — tension check, wear assessment."},
+	  {id:"WO-4422",asset:"Line 2 Heat Tunnel",line:"Line 2",type:"Preventive",priority:"High",status:"Pre-Work",assignedTo:"You",estHrs:2,actualHrs:0,dueDate:"Mar 3, 2026",description:"Initiate first PM cycle — inspect heating elements."},
+	  {id:"WO-4418",estHrs:2,actualHrs:1.8,asset:"Line 1 Conveyor",line:"Line 1",type:"Preventive",priority:"Low",status:"Complete",assignedTo:"You",dueDate:"Feb 25, 2026",description:"Quarterly conveyor belt inspection and lubrication."},
+	  {id:"WO-4419",estHrs:3,actualHrs:2.7,asset:"Line 2 Filler",line:"Line 2",type:"Preventive",priority:"Medium",status:"Complete",assignedTo:"You",dueDate:"Feb 24, 2026",description:"Filler calibration check — no issues found."},
+	  {id:"WO-4420",estHrs:1.5,actualHrs:1.6,asset:"Line 3 Crimping Unit",line:"Line 3",type:"Corrective",priority:"Medium",status:"Complete",assignedTo:"You",dueDate:"Feb 22, 2026",description:"Crimping jaw alignment — minor adjustment made."},
+	  {id:"WO-4415",estHrs:2,actualHrs:3.1,asset:"Line 2 Heat Tunnel",line:"Line 2",type:"Preventive",priority:"High",status:"Complete",assignedTo:"You",dueDate:"Feb 18, 2026",description:"Heating element visual inspection."},
+	  {id:"WO-4410",estHrs:1,actualHrs:1.9,asset:"Line 2 Conveyor",line:"Line 2",type:"Preventive",priority:"Low",status:"Complete",assignedTo:"You",dueDate:"Feb 14, 2026",description:"Belt tension and tracking check."},
+	];
+	
+	function TechnicianDashboard(){
+	  const [activeTab,setActiveTab]=useState("myday");
+	  const [selectedWO,setSelectedWO]=useState(null);
+	  const [wos,setWos]=useState(TECH_WOS);
+	  const [showFollowUp,setShowFollowUp]=useState(false);
+	  const [followUpForm,setFollowUpForm]=useState({asset:"",description:"",priority:"Medium",type:"Corrective"});
+	  const [followUpSubmitted,setFollowUpSubmitted]=useState({});
+	  const [showCompletionModal,setShowCompletionModal]=useState(false);
+	  const [completionWO,setCompletionWO]=useState(null);
+	  const [completionForm,setCompletionForm]=useState({notes:"",notifyOperator:true,photoAttached:false});
+	  const [completionSubmitted,setCompletionSubmitted]=useState({});
+	  const [woFilter,setWoFilter]=useState("All");
+	
+	  const toggleStep=(woId,stepIdx)=>{
+	    setWos(prev=>prev.map(w=>w.id!==woId?w:{...w,sopSteps:w.sopSteps.map((s,i)=>i!==stepIdx?s:{...s,done:!s.done})}));
+	    if(selectedWO?.id===woId)setSelectedWO(prev=>({...prev,sopSteps:prev.sopSteps.map((s,i)=>i!==stepIdx?s:{...s,done:!s.done})}));
+	  };
+	  const markStatus=(woId,status)=>{
+	    if(status==="Complete"){
+	      const wo=wos.find(w=>w.id===woId);
+	      setCompletionWO(wo);setCompletionForm({notes:"",notifyOperator:true,photoAttached:false});setShowCompletionModal(true);
+	      return;
+	    }
+	    setWos(prev=>prev.map(w=>w.id!==woId?w:{...w,status}));
+	    if(selectedWO?.id===woId)setSelectedWO(prev=>({...prev,status}));
+	  };
+	  const submitCompletion=()=>{
+	    if(!completionWO)return;
+	    setWos(prev=>prev.map(w=>w.id!==completionWO.id?w:{...w,status:"Complete"}));
+	    if(selectedWO?.id===completionWO.id)setSelectedWO(prev=>({...prev,status:"Complete"}));
+	    setCompletionSubmitted(prev=>({...prev,[completionWO.id]:completionForm}));
+	    setShowCompletionModal(false);setCompletionWO(null);
+	  };
+	  const submitFollowUp=()=>{setFollowUpSubmitted(prev=>({...prev,[selectedWO?.id]:followUpForm}));setShowFollowUp(false);};
+	  const openWOPrep=(wo)=>{setSelectedWO(wo);setActiveTab("woprep");};
+	
+	  const priorityColor=p=>p==="Critical"?T.negative:p==="High"?T.warning:p==="Medium"?T.info:T.neutral;
+	  const woStatusColor=s=>s==="Complete"?T.positive:s==="In Execution"?T.info:s==="Closing Out"?T.warning:s==="Pre-Work"?T.neutral:s==="Not Started"?T.neutral:T.negative;
+	  const effColor=r=>r<=1.0?T.positive:r<=1.2?T.warning:T.negative;
+	  const completedJobs=wos.filter(w=>w.status==="Complete").length;
+	  const inProgressJobs=wos.filter(w=>["Pre-Work","In Execution","Closing Out"].includes(w.status)).length;
+	  const totalHrsRemaining=wos.filter(w=>w.status!=="Complete").reduce((a,w)=>a+(w.estimatedHrs-(w.actualHrs||0)),0);
+	  const blockedParts=wos.filter(w=>(w.partsKitting||w.partsRequired||[]).some(p=>p.status==="Stock-Out")).length;
+	
+	  const schedTypeColor=t=>t==="meeting"?T.info:t==="work"?T.primary:t==="handover"?"#673AB7":T.gray400;
+	  const schedTypeLabel=t=>t==="meeting"?"Meeting":t==="work"?"Work Block":t==="handover"?"Handover":"Routine";
+	
+	  const filteredAllWOs=woFilter==="All"?ALL_WOS:ALL_WOS.filter(w=>w.status===woFilter);
+	
+	  const TABS=[
+	    {id:"myday",label:"My Day",built:true},
+	    {id:"woprep",label:"WO Prep",built:true},
+	    {id:"allwos",label:"All Work Orders",built:true},
+	    {id:"subcontractor",label:"Subcontractor WOs",built:true},
+	    {id:"spareparts",label:"Spare Parts",built:false},
+	  ];
+	
+	  const TechTab=({tab})=>{
+	    const isActive=activeTab===tab.id;
+	    return(<button onClick={()=>setActiveTab(tab.id)} style={{display:"flex",alignItems:"center",gap:5,padding:"12px 16px",border:"none",borderBottom:isActive?`2px solid ${T.primary}`:"2px solid transparent",background:"transparent",cursor:"pointer",fontWeight:isActive?800:500,fontSize:12,color:isActive?T.primary:tab.built?T.gray900:T.gray400,whiteSpace:"nowrap"}}>
+	      {!tab.built&&<span style={{fontSize:10,opacity:0.7}}>🔒</span>}
+	      <span>{tab.label}</span>
+	    </button>);
+	  };
+	
+	  const ComingSoonPlaceholder=({title,desc,items})=>(
+	    <div style={{padding:"40px 24px",display:"flex",flexDirection:"column",alignItems:"center",gap:16,textAlign:"center"}}>
+	      <div style={{fontSize:32}}>🔒</div>
+	      <div style={{fontSize:16,fontWeight:800,color:T.black}}>{title}</div>
+	      <div style={{fontSize:13,color:T.gray900,maxWidth:500,lineHeight:1.6}}>{desc}</div>
+	      <div style={{display:"flex",flexDirection:"column",gap:8,width:"100%",maxWidth:500}}>
+	        {items.map((item,i)=><div key={i} style={{background:T.white,borderRadius:4,padding:"12px 16px",textAlign:"left",border:`1px solid ${T.border}`}}>
+	          <div style={{fontSize:13,fontWeight:700,color:T.black,marginBottom:3}}>{item.title}</div>
+	          <div style={{fontSize:12,color:T.gray900}}>{item.desc}</div>
+	        </div>)}
+	      </div>
+	    </div>
+	  );
+	
+	  const WOCard=({wo,showPrep=true})=>(
+	    <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",borderLeft:`4px solid ${priorityColor(wo.priority)}`,padding:"14px 18px"}}>
+	      <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}>
+	        <span style={{fontSize:13,fontWeight:800,color:T.black}}>{wo.id}</span>
+	        <Badge label={wo.priority} color={priorityColor(wo.priority)}/>
+	        <Badge label={wo.type} color={wo.type==="Corrective"?T.negative:T.primary}/>
+	        <Badge label={wo.status} color={woStatusColor(wo.status)}/>
+	      </div>
+	      <div style={{fontSize:14,fontWeight:700,color:T.black,marginBottom:2}}>{wo.asset}</div>
+	      <div style={{fontSize:12,color:T.gray900,marginBottom:6}}>{wo.location||wo.line} · Est: {wo.estimatedHrs}h{wo.actualHrs>0?` · Actual: ${wo.actualHrs}h`:""} · Due: {wo.dueDate}</div>
+	      <div style={{fontSize:12,color:T.gray900,marginBottom:wo.safetyFlags?.length>0||wo.agentNote?8:0}}>{wo.description}</div>
+	      {wo.safetyFlags?.length>0&&<div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:6}}>
+	        {wo.safetyFlags.slice(0,2).map((f,i)=><span key={i} style={{fontSize:10,color:T.warning,background:T.warning+"15",border:`1px solid ${T.warning}30`,borderRadius:3,padding:"2px 8px"}}>⚠ {f}</span>)}
+	      </div>}
+	      {wo.partsRequired?.some(p=>p.status==="Stock-Out")||wo.partsKitting?.some(p=>p.status==="Stock-Out")?<div style={{background:"#FEF2F2",border:`1px solid ${T.negative}30`,borderRadius:3,padding:"4px 10px",fontSize:11,color:T.negative,fontWeight:700,marginBottom:6}}>⚠ Part stock-out — job may be blocked. Check WO Prep.</div>:null}
+	      {wo.sopSteps?.length>0&&<div style={{marginBottom:8}}>
+	        <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:T.gray900,marginBottom:3}}>
+	          <span>SOP Progress</span>
+	          <span style={{fontWeight:700,color:wo.sopSteps.every(s=>s.done)?T.positive:T.gray900}}>{wo.sopSteps.filter(s=>s.done).length}/{wo.sopSteps.length} steps</span>
+	        </div>
+	        <div style={{height:5,background:T.border,borderRadius:3}}><div style={{height:5,width:`${(wo.sopSteps.filter(s=>s.done).length/wo.sopSteps.length)*100}%`,background:T.positive,borderRadius:3,transition:"width 0.3s"}}/></div>
+	      </div>}
+	      {wo.agentNote&&<div style={{background:T.primary+"10",borderLeft:`3px solid ${T.primary}`,borderRadius:3,padding:"6px 10px",fontSize:11,color:T.primary,marginBottom:8}}>🧠 {wo.agentNote}</div>}
+	      {showPrep&&<div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:4}}>
+	        <button onClick={()=>openWOPrep(wo)} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Open WO Prep →</button>
+	        {wo.status==="Not Started"&&<button onClick={()=>markStatus(wo.id,"Pre-Work")} style={{background:"none",border:`1px solid ${T.neutral}`,borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer",color:T.gray900}}>Begin Pre-Work</button>}
+	        {wo.status==="Pre-Work"&&<button onClick={()=>markStatus(wo.id,"In Execution")} style={{background:"none",border:`1px solid ${T.primary}`,borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer",color:T.primary}}>Start Execution</button>}
+	        {wo.status==="In Execution"&&<button onClick={()=>markStatus(wo.id,"Closing Out")} style={{background:"none",border:`1px solid ${T.warning}`,borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer",color:T.warning}}>Move to Closure</button>}
+	        {wo.status==="Closing Out"&&<button onClick={()=>markStatus(wo.id,"Complete")} style={{background:"none",border:`1px solid ${T.positive}`,borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer",color:T.positive}}>Mark Complete</button>}
+	        {completionSubmitted[wo.id]&&<Badge label="📷 Completion photo attached" color={T.positive}/>}
+	        {!followUpSubmitted[wo.id]&&<button onClick={()=>{setSelectedWO(wo);setShowFollowUp(true);}} style={{background:"none",border:`1px dashed ${T.border}`,borderRadius:4,padding:"7px 12px",fontSize:12,cursor:"pointer",color:T.gray900}}>+ Follow-up WO</button>}
+	        {followUpSubmitted[wo.id]&&<Badge label="Follow-up WO raised" color={T.positive}/>}
+	      </div>}
+	      {showFollowUp&&selectedWO?.id===wo.id&&<div style={{marginTop:12,background:T.gray100,borderRadius:4,padding:"14px 16px",border:`1px solid ${T.border}`}}>
+	        <div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:10}}>Raise Follow-up Work Order</div>
+	        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+	          <input value={followUpForm.asset} onChange={e=>setFollowUpForm(p=>({...p,asset:e.target.value}))} placeholder="Asset / description of work needed..." style={{border:`1px solid ${T.border}`,borderRadius:4,padding:"8px 10px",fontSize:12}}/>
+	          <textarea value={followUpForm.description} onChange={e=>setFollowUpForm(p=>({...p,description:e.target.value}))} placeholder="What was found and what needs to be done..." rows={2} style={{border:`1px solid ${T.border}`,borderRadius:4,padding:"8px 10px",fontSize:12,resize:"vertical"}}/>
+	          <div style={{display:"flex",gap:8}}>
+	            <select value={followUpForm.priority} onChange={e=>setFollowUpForm(p=>({...p,priority:e.target.value}))} style={{flex:1,border:`1px solid ${T.border}`,borderRadius:4,padding:"7px 10px",fontSize:12}}>
+	              {["Critical","High","Medium","Low"].map(p=><option key={p}>{p}</option>)}
+	            </select>
+	            <select value={followUpForm.type} onChange={e=>setFollowUpForm(p=>({...p,type:e.target.value}))} style={{flex:1,border:`1px solid ${T.border}`,borderRadius:4,padding:"7px 10px",fontSize:12}}>
+	              {["Corrective","Preventive","Inspection"].map(t=><option key={t}>{t}</option>)}
+	            </select>
+	          </div>
+	          <div style={{display:"flex",gap:8}}>
+	            <button onClick={submitFollowUp} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"7px 16px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Submit WO</button>
+	            <button onClick={()=>setShowFollowUp(false)} style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"7px 14px",fontSize:12,cursor:"pointer",color:T.gray900}}>Cancel</button>
+	          </div>
+	        </div>
+	      </div>}
+	    </div>
+	  );
+	
+	  return(<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
+	    {/* Header */}
+	    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px 0",flexShrink:0}}>
+	      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12,flexWrap:"wrap",gap:8}}>
+	        <div>
+	          <div style={{fontSize:18,fontWeight:800,color:T.black}}>Technician Dashboard</div>
+	          <div style={{fontSize:12,color:T.gray900,marginTop:2}}>Day Shift · Friday Feb 28, 2026 · Austin Plant</div>
+	        </div>
+	        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+	          {[
+	            {label:"WOs Today",value:wos.length,color:T.black},
+	            {label:"In Progress",value:inProgressJobs,color:T.info},
+	            {label:"Complete",value:completedJobs,color:T.positive},
+	            {label:"Hrs Remaining",value:`${Math.max(0,totalHrsRemaining).toFixed(1)}h`,color:T.gray900},
+	            {label:"Parts Blocked",value:blockedParts,color:blockedParts>0?T.negative:T.positive},
+	          ].map(k=>(
+	            <div key={k.label} style={{textAlign:"center",padding:"6px 14px",background:T.gray100,borderRadius:4}}>
+	              <div style={{fontSize:16,fontWeight:800,color:k.color}}>{k.value}</div>
+	              <div style={{fontSize:10,color:T.gray400}}>{k.label}</div>
+	            </div>
+	          ))}
+	        </div>
+	      </div>
+	      <div style={{display:"flex",gap:0,overflowX:"auto"}}>
+	        {TABS.map(t=><TechTab key={t.id} tab={t}/>)}
+	      </div>
+	    </div>
+	
+	    <div style={{flex:1,overflowY:"auto",background:T.gray100}}>
+	
+	      {/* ── MY DAY ── */}
+	      {activeTab==="myday"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:20}}>
+	
+	        {/* Daily Schedule */}
+	        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+	          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
+	            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Today's Schedule</div>
+	            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Day shift · 06:00 – 16:00 · Feb 28, 2026</div>
+	          </div>
+	          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:0}}>
+	            {TECH_DAILY_SCHEDULE.map((item,i)=>(
+	              <div key={i} style={{display:"flex",gap:0,alignItems:"stretch"}}>
+	                {/* Time */}
+	                <div style={{width:52,flexShrink:0,paddingTop:2}}>
+	                  <span style={{fontSize:11,fontWeight:700,color:T.gray400}}>{item.time}</span>
+	                </div>
+	                {/* Line + dot */}
+	                <div style={{width:24,flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center"}}>
+	                  <div style={{width:10,height:10,borderRadius:"50%",background:schedTypeColor(item.type),flexShrink:0,marginTop:3}}/>
+	                  {i<TECH_DAILY_SCHEDULE.length-1&&<div style={{width:2,flex:1,background:T.border,marginTop:2,marginBottom:0,minHeight:28}}/>}
+	                </div>
+	                {/* Content */}
+	                <div style={{flex:1,paddingBottom:i<TECH_DAILY_SCHEDULE.length-1?16:0,paddingLeft:10}}>
+	                  <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:2,flexWrap:"wrap"}}>
+	                    <span style={{fontSize:12,fontWeight:700,color:T.black}}>{item.label}</span>
+	                    <span style={{background:schedTypeColor(item.type)+"18",color:schedTypeColor(item.type),border:`1px solid ${schedTypeColor(item.type)}40`,borderRadius:3,padding:"1px 7px",fontSize:10,fontWeight:700}}>{schedTypeLabel(item.type)}</span>
+	                  </div>
+	                  <div style={{fontSize:11,color:T.gray900}}>{item.desc}</div>
+	                </div>
+	              </div>
+	            ))}
+	          </div>
+	        </div>
+	
+	        {/* My Work Orders */}
+	        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+	          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+	            <div style={{fontSize:13,fontWeight:800,color:T.black}}>My Work Orders</div>
+	            <button onClick={()=>setActiveTab("allwos")} style={{fontSize:11,color:T.primary,fontWeight:700,background:"none",border:"none",cursor:"pointer"}}>View all WOs →</button>
+	          </div>
+	          {wos.map(wo=><WOCard key={wo.id} wo={wo}/>)}
+	        </div>
+	
+	      </div>}
+	
+	      {/* ── WO PREP ── */}
+	      {activeTab==="woprep"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+	        {/* WO selector */}
+	        <div style={{background:T.white,borderRadius:4,padding:"12px 16px",boxShadow:"0 1px 3px rgba(0,0,0,0.07)",display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+	          <span style={{fontSize:12,fontWeight:700,color:T.gray900}}>Preparing:</span>
+	          {wos.filter(w=>w.status!=="Complete").map(w=>(
+	            <button key={w.id} onClick={()=>setSelectedWO(w)} style={{padding:"5px 12px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",border:`1px solid ${selectedWO?.id===w.id?T.primary:T.border}`,background:selectedWO?.id===w.id?T.primary:T.white,color:selectedWO?.id===w.id?T.white:T.gray900}}>{w.id} — {w.asset}</button>
+	          ))}
+	          {!selectedWO&&<span style={{fontSize:11,color:T.gray400}}>Select a job above or click "Open WO Prep" from My Day</span>}
+	        </div>
+	
+	        {selectedWO&&<>
+	          {/* WO Header */}
+	          <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",borderLeft:`4px solid ${priorityColor(selectedWO.priority)}`,padding:"16px 20px"}}>
+	            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap",marginBottom:6}}>
+	              <div>
+	                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
+	                  <span style={{fontSize:14,fontWeight:800,color:T.black}}>{selectedWO.id}</span>
+	                  <Badge label={selectedWO.priority} color={priorityColor(selectedWO.priority)}/>
+	                  <Badge label={selectedWO.type} color={selectedWO.type==="Corrective"?T.negative:T.primary}/>
+	                  <Badge label={selectedWO.status} color={woStatusColor(selectedWO.status)}/>
+	                </div>
+	                <div style={{fontSize:16,fontWeight:800,color:T.black}}>{selectedWO.asset}</div>
+	                <div style={{fontSize:12,color:T.gray900}}>{selectedWO.location} · Est: {selectedWO.estimatedHrs}h · Due: {selectedWO.dueDate}</div>
+	              </div>
+	              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+	                {selectedWO.status==="Not Started"&&<button onClick={()=>markStatus(selectedWO.id,"Pre-Work")} style={{background:T.gray400,color:T.white,border:"none",borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Begin Pre-Work</button>}
+	                {selectedWO.status==="Pre-Work"&&<button onClick={()=>markStatus(selectedWO.id,"In Execution")} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Start Execution</button>}
+	                {selectedWO.status==="In Execution"&&<button onClick={()=>markStatus(selectedWO.id,"Closing Out")} style={{background:T.warning,color:T.white,border:"none",borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Move to Closure</button>}
+	                {selectedWO.status==="Closing Out"&&<button onClick={()=>markStatus(selectedWO.id,"Complete")} style={{background:T.positive,color:T.white,border:"none",borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Mark Complete</button>}
+	                <button style={{background:"none",border:`1px solid #C7D2FE`,borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,color:"#4F46E5",cursor:"pointer"}}>Open in SAP PM →</button>
+	              </div>
+	            </div>
+	            <div style={{fontSize:12,color:T.gray900}}>{selectedWO.description}</div>
+	          </div>
+	
+	          {/* Safety */}
+	          {selectedWO.safetyFlags.length>0&&<div style={{background:"#FFFBEB",border:`1px solid ${T.warning}`,borderRadius:4,padding:"12px 16px"}}>
+	            <div style={{fontSize:12,fontWeight:800,color:T.warning,marginBottom:8}}>⚠️ Safety Requirements — Complete Before Starting</div>
+	            {selectedWO.safetyFlags.map((f,i)=><div key={i} style={{fontSize:12,color:T.black,marginBottom:4}}>• {f}</div>)}
+	          </div>}
+	
+	          {/* Defect Photo — only on WO-4421 */}
+	          {selectedWO.id==="WO-4421"&&<div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",overflow:"hidden"}}>
+	            <div style={{padding:"12px 18px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+	              <div style={{fontSize:13,fontWeight:800,color:T.black}}>Defect Photo — Original Issue</div>
+	              <span style={{fontSize:11,color:T.gray400}}>Reported by Line 3 Operator · Feb 14, 2026</span>
+	            </div>
+	            <div style={{padding:"16px 18px",display:"flex",gap:16,flexWrap:"wrap",alignItems:"flex-start"}}>
+	              <div style={{position:"relative",flexShrink:0}}>
+	                <svg width="280" height="180" viewBox="0 0 280 180" xmlns="http://www.w3.org/2000/svg" style={{borderRadius:4,border:`1px solid ${T.border}`,display:"block"}}>
+	                  {/* Machine body */}
+	                  <rect width="280" height="180" fill="#2D2D2D"/>
+	                  <rect x="20" y="30" width="240" height="120" rx="6" fill="#3D3D3D"/>
+	                  {/* Sealing bar */}
+	                  <rect x="40" y="70" width="200" height="18" rx="3" fill="#555"/>
+	                  <rect x="40" y="92" width="200" height="18" rx="3" fill="#555"/>
+	                  {/* Heating elements */}
+	                  <rect x="50" y="73" width="30" height="12" rx="2" fill="#888"/>
+	                  <rect x="90" y="73" width="30" height="12" rx="2" fill="#888"/>
+	                  <rect x="130" y="73" width="30" height="12" rx="2" fill="#CC4400" opacity="0.9"/>
+	                  <rect x="170" y="73" width="30" height="12" rx="2" fill="#888"/>
+	                  <rect x="210" y="73" width="30" height="12" rx="2" fill="#888"/>
+	                  {/* Discolouration on element 3 */}
+	                  <rect x="130" y="73" width="30" height="12" rx="2" fill="#FF6600" opacity="0.6"/>
+	                  {/* Label */}
+	                  <text x="20" y="20" fill="#aaa" fontSize="9" fontFamily="monospace">LINE 3 HEAT SEALER · SN-4421-B</text>
+	                  {/* Annotation circle — squiggly highlight */}
+	                  <ellipse cx="145" cy="79" rx="28" ry="16" fill="none" stroke="#FF3333" strokeWidth="2.5" strokeDasharray="4 2" opacity="0.9"/>
+	                  {/* Arrow */}
+	                  <line x1="180" y1="60" x2="162" y2="72" stroke="#FF3333" strokeWidth="2" markerEnd="url(#arr)"/>
+	                  <defs><marker id="arr" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#FF3333"/></marker></defs>
+	                  {/* Annotation label */}
+	                  <rect x="175" y="46" width="88" height="16" rx="3" fill="#FF3333" opacity="0.85"/>
+	                  <text x="180" y="57" fill="white" fontSize="9" fontFamily="Arial" fontWeight="bold">Element 3 — discoloured</text>
+	                </svg>
+	              </div>
+	              <div style={{flex:1,minWidth:160}}>
+	                <div style={{fontSize:12,fontWeight:700,color:T.black,marginBottom:6}}>Operator Notes</div>
+	                <div style={{fontSize:12,color:T.gray900,lineHeight:1.6,marginBottom:10}}>"Sealer bar element 3 showing visible discolouration and inconsistent seal temperature. Seal quality dropping on SKU 3801 bags — rejecting approximately 1 in 8 seals at QC."</div>
+	                <div style={{display:"flex",flexDirection:"column",gap:4}}>
+	                  <div style={{fontSize:11,color:T.gray400}}>Reported: Feb 14, 2026 · 09:32am</div>
+	                  <div style={{fontSize:11,color:T.gray400}}>Reported by: Line 3 Operator (J. Park)</div>
+	                  <div style={{fontSize:11,color:T.gray400}}>WO raised: Feb 14, 2026 · Auto-generated by Asset Health Agent</div>
+	                </div>
+	              </div>
+	            </div>
+	          </div>}
+	
+	
+	          {/* SOP + Parts + History */}
+	          <div style={{display:"flex",gap:16,flexWrap:"wrap",alignItems:"flex-start"}}>
+	            {/* Phased SOP Checklist */}
+	            <div style={{flex:"2 1 300px",background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+	              <div style={{padding:"12px 18px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+	                <div style={{fontSize:13,fontWeight:800,color:T.black}}>SOP Checklist</div>
+	                <span style={{fontSize:11,color:T.gray900,fontWeight:600}}>{selectedWO.sopSteps.filter(s=>s.done).length}/{selectedWO.sopSteps.length} complete</span>
+	              </div>
+	              <div style={{padding:"12px 18px",display:"flex",flexDirection:"column",gap:0}}>
+	                {["Pre-Execution","Execution","Post-Execution"].map(phase=>{
+	                  const phaseSteps=selectedWO.sopSteps.map((s,i)=>({...s,idx:i})).filter(s=>s.phase===phase);
+	                  if(phaseSteps.length===0)return null;
+	                  const phaseColor=phase==="Pre-Execution"?T.warning:phase==="Execution"?T.primary:"#673AB7";
+	                  const phaseDone=phaseSteps.filter(s=>s.done).length;
+	                  return(
+	                    <div key={phase} style={{marginBottom:12}}>
+	                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+	                        <div style={{width:4,height:36,background:phaseColor,borderRadius:2,flexShrink:0}}/>
+	                        <div>
+	                          <div style={{fontSize:11,fontWeight:800,color:phaseColor,textTransform:"uppercase",letterSpacing:"0.05em"}}>{phase}</div>
+	                          <div style={{fontSize:10,color:T.gray400}}>{phaseDone}/{phaseSteps.length} complete</div>
+	                        </div>
+	                      </div>
+	                      <div style={{display:"flex",flexDirection:"column",gap:5,paddingLeft:12}}>
+	                        {phaseSteps.map((s)=>(
+	                          <div key={s.idx} onClick={()=>toggleStep(selectedWO.id,s.idx)} style={{display:"flex",gap:10,alignItems:"flex-start",padding:"8px 10px",borderRadius:4,background:s.done?T.positive+"10":T.gray100,cursor:"pointer",border:`1px solid ${s.done?T.positive+"30":T.border}`}}>
+	                            <div style={{width:18,height:18,borderRadius:3,border:`2px solid ${s.done?T.positive:T.gray400}`,background:s.done?T.positive:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>
+	                              {s.done&&<span style={{fontSize:10,color:T.white,fontWeight:800}}>✓</span>}
+	                            </div>
+	                            <span style={{fontSize:12,color:s.done?T.gray400:T.black,textDecoration:s.done?"line-through":"none",lineHeight:1.5}}>{s.step}</span>
+	                          </div>
+	                        ))}
+	                      </div>
+	                    </div>
+	                  );
+	                })}
+	              </div>
+	            </div>
+	
+	            <div style={{flex:"1 1 220px",display:"flex",flexDirection:"column",gap:12}}>
+	              {/* Parts Kitting */}
+	              <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+	                <div style={{padding:"12px 18px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>Parts Kitting</div></div>
+	                <div style={{padding:"12px 18px",display:"flex",flexDirection:"column",gap:8}}>
+	                  {(selectedWO.partsKitting||selectedWO.partsRequired||[]).map((p,i)=>(
+	                    <div key={i} style={{padding:"8px 10px",background:T.gray100,borderRadius:4,borderLeft:`3px solid ${p.status==="In Stock"?T.positive:p.status==="In Transit"?T.info:T.negative}`}}>
+	                      <div style={{fontSize:12,fontWeight:700,color:T.black}}>{p.part}</div>
+	                      <div style={{fontSize:10,color:T.gray400,marginBottom:4}}>{p.partNo} · Qty: {p.qty}</div>
+	                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+	                        <Badge label={p.status} color={p.status==="In Stock"?T.positive:p.status==="In Transit"?T.info:p.status==="Low Stock"?T.warning:T.negative}/>
+	                        {p.eta&&<span style={{fontSize:10,color:T.gray900}}>ETA: {p.eta}</span>}
+	                      </div>
+	                    </div>
+	                  ))}
+	                </div>
+	              </div>
+	
+	              {/* Tool Kitting */}
+	              {selectedWO.toolKitting&&<div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+	                <div style={{padding:"12px 18px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>Tool Kitting</div></div>
+	                <div style={{padding:"12px 18px",display:"flex",flexDirection:"column",gap:6}}>
+	                  {selectedWO.toolKitting.map((t,i)=>(
+	                    <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 10px",background:T.gray100,borderRadius:4,borderLeft:`3px solid ${t.available?T.positive:T.negative}`}}>
+	                      <span style={{fontSize:12,color:T.black}}>{t.tool}</span>
+	                      <Badge label={t.available?"Available":"Not Available"} color={t.available?T.positive:T.negative}/>
+	                    </div>
+	                  ))}
+	                </div>
+	              </div>}
+	
+	              {/* Asset History */}
+	              <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+	                <div style={{padding:"12px 18px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>Asset History</div></div>
+	                <div style={{padding:"12px 18px",display:"flex",flexDirection:"column",gap:6}}>
+	                  {[["Last PM",selectedWO.assetHistory.lastPM],["Last Failure",selectedWO.assetHistory.lastFailure],["Open Issues",selectedWO.assetHistory.openIssues],["Health Score",`${selectedWO.assetHistory.healthScore}/100`],["MTBF",selectedWO.assetHistory.mtbf]].map(([lbl,val])=>(
+	                    <div key={lbl} style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",fontSize:11,gap:8}}>
+	                      <span style={{color:T.gray400,flexShrink:0}}>{lbl}</span>
+	                      <span style={{color:T.black,fontWeight:600,textAlign:"right"}}>{val}</span>
+	                    </div>
+	                  ))}
+	                </div>
+	              </div>
+	            </div>
+	          </div>
+	
+	          {selectedWO.agentNote&&<div style={{background:T.primary+"10",border:`1px solid ${T.primary}30`,borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"12px 16px"}}>
+	            <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>🧠 Maintenance Planning Agent — Pre-Job Note</div>
+	            <div style={{fontSize:12,color:T.black}}>{selectedWO.agentNote}</div>
+	          </div>}
+	
+	          {!followUpSubmitted[selectedWO.id]&&!showFollowUp&&<button onClick={()=>setShowFollowUp(true)} style={{background:"none",border:`1px dashed ${T.border}`,borderRadius:4,padding:"10px 16px",fontSize:12,fontWeight:600,color:T.gray900,cursor:"pointer",textAlign:"left"}}>+ Raise Follow-up Work Order</button>}
+	          {showFollowUp&&!followUpSubmitted[selectedWO.id]&&<div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",padding:"16px 20px"}}>
+	            <div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:12}}>Raise Follow-up Work Order</div>
+	            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+	              <input value={followUpForm.asset} onChange={e=>setFollowUpForm(p=>({...p,asset:e.target.value}))} placeholder="Asset / description of work needed..." style={{border:`1px solid ${T.border}`,borderRadius:4,padding:"8px 10px",fontSize:12}}/>
+	              <textarea value={followUpForm.description} onChange={e=>setFollowUpForm(p=>({...p,description:e.target.value}))} placeholder="What was found and what needs to be done..." rows={3} style={{border:`1px solid ${T.border}`,borderRadius:4,padding:"8px 10px",fontSize:12,resize:"vertical"}}/>
+	              <div style={{display:"flex",gap:8}}>
+	                <select value={followUpForm.priority} onChange={e=>setFollowUpForm(p=>({...p,priority:e.target.value}))} style={{flex:1,border:`1px solid ${T.border}`,borderRadius:4,padding:"7px 10px",fontSize:12}}>
+	                  {["Critical","High","Medium","Low"].map(p=><option key={p}>{p}</option>)}
+	                </select>
+	                <select value={followUpForm.type} onChange={e=>setFollowUpForm(p=>({...p,type:e.target.value}))} style={{flex:1,border:`1px solid ${T.border}`,borderRadius:4,padding:"7px 10px",fontSize:12}}>
+	                  {["Corrective","Preventive","Inspection"].map(t=><option key={t}>{t}</option>)}
+	                </select>
+	              </div>
+	              <div style={{display:"flex",gap:8}}>
+	                <button onClick={submitFollowUp} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"8px 18px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Submit WO</button>
+	                <button onClick={()=>setShowFollowUp(false)} style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"8px 16px",fontSize:12,cursor:"pointer",color:T.gray900}}>Cancel</button>
+	              </div>
+	            </div>
+	          </div>}
+	          {followUpSubmitted[selectedWO.id]&&<div style={{background:"#F0FDF4",border:`1px solid ${T.positive}`,borderRadius:4,padding:"12px 16px"}}>
+	            <div style={{fontSize:12,fontWeight:800,color:T.positive,marginBottom:4}}>Follow-up WO Raised</div>
+	            <div style={{fontSize:12,color:T.black}}>{followUpSubmitted[selectedWO.id].asset} — {followUpSubmitted[selectedWO.id].description}</div>
+	          </div>}
+	        </>}
+	      </div>}
+	
+	      {/* ── ALL WORK ORDERS ── */}
+	      {activeTab==="allwos"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+	        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+	          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+	            <div>
+	              <div style={{fontSize:13,fontWeight:800,color:T.black}}>All Work Orders</div>
+	              <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Your full WO history — current and completed · {ALL_WOS.length} total</div>
+	            </div>
+	            <div style={{display:"flex",gap:4}}>
+	              {["All","In Progress","Not Started","Complete"].map(f=>(
+	                <button key={f} onClick={()=>setWoFilter(f)} style={{padding:"4px 10px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",border:`1px solid ${woFilter===f?T.primary:T.border}`,background:woFilter===f?T.primary:T.white,color:woFilter===f?T.white:T.gray900}}>{f}</button>
+	              ))}
+	            </div>
+	          </div>
+	          <div style={{overflowX:"auto"}}>
+	            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+	              <thead><tr style={{background:T.gray100}}>
+	                {["WO","Asset","Line","Type","Priority","Status","Assigned","Est. Hrs","Actual Hrs","Due Date","Description",""].map(h=>(
+	                  <th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>
+	                ))}
+	              </tr></thead>
+	              <tbody>{filteredAllWOs.map((wo,i)=>{
+	                const effRatio=wo.estHrs&&wo.actualHrs>0?wo.actualHrs/wo.estHrs:null;
+	                return(<tr key={wo.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
+	                  <td style={{padding:"9px 14px",fontWeight:700,color:T.black,whiteSpace:"nowrap"}}>{wo.id}</td>
+	                  <td style={{padding:"9px 14px",fontWeight:600,color:T.black,whiteSpace:"nowrap"}}>{wo.asset}</td>
+	                  <td style={{padding:"9px 14px",color:T.gray900}}>{wo.line}</td>
+	                  <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}><Badge label={wo.type} color={wo.type==="Corrective"?T.negative:T.primary}/></td>
+	                  <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}><Badge label={wo.priority} color={priorityColor(wo.priority)}/></td>
+	                  <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}><Badge label={wo.status} color={woStatusColor(wo.status)}/></td>
+	                  <td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{wo.assignedTo}</td>
+	                  <td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{wo.estHrs?`${wo.estHrs}h`:"—"}</td>
+	                  <td style={{padding:"9px 14px",whiteSpace:"nowrap",fontWeight:effRatio?700:400,color:effRatio?effColor(effRatio):T.gray400}}>{wo.actualHrs>0?`${wo.actualHrs}h`:"—"}{effRatio&&<span style={{fontSize:10,marginLeft:4,color:effColor(effRatio)}}>({effRatio.toFixed(1)}x)</span>}</td>
+	                  <td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{wo.dueDate}</td>
+	                  <td style={{padding:"9px 14px",color:T.gray900,maxWidth:180}}>{wo.description}</td>
+	                  <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}><button style={{background:"none",border:`1px solid #C7D2FE`,borderRadius:3,padding:"3px 8px",fontSize:10,fontWeight:700,color:"#4F46E5",cursor:"pointer"}}>Open in SAP PM →</button></td>
+	                </tr>);
+	              })}</tbody>
+	            </table>
+	          </div>
+	        </div>
+	      </div>}
+	
+	      {/* ── SUBCONTRACTOR WOs ── */}
+	      {activeTab==="subcontractor"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+	        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+	          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
+	            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Subcontractor Work Orders</div>
+	            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>External contractor work on site — separate handling, permits, and sign-off required · {TECH_SUB_WOS.length} active</div>
+	          </div>
+	          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:10}}>
+	            {TECH_SUB_WOS.map(wo=>(
+	              <div key={wo.id} style={{background:T.gray100,borderRadius:4,borderLeft:`4px solid ${T.neutral}`,padding:"14px 16px"}}>
+	                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap",marginBottom:8}}>
+	                  <div style={{flex:1}}>
+	                    <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}>
+	                      <span style={{fontSize:13,fontWeight:800,color:T.black}}>{wo.id}</span>
+	                      <Badge label="Subcontractor" color={T.neutral}/>
+	                      <Badge label={wo.status} color={woStatusColor(wo.status)}/>
+	                      <Badge label={wo.priority} color={priorityColor(wo.priority)}/>
+	                    </div>
+	                    <div style={{fontSize:14,fontWeight:700,color:T.black,marginBottom:4}}>{wo.asset}</div>
+	                    <div style={{fontSize:12,color:T.gray900,marginBottom:6}}>{wo.description}</div>
+	                    <div style={{display:"flex",gap:16,flexWrap:"wrap",fontSize:12,color:T.gray900}}>
+	                      <span>🏢 <strong>Contractor:</strong> {wo.contractor}</span>
+	                      <span>📅 <strong>On-site:</strong> {wo.onSiteDate}</span>
+	                      <span>👤 <strong>Supervisor:</strong> {wo.supervisor}</span>
+	                      <span>📋 <strong>Permit:</strong> {wo.permitNo}</span>
+	                    </div>
+	                  </div>
+	                </div>
+	                <div style={{background:T.white,borderRadius:4,border:`1px solid ${T.border}`,padding:"10px 14px",marginBottom:10}}>
+	                  <div style={{fontSize:11,fontWeight:700,color:T.gray900,marginBottom:6,textTransform:"uppercase",letterSpacing:"0.04em"}}>Checklist</div>
+	                  <div style={{display:"flex",flexDirection:"column",gap:4}}>
+	                    {[
+	                      {label:"Permit to Work issued and signed",done:wo.status!=="Not Started"},
+	                      {label:"Contractor induction completed",done:wo.status!=="Not Started"},
+	                      {label:"Site access badge issued",done:wo.status!=="Not Started"},
+	                      {label:"Work completed and inspected",done:wo.status==="Complete"},
+	                      {label:"Formal sign-off and WO closure",done:wo.status==="Complete"},
+	                    ].map((item,i)=>(
+	                      <div key={i} style={{display:"flex",gap:8,alignItems:"center",fontSize:12}}>
+	                        <div style={{width:16,height:16,borderRadius:3,border:`2px solid ${item.done?T.positive:T.gray400}`,background:item.done?T.positive:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+	                          {item.done&&<span style={{fontSize:9,color:T.white,fontWeight:800}}>✓</span>}
+	                        </div>
+	                        <span style={{color:item.done?T.gray400:T.black,textDecoration:item.done?"line-through":"none"}}>{item.label}</span>
+	                      </div>
+	                    ))}
+	                  </div>
+	                </div>
+	                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+	                  <button style={{background:"none",border:`1px solid #C7D2FE`,borderRadius:4,padding:"6px 12px",fontSize:11,fontWeight:700,color:"#4F46E5",cursor:"pointer"}}>Open in SAP PM →</button>
+	                  {wo.status==="In Progress"&&<button style={{background:T.positive,color:T.white,border:"none",borderRadius:4,padding:"6px 12px",fontSize:11,fontWeight:700,cursor:"pointer"}}>Sign Off & Close WO</button>}
+	                </div>
+	              </div>
+	            ))}
+	          </div>
+	        </div>
+	      </div>}
+	
+	      {/* ── SPARE PARTS ── */}
+	      {activeTab==="spareparts"&&<ComingSoonPlaceholder
+	        title="Spare Parts"
+	        desc="Real-time parts availability from your ERP. Raise a PO directly from a WO, get notified when parts arrive, and see full stock history — without leaving the dashboard."
+	        items={[
+	          {title:"Live stock levels from ERP",desc:"Parts availability updated in real time — no more checking a separate system."},
+	          {title:"Raise PO directly from a WO",desc:"If a part is out of stock, raise an emergency or standard PO in one click."},
+	          {title:"Parts arrival notifications",desc:"Get notified when a part you need arrives so you can reschedule the WO immediately."},
+	          {title:"Parts usage history per asset",desc:"See what parts have been used on each asset over time."},
+	        ]}
+	      />}
+	
+	    </div>
+	
+	    {/* ── COMPLETION MODAL ── */}
+	    {showCompletionModal&&completionWO&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+	      <div style={{background:T.white,borderRadius:6,width:"100%",maxWidth:520,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.3)",overflow:"hidden"}}>
+	        <div style={{background:T.positive,padding:"14px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+	          <div>
+	            <div style={{fontSize:11,fontWeight:700,color:"#ffffff99",marginBottom:2}}>MARK COMPLETE · {completionWO.id}</div>
+	            <div style={{fontSize:15,fontWeight:800,color:T.white}}>{completionWO.asset}</div>
+	          </div>
+	          <button onClick={()=>setShowCompletionModal(false)} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:4,padding:"6px 12px",color:T.white,cursor:"pointer",fontWeight:700,fontSize:12}}>✕</button>
+	        </div>
+	        <div style={{padding:"20px",display:"flex",flexDirection:"column",gap:14}}>
+	          {/* Completion photo */}
+	          <div>
+	            <div style={{fontSize:12,fontWeight:700,color:T.black,marginBottom:8}}>Completion Photo</div>
+	            {!completionForm.photoAttached
+	              ?<div onClick={()=>setCompletionForm(p=>({...p,photoAttached:true}))} style={{border:`2px dashed ${T.border}`,borderRadius:4,padding:"24px",textAlign:"center",cursor:"pointer",background:T.gray100}}>
+	                <div style={{fontSize:28,marginBottom:6}}>📷</div>
+	                <div style={{fontSize:12,fontWeight:700,color:T.gray900}}>Tap to attach completion photo</div>
+	                <div style={{fontSize:11,color:T.gray400,marginTop:2}}>Shows proof of repair for operator and supervisor</div>
+	              </div>
+	              :<div style={{position:"relative",borderRadius:4,overflow:"hidden",border:`2px solid ${T.positive}`}}>
+	                <svg width="100%" height="150" viewBox="0 0 480 150" xmlns="http://www.w3.org/2000/svg">
+	                  <rect width="480" height="150" fill="#1A2A1A"/>
+	                  <rect x="20" y="20" width="440" height="110" rx="6" fill="#2A3A2A"/>
+	                  <rect x="40" y="50" width="400" height="18" rx="3" fill="#4A6A4A"/>
+	                  <rect x="40" y="72" width="400" height="18" rx="3" fill="#4A6A4A"/>
+	                  <rect x="50" y="53" width="30" height="12" rx="2" fill="#6A9A6A"/>
+	                  <rect x="90" y="53" width="30" height="12" rx="2" fill="#6A9A6A"/>
+	                  <rect x="130" y="53" width="30" height="12" rx="2" fill="#6A9A6A"/>
+	                  <rect x="170" y="53" width="30" height="12" rx="2" fill="#6A9A6A"/>
+	                  <rect x="210" y="53" width="30" height="12" rx="2" fill="#6A9A6A"/>
+	                  <text x="20" y="14" fill="#6A9A6A" fontSize="9" fontFamily="monospace">LINE 3 HEAT SEALER · SN-4421-B · REPAIR COMPLETE</text>
+	                  <text x="240" y="138" fill="#44BB44" fontSize="10" fontFamily="Arial" fontWeight="bold" textAnchor="middle">✓ Element 3 replaced — sealer restored, test seals passed QC</text>
+	                </svg>
+	                <div style={{position:"absolute",top:8,right:8,background:T.positive,borderRadius:3,padding:"2px 8px",fontSize:10,fontWeight:800,color:T.white}}>✓ Photo attached</div>
+	              </div>
+	            }
+	          </div>
+	          {/* Notes */}
+	          <div>
+	            <div style={{fontSize:12,fontWeight:700,color:T.black,marginBottom:6}}>Completion Notes</div>
+	            <textarea value={completionForm.notes} onChange={e=>setCompletionForm(p=>({...p,notes:e.target.value}))} placeholder="What was done and how was it fixed? Any observations for future reference..." rows={3} style={{width:"100%",border:`1px solid ${T.border}`,borderRadius:4,padding:"8px 10px",fontSize:12,boxSizing:"border-box",resize:"vertical"}}/>
+	          </div>
+	          {/* Notify operator */}
+	          <div onClick={()=>setCompletionForm(p=>({...p,notifyOperator:!p.notifyOperator}))} style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",padding:"10px 14px",background:completionForm.notifyOperator?T.positive+"12":T.gray100,border:`1px solid ${completionForm.notifyOperator?T.positive:T.border}`,borderRadius:4}}>
+	            <div style={{width:20,height:20,borderRadius:4,border:`2px solid ${completionForm.notifyOperator?T.positive:T.gray400}`,background:completionForm.notifyOperator?T.positive:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+	              {completionForm.notifyOperator&&<span style={{fontSize:11,color:T.white,fontWeight:800}}>✓</span>}
+	            </div>
+	            <div>
+	              <div style={{fontSize:12,fontWeight:700,color:T.black}}>Notify Line Operator & Supervisor</div>
+	              <div style={{fontSize:11,color:T.gray900}}>Sends completion summary and photo — closes the loop with the team</div>
+	            </div>
+	          </div>
+	          {/* Actions */}
+	          <div style={{display:"flex",gap:8}}>
+	            <button onClick={submitCompletion} style={{flex:1,background:T.positive,color:T.white,border:"none",borderRadius:4,padding:"10px",fontSize:13,fontWeight:700,cursor:"pointer"}}>Mark Complete & Close WO</button>
+	            <button onClick={()=>setShowCompletionModal(false)} style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"10px 16px",fontSize:12,cursor:"pointer",color:T.gray900}}>Cancel</button>
+	          </div>
+	        </div>
+	      </div>
+	    </div>}
+	
+	  </div>);
+	}
+	
+	
+	// ── SHUTDOWN DASHBOARD DATA ───────────────────────────────────────────────────
+	const SHUTDOWN = {
+	  name:"Line 3 Annual Shutdown",
+	  asset:"Line 3 — Full Line",
+	  dates:"Mar 14–16, 2026",
+	  daysOut:14,
+	  duration:"2.5 days",
+	  status:"Planning",
+	  budget:142000,
+	  budgetSpent:18400,
+	  jobsTotal:6,
+	  jobsReady:3,
+	  partsReadiness:72,
+	  contractorsConfirmed:2,
+	  contractorsPending:1,
+	};
+	
+	const SHUTDOWN_JOBS = [
+	  {id:"SJ-001",title:"Heat Sealer — Element Replacement & Jaw Rebuild",type:"Corrective",priority:"Critical",assignedTo:"Carlos Rivera",contractor:null,estDays:0.5,minHrs:4,maxHrs:4,certainty:"High",status:"Ready",partsReady:true,toolsReady:true,prereqs:[],blockedBy:[],day:1,startHr:8,color:"#D64454",note:"Triggered by Feb 28 degradation signal. Parts confirmed in stock."},
+	  {id:"SJ-002",title:"Conveyor Drivetrain Overhaul",type:"Preventive",priority:"High",assignedTo:"Marcus Webb",contractor:null,estDays:1,minHrs:7,maxHrs:9,certainty:"Medium",status:"Ready",partsReady:true,toolsReady:true,prereqs:["SJ-001"],blockedBy:[],day:1,startHr:13,color:"#1565C0",note:"Can begin once sealer work complete. Belt tension tools confirmed."},
+	  {id:"SJ-003",title:"Filler Head Replacement — 5-Year Lifecycle",type:"Preventive",priority:"High",assignedTo:"Priya Singh",contractor:null,estDays:0.75,minHrs:5,maxHrs:6,certainty:"High",status:"Ready",partsReady:true,toolsReady:false,prereqs:[],blockedBy:["SJ-004"],day:1,startHr:8,color:"#1565C0",note:"Filler head confirmed in stock. Awaiting calibration tools from supplier."},
+	  {id:"SJ-004",title:"Electrical Panel Rewire — Zone B",type:"Corrective",priority:"High",assignedTo:null,contractor:"PowerGrid Services",estDays:1,minHrs:8,maxHrs:10,certainty:"Medium",status:"Contractor Pending",partsReady:true,toolsReady:true,prereqs:[],blockedBy:[],day:1,startHr:8,color:"#673AB7",note:"PowerGrid Services confirmed on-site Mar 14. 10-hr minimum shift. LOTO coordination required with internal team."},
+	  {id:"SJ-005",title:"Structural Weld Inspection & Repair",type:"Inspection",priority:"Medium",assignedTo:null,contractor:"SteelWeld Specialists",estDays:null,minHrs:4,maxHrs:16,certainty:"Low",status:"Scope Uncertain",partsReady:false,toolsReady:true,prereqs:["SJ-004"],blockedBy:[],day:2,startHr:8,color:"#E65100",note:"Cannot diagnose until line is open. Best case: 4hrs (welds clean). Worst case: 16hrs (cracks found, full re-weld required). Schedule holds buffer."},
+	  {id:"SJ-006",title:"Cooling System Recharge — Apex Refrigeration",type:"Preventive",priority:"Medium",assignedTo:null,contractor:"Apex Refrigeration",estDays:0.25,minHrs:2,maxHrs:2,certainty:"High",status:"Ready",partsReady:true,toolsReady:true,prereqs:[],blockedBy:[],day:3,startHr:8,color:"#197A56",note:"Apex on-site from subcontractor WO. 2hr job, can run in parallel with closure activities."},
+	];
+	
+	const SHUTDOWN_PARTS = [
+	  {part:"Sealer Heating Element",partNo:"SE-441",job:"SJ-001",qty:2,leadWeeks:1,status:"In Stock",supplier:"ThermoTech",cost:340,eta:null},
+	  {part:"Sealer Jaw Assembly",partNo:"SJ-204",job:"SJ-001",qty:1,leadWeeks:3,status:"In Stock",supplier:"ThermoTech",cost:1200,eta:null},
+	  {part:"Conveyor Drive Belt (HD)",partNo:"CB-880",job:"SJ-002",qty:1,leadWeeks:2,status:"In Stock",supplier:"BeltCo",cost:420,eta:null},
+	  {part:"Drive Sprocket Set",partNo:"DS-112",job:"SJ-002",qty:1,leadWeeks:4,status:"In Stock",supplier:"BeltCo",cost:780,eta:null},
+	  {part:"Filler Head Assembly (5yr)",partNo:"FH-500",job:"SJ-003",qty:1,leadWeeks:8,status:"In Stock",supplier:"FillerTech",cost:8400,eta:null},
+	  {part:"Filler Calibration Kit",partNo:"FK-022",job:"SJ-003",qty:1,leadWeeks:2,status:"On Order",supplier:"FillerTech",cost:240,eta:"Mar 7"},
+	  {part:"Electrical Cable Bundle (Zone B)",partNo:"EC-440",job:"SJ-004",qty:1,leadWeeks:1,status:"In Stock",supplier:"ElecSupply",cost:1100,eta:null},
+	  {part:"Circuit Breaker Set",partNo:"CB-220",job:"SJ-004",qty:6,leadWeeks:2,status:"In Stock",supplier:"ElecSupply",cost:900,eta:null},
+	  {part:"Weld Rod Set (structural)",partNo:"WR-S80",job:"SJ-005",qty:null,leadWeeks:1,status:"Conditional",supplier:"SteelWeld",cost:null,eta:"On-site with contractor — quantity TBD post-diagnosis"},
+	  {part:"Refrigerant R-404A",partNo:"REF-404",job:"SJ-006",qty:1,leadWeeks:0,status:"In Stock",supplier:"Apex Refrigeration",cost:380,eta:null},
+	];
+	
+	const SHUTDOWN_CONTRACTORS = [
+	  {name:"PowerGrid Services",job:"SJ-004",role:"Electrical Rewire Specialists",minShift:10,onSiteDate:"Mar 14",headcount:3,dayRate:2800,status:"Confirmed",contact:"Dave Kowalczyk",notes:"10-hr minimum shift. Coordinate LOTO handover with Carlos Rivera."},
+	  {name:"SteelWeld Specialists",job:"SJ-005",role:"Structural Welding & NDT",minShift:8,onSiteDate:"Mar 15",headcount:2,dayRate:3200,status:"Confirmed",contact:"Maria Santos",notes:"Scope TBD on-site. Bring full NDT kit. Best/worst case 4-16hrs — budget for worst case."},
+	  {name:"Apex Refrigeration",job:"SJ-006",role:"Refrigerant Recharge",minShift:4,onSiteDate:"Mar 16",headcount:1,dayRate:1400,status:"Pending Confirmation",contact:"James Okafor (on-site supervisor)",notes:"Already on subcontractor WO list. Confirm arrival time by Mar 10."},
+	];
+	
+	const SHUTDOWN_INTERNAL = [
+	  {name:"Carlos Rivera",role:"Senior Technician",jobs:["SJ-001"],hoursAllocated:4,certified:["Heat Sealer","Electrical","Filler","Conveyor"]},
+	  {name:"Marcus Webb",role:"Technician",jobs:["SJ-002"],hoursAllocated:9,certified:["Conveyor","Heat Tunnel","Packaging"]},
+	  {name:"Priya Singh",role:"Technician",jobs:["SJ-003"],hoursAllocated:6,certified:["Filler","Conveyor"]},
+	];
+	
+	// ── SHUTDOWN DASHBOARD ────────────────────────────────────────────────────────
+	function ShutdownDashboard(){
+	  const [activeTab,setActiveTab]=useState("planning");
+	  const [scheduleView,setScheduleView]=useState("optimistic");
+	
+	  const TABS=[
+	    {id:"planning",label:"Planning & Prep"},
+	    {id:"schedule",label:"Schedule"},
+	    {id:"workforce",label:"Workforce"},
+	    {id:"execution",label:"Execution"},
+	  ];
+	
+	  const SDTab=({tab})=>{
+	    const isActive=activeTab===tab.id;
+	    return(<button onClick={()=>setActiveTab(tab.id)} style={{display:"flex",alignItems:"center",gap:5,padding:"12px 16px",border:"none",borderBottom:isActive?`2px solid ${T.primary}`:"2px solid transparent",background:"transparent",cursor:"pointer",fontWeight:isActive?800:500,fontSize:12,color:isActive?T.primary:T.gray900,whiteSpace:"nowrap"}}>{tab.label}</button>);
+	  };
+	
+	  const partStatusColor=s=>s==="In Stock"?T.positive:s==="On Order"?T.info:s==="Conditional"?T.warning:T.negative;
+	  const jobStatusColor=s=>s==="Ready"?T.positive:s==="Contractor Pending"?T.warning:s==="Scope Uncertain"?T.warning:T.neutral;
+	  const certaintyColor=c=>c==="High"?T.positive:c==="Medium"?T.warning:T.negative;
+	
+	  // Schedule Gantt data
+	  const DAY_LABELS=["Day 1 — Mar 14","Day 2 — Mar 15","Day 3 — Mar 16"];
+	  const HOURS_PER_DAY=10; // 8am-6pm
+	  const totalCols=DAY_LABELS.length*HOURS_PER_DAY;
+	  const jobToCol=(day,startHr,hrs)=>{
+	    const dayOffset=(day-1)*HOURS_PER_DAY;
+	    const hrOffset=startHr-8;
+	    return{left:(dayOffset+hrOffset)/totalCols*100,width:hrs/totalCols*100};
+	  };
+	
+	  // Build schedule positions
+	  const schedJobs=SHUTDOWN_JOBS.map(j=>{
+	    const hrs=scheduleView==="optimistic"?j.minHrs:j.maxHrs;
+	    return{...j,hrs,pos:jobToCol(j.day,j.startHr,hrs)};
+	  });
+	
+	  // Adjust SJ-005 on pessimistic
+	  const sj005=schedJobs.find(j=>j.id==="SJ-005");
+	  // SJ-002 prereqs SJ-001, recalc start
+	  const sj001=schedJobs.find(j=>j.id==="SJ-001");
+	  const sj002=schedJobs.find(j=>j.id==="SJ-002");
+	  if(sj001&&sj002){
+	    const sj001End=(1-1)*HOURS_PER_DAY+(sj001.startHr-8)+sj001.hrs;
+	    const sj002Start=sj001End;
+	    sj002.pos=jobToCol(1,8+sj002Start,sj002.hrs);
+	  }
+	
+	  const totalBudget=SHUTDOWN_CONTRACTORS.reduce((a,c)=>a+c.dayRate*2.5,0)+SHUTDOWN_PARTS.reduce((a,p)=>a+(p.cost||0),0)+42000;
+	
+	  return(<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
+	    {/* Header */}
+	    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px 0",flexShrink:0}}>
+	      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12,flexWrap:"wrap",gap:8}}>
+	        <div>
+	          <div style={{fontSize:18,fontWeight:800,color:T.black}}>{SHUTDOWN.name}</div>
+	          <div style={{fontSize:12,color:T.gray900,marginTop:2}}>{SHUTDOWN.dates} · {SHUTDOWN.duration} · Austin Plant · {SHUTDOWN.daysOut} days out</div>
+	        </div>
+	        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+	          {[
+	            {label:"Jobs",value:`${SHUTDOWN.jobsReady}/${SHUTDOWN.jobsTotal} Ready`,color:SHUTDOWN.jobsReady===SHUTDOWN.jobsTotal?T.positive:T.warning},
+	            {label:"Parts Readiness",value:`${SHUTDOWN.partsReadiness}%`,color:SHUTDOWN.partsReadiness>=90?T.positive:T.warning},
+	            {label:"Contractors",value:`${SHUTDOWN.contractorsConfirmed}/${SHUTDOWN.contractorsConfirmed+SHUTDOWN.contractorsPending} Confirmed`,color:SHUTDOWN.contractorsPending>0?T.warning:T.positive},
+	            {label:"Budget Est.",value:`$${(totalBudget/1000).toFixed(0)}k`,color:T.black},
+	          ].map(k=>(
+	            <div key={k.label} style={{textAlign:"center",padding:"6px 14px",background:T.gray100,borderRadius:4}}>
+	              <div style={{fontSize:15,fontWeight:800,color:k.color}}>{k.value}</div>
+	              <div style={{fontSize:10,color:T.gray400}}>{k.label}</div>
+	            </div>
+	          ))}
+	        </div>
+	      </div>
+	      <div style={{display:"flex",gap:0,overflowX:"auto"}}>
+	        {TABS.map(t=><SDTab key={t.id} tab={t}/>)}
+	      </div>
+	    </div>
+	
+	    <div style={{flex:1,overflowY:"auto",background:T.gray100}}>
+	
+	      {/* ── PLANNING & PREP ── */}
+	      {activeTab==="planning"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+	
+	        {/* Agent banner */}
+	        <div style={{background:T.primary+"10",border:`1px solid ${T.primary}30`,borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"12px 16px"}}>
+	          <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>🧠 Shutdown Planning Agent — {SHUTDOWN.daysOut} Days to Shutdown</div>
+	          <div style={{fontSize:12,color:T.black,marginBottom:8}}>3 of 6 jobs are fully ready. 2 items require action before Mar 10: Filler Calibration Kit delivery confirmation and Apex Refrigeration on-site confirmation. SJ-005 scope remains uncertain until Day 2 diagnosis — schedule holds 16-hr buffer.</div>
+	          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+	            <Badge label="⚠ Apex confirmation needed by Mar 10" color={T.warning}/>
+	            <Badge label="⚠ Filler Calibration Kit ETA Mar 7" color={T.warning}/>
+	            <Badge label="⚠ SJ-005 scope uncertain" color={T.warning}/>
+	          </div>
+	        </div>
+	
+	        {/* Jobs readiness */}
+	        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+	          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
+	            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Shutdown Scope — Job Readiness</div>
+	            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>6 jobs · {SHUTDOWN.duration} · Parts and tools status per job</div>
+	          </div>
+	          <div style={{overflowX:"auto"}}>
+	            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+	              <thead><tr style={{background:T.gray100}}>
+	                {["Job","Title","Assigned To","Est. Duration","Certainty","Parts","Tools","Status","Pre-Reqs"].map(h=>(
+	                  <th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>
+	                ))}
+	              </tr></thead>
+	              <tbody>{SHUTDOWN_JOBS.map((j,i)=>(
+	                <tr key={j.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
+	                  <td style={{padding:"9px 14px",fontWeight:800,color:T.black,whiteSpace:"nowrap"}}><span style={{color:j.color}}>●</span> {j.id}</td>
+	                  <td style={{padding:"9px 14px",fontWeight:600,color:T.black,maxWidth:220}}>{j.title}</td>
+	                  <td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{j.assignedTo||<span style={{color:T.warning,fontWeight:700}}>{j.contractor}</span>}</td>
+	                  <td style={{padding:"9px 14px",whiteSpace:"nowrap",color:T.gray900}}>{j.minHrs===j.maxHrs?`${j.minHrs}h`:`${j.minHrs}–${j.maxHrs}h`}</td>
+	                  <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}><Badge label={j.certainty} color={certaintyColor(j.certainty)}/></td>
+	                  <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}>{j.partsReady?<span style={{color:T.positive,fontWeight:700}}>✓ Ready</span>:<span style={{color:T.warning,fontWeight:700}}>⚠ Pending</span>}</td>
+	                  <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}>{j.toolsReady?<span style={{color:T.positive,fontWeight:700}}>✓ Ready</span>:<span style={{color:T.warning,fontWeight:700}}>⚠ Pending</span>}</td>
+	                  <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}><Badge label={j.status} color={jobStatusColor(j.status)}/></td>
+	                  <td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{j.prereqs.length>0?j.prereqs.join(", "):"—"}</td>
+	                </tr>
+	              ))}</tbody>
+	            </table>
+	          </div>
+	        </div>
+	
+	        {/* Parts tracker */}
+	        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+	          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
+	            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Parts Kitting — Long Lead Tracker</div>
+	            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>All parts required across 6 jobs · {SHUTDOWN_PARTS.filter(p=>p.status==="In Stock").length} of {SHUTDOWN_PARTS.length} confirmed in stock</div>
+	          </div>
+	          <div style={{overflowX:"auto"}}>
+	            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+	              <thead><tr style={{background:T.gray100}}>
+	                {["Part","Part No.","Job","Qty","Lead Time","Status","Supplier","Cost","ETA / Notes"].map(h=>(
+	                  <th key={h} style={{padding:"8px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>
+	                ))}
+	              </tr></thead>
+	              <tbody>{SHUTDOWN_PARTS.map((p,i)=>(
+	                <tr key={p.partNo} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
+	                  <td style={{padding:"8px 14px",fontWeight:600,color:T.black}}>{p.part}</td>
+	                  <td style={{padding:"8px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{p.partNo}</td>
+	                  <td style={{padding:"8px 14px",whiteSpace:"nowrap"}}><span style={{fontWeight:700,color:SHUTDOWN_JOBS.find(j=>j.id===p.job)?.color}}>{p.job}</span></td>
+	                  <td style={{padding:"8px 14px",color:T.gray900}}>{p.qty||"TBD"}</td>
+	                  <td style={{padding:"8px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{p.leadWeeks===0?"Same day":`${p.leadWeeks}w`}</td>
+	                  <td style={{padding:"8px 14px",whiteSpace:"nowrap"}}><Badge label={p.status} color={partStatusColor(p.status)}/></td>
+	                  <td style={{padding:"8px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{p.supplier}</td>
+	                  <td style={{padding:"8px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{p.cost?`$${p.cost.toLocaleString()}`:"TBD"}</td>
+	                  <td style={{padding:"8px 14px",color:p.eta?T.warning:T.gray400,fontSize:11,fontWeight:p.eta?700:400}}>{p.eta||"—"}</td>
+	                </tr>
+	              ))}</tbody>
+	            </table>
+	          </div>
+	        </div>
+	      </div>}
+	
+	      {/* ── SCHEDULE ── */}
+	      {activeTab==="schedule"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+	
+	        {/* Optimizer banner */}
+	        <div style={{background:"#FFF8E1",border:`1px solid ${T.warning}`,borderLeft:`3px solid ${T.warning}`,borderRadius:4,padding:"12px 16px"}}>
+	          <div style={{fontSize:11,fontWeight:700,color:T.warning,marginBottom:4}}>🧠 Shutdown Schedule Optimizer — Probabilistic View Active</div>
+	          <div style={{fontSize:12,color:T.black,marginBottom:8}}>SJ-005 (Structural Weld Inspection) has uncertain scope — cannot diagnose until Day 2. Toggle between optimistic (4hr) and pessimistic (16hr) scenarios to see downstream impact. If worst case, Day 3 runs 4hrs over — Apex Refrigeration shift must be extended or rescheduled.</div>
+	          <div style={{display:"flex",gap:6}}>
+	            <button onClick={()=>setScheduleView("optimistic")} style={{padding:"5px 14px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",border:`1px solid ${scheduleView==="optimistic"?T.positive:T.border}`,background:scheduleView==="optimistic"?T.positive:T.white,color:scheduleView==="optimistic"?T.white:T.gray900}}>Optimistic (4hr welds clean)</button>
+	            <button onClick={()=>setScheduleView("pessimistic")} style={{padding:"5px 14px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",border:`1px solid ${scheduleView==="pessimistic"?T.negative:T.border}`,background:scheduleView==="pessimistic"?T.negative:T.white,color:scheduleView==="pessimistic"?T.white:T.gray900}}>Pessimistic (16hr cracks found)</button>
+	            {scheduleView==="pessimistic"&&<Badge label="⚠ Day 3 overrun — Apex shift extension required" color={T.negative}/>}
+	          </div>
+	        </div>
+	
+	        {/* Gantt */}
+	        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+	          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
+	            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Shutdown Schedule — Gantt View</div>
+	            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Mar 14–16 · 08:00–18:00 each day · {scheduleView==="optimistic"?"Optimistic scenario":"Pessimistic scenario — worst case"}</div>
+	          </div>
+	          <div style={{padding:"16px 20px",overflowX:"auto"}}>
+	            {/* Day headers */}
+	            <div style={{display:"flex",marginLeft:140,marginBottom:4}}>
+	              {DAY_LABELS.map(d=><div key={d} style={{flex:1,textAlign:"center",fontSize:11,fontWeight:700,color:T.gray900,borderLeft:`1px solid ${T.border}`,paddingLeft:4}}>{d}</div>)}
+	            </div>
+	            {/* Hour markers */}
+	            <div style={{display:"flex",marginLeft:140,marginBottom:8}}>
+	              {DAY_LABELS.map(d=><div key={d} style={{flex:1,display:"flex",justifyContent:"space-between"}}>
+	                {[8,10,12,14,16,18].map(h=><span key={h} style={{fontSize:9,color:T.gray400}}>{h}:00</span>)}
+	              </div>)}
+	            </div>
+	            {/* Job rows */}
+	            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+	              {schedJobs.map(j=>(
+	                <div key={j.id} style={{display:"flex",alignItems:"center",gap:0}}>
+	                  <div style={{width:140,flexShrink:0,paddingRight:12}}>
+	                    <div style={{fontSize:11,fontWeight:800,color:j.color}}>{j.id}</div>
+	                    <div style={{fontSize:10,color:T.gray400,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:128}}>{j.assignedTo||j.contractor}</div>
+	                  </div>
+	                  <div style={{flex:1,height:32,background:T.gray100,borderRadius:3,position:"relative",border:`1px solid ${T.border}`}}>
+	                    {DAY_LABELS.map((_,i)=><div key={i} style={{position:"absolute",left:`${(i/3)*100}%`,top:0,bottom:0,borderLeft:`1px dashed ${T.border}40`,zIndex:0}}/>)}
+	                    {/* Uncertainty bar for SJ-005 */}
+	                    {j.id==="SJ-005"&&scheduleView==="optimistic"&&<div style={{position:"absolute",left:`${j.pos.left}%`,width:`${jobToCol(j.day,j.startHr,j.maxHrs).width}%`,top:3,bottom:3,background:T.warning+"20",borderRadius:3,border:`1px dashed ${T.warning}`,zIndex:1}}></div>}
+	                    <div title={j.title} style={{position:"absolute",left:`${j.pos.left}%`,width:`${Math.max(j.pos.width,2)}%`,top:3,bottom:3,background:j.color,borderRadius:3,opacity:0.85,zIndex:2,display:"flex",alignItems:"center",overflow:"hidden",paddingLeft:6}}>
+	                      <span style={{fontSize:9,color:T.white,fontWeight:700,whiteSpace:"nowrap"}}>{j.id} · {j.hrs}h</span>
+	                    </div>
+	                  </div>
+	                </div>
+	              ))}
+	            </div>
+	            {/* Legend */}
+	            <div style={{display:"flex",gap:16,marginTop:12,flexWrap:"wrap",marginLeft:140}}>
+	              {SHUTDOWN_JOBS.map(j=><div key={j.id} style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:T.gray900}}><span style={{width:10,height:10,borderRadius:2,background:j.color,display:"inline-block"}}/>{j.id}</div>)}
+	              <div style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:T.gray900}}><span style={{width:10,height:10,borderRadius:2,background:T.warning+"30",border:`1px dashed ${T.warning}`,display:"inline-block"}}/> Uncertainty buffer</div>
+	            </div>
+	          </div>
+	        </div>
+	
+	        {/* Job detail cards */}
+	        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+	          <div style={{fontSize:12,fontWeight:800,color:T.black}}>Job Details & Dependencies</div>
+	          {SHUTDOWN_JOBS.map(j=>(
+	            <div key={j.id} style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",borderLeft:`4px solid ${j.color}`,padding:"12px 16px"}}>
+	              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
+	                <div style={{flex:1}}>
+	                  <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
+	                    <span style={{fontSize:12,fontWeight:800,color:j.color}}>{j.id}</span>
+	                    <Badge label={j.priority} color={j.priority==="Critical"?T.negative:j.priority==="High"?T.warning:T.info}/>
+	                    <Badge label={`Certainty: ${j.certainty}`} color={certaintyColor(j.certainty)}/>
+	                    <Badge label={j.status} color={jobStatusColor(j.status)}/>
+	                    {j.prereqs.length>0&&<Badge label={`After: ${j.prereqs.join(", ")}`} color={T.neutral}/>}
+	                  </div>
+	                  <div style={{fontSize:13,fontWeight:700,color:T.black,marginBottom:2}}>{j.title}</div>
+	                  <div style={{fontSize:11,color:T.gray900,marginBottom:j.note?6:0}}>{j.assignedTo?"Internal: "+j.assignedTo:"Contractor: "+j.contractor} · Day {j.day} · {j.minHrs===j.maxHrs?`${j.minHrs}h`:`${j.minHrs}–${j.maxHrs}h`}</div>
+	                  {j.note&&<div style={{fontSize:11,color:T.primary}}>🧠 {j.note}</div>}
+	                </div>
+	              </div>
+	            </div>
+	          ))}
+	        </div>
+	      </div>}
+	
+	      {/* ── WORKFORCE ── */}
+	      {activeTab==="workforce"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+	
+	        <div style={{background:T.primary+"10",border:`1px solid ${T.primary}30`,borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"12px 16px"}}>
+	          <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>🧠 Workforce & Contractor Orchestrator</div>
+	          <div style={{fontSize:12,color:T.black}}>3 internal technicians across 3 jobs. 3 contractors covering specialist scope. PowerGrid Services has a 10-hr minimum shift — agent has confirmed SJ-004 fits within that constraint. SteelWeld scope is variable — contractor briefed on best/worst case. Apex confirmation still pending.</div>
+	        </div>
+	
+	        {/* Internal team */}
+	        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+	          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
+	            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Internal Workforce</div>
+	            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>{SHUTDOWN_INTERNAL.length} technicians allocated · Skills verified against job requirements</div>
+	          </div>
+	          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:12}}>
+	            {SHUTDOWN_INTERNAL.map(t=>(
+	              <div key={t.name} style={{background:T.gray100,borderRadius:4,padding:"14px 16px"}}>
+	                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap",marginBottom:10}}>
+	                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+	                    <div style={{width:32,height:32,borderRadius:"50%",background:T.primary,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:T.white,flexShrink:0}}>{t.name.split(" ").map(n=>n[0]).join("")}</div>
+	                    <div><div style={{fontSize:13,fontWeight:800,color:T.black}}>{t.name}</div><div style={{fontSize:11,color:T.gray900}}>{t.role}</div></div>
+	                  </div>
+	                  <div style={{display:"flex",gap:10}}>
+	                    <div style={{textAlign:"center",padding:"4px 10px",background:T.white,borderRadius:4}}>
+	                      <div style={{fontSize:14,fontWeight:800,color:T.black}}>{t.hoursAllocated}h</div>
+	                      <div style={{fontSize:10,color:T.gray400}}>Allocated</div>
+	                    </div>
+	                  </div>
+	                </div>
+	                <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
+	                  {t.jobs.map(j=>{const job=SHUTDOWN_JOBS.find(sj=>sj.id===j);return(<span key={j} style={{fontSize:11,fontWeight:700,color:job?.color,background:job?.color+"18",border:`1px solid ${job?.color}40`,borderRadius:3,padding:"2px 8px"}}>{j} — {job?.title.split("—")[0].trim()}</span>);})}
+	                </div>
+	                <div style={{fontSize:11,color:T.gray900}}>Certified: {t.certified.join(" · ")}</div>
+	              </div>
+	            ))}
+	          </div>
+	        </div>
+	
+	        {/* Contractors */}
+	        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+	          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
+	            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Contractors</div>
+	            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>{SHUTDOWN_CONTRACTORS.length} contractors · {SHUTDOWN_CONTRACTORS.filter(c=>c.status==="Confirmed").length} confirmed · {SHUTDOWN_CONTRACTORS.filter(c=>c.status==="Pending Confirmation").length} pending</div>
+	          </div>
+	          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:12}}>
+	            {SHUTDOWN_CONTRACTORS.map(c=>{
+	              const job=SHUTDOWN_JOBS.find(j=>j.id===c.job);
+	              return(<div key={c.name} style={{background:T.gray100,borderRadius:4,borderLeft:`4px solid ${c.status==="Confirmed"?T.positive:T.warning}`,padding:"14px 16px"}}>
+	                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap",marginBottom:8}}>
+	                  <div>
+	                    <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
+	                      <span style={{fontSize:13,fontWeight:800,color:T.black}}>{c.name}</span>
+	                      <Badge label={c.status} color={c.status==="Confirmed"?T.positive:T.warning}/>
+	                      <span style={{fontSize:11,fontWeight:700,color:job?.color,background:job?.color+"18",border:`1px solid ${job?.color}40`,borderRadius:3,padding:"2px 8px"}}>{c.job}</span>
+	                    </div>
+	                    <div style={{fontSize:12,color:T.gray900,marginBottom:4}}>{c.role} · {c.headcount} person{c.headcount>1?"s":""} · On-site: {c.onSiteDate}</div>
+	                    <div style={{display:"flex",gap:16,fontSize:11,color:T.gray900,flexWrap:"wrap"}}>
+	                      <span>Min shift: <strong>{c.minShift}h</strong></span>
+	                      <span>Day rate: <strong>${c.dayRate.toLocaleString()}</strong></span>
+	                      <span>Contact: <strong>{c.contact}</strong></span>
+	                    </div>
+	                  </div>
+	                </div>
+	                <div style={{background:T.white,borderRadius:3,padding:"8px 12px",fontSize:11,color:T.gray900,borderLeft:`2px solid ${T.primary}`}}>🧠 {c.notes}</div>
+	              </div>);
+	            })}
+	          </div>
+	        </div>
+	
+	        {/* Shift plan */}
+	        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+	          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
+	            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Shift Plan — Who's On When</div>
+	          </div>
+	          <div style={{overflowX:"auto"}}>
+	            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+	              <thead><tr style={{background:T.gray100}}>
+	                {["Person","Type","Day 1 (Mar 14)","Day 2 (Mar 15)","Day 3 (Mar 16)","Notes"].map(h=>(
+	                  <th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>
+	                ))}
+	              </tr></thead>
+	              <tbody>
+	                {[
+	                  {name:"Carlos Rivera",type:"Internal",d1:"SJ-001 (4h)",d2:"Standby / support",d3:"Closure & sign-off",notes:"Available all 3 days"},
+	                  {name:"Marcus Webb",type:"Internal",d1:"SJ-002 (8–9h)",d2:"Overflow if needed",d3:"—",notes:"Full day 1 commitment"},
+	                  {name:"Priya Singh",type:"Internal",d1:"SJ-003 (5–6h)",d2:"—",d3:"—",notes:"Day 1 only — tools pending"},
+	                  {name:"PowerGrid Services",type:"Contractor",d1:"SJ-004 (10h min)",d2:"—",d3:"—",notes:"10hr minimum — Day 1"},
+	                  {name:"SteelWeld Specialists",type:"Contractor",d1:"—",d2:"SJ-005 (4–16h)",d3:"Overflow if worst case",notes:"Scope TBD Day 2 AM"},
+	                  {name:"Apex Refrigeration",type:"Contractor",d1:"—",d2:"—",d3:"SJ-006 (2h)",notes:"Pending confirmation"},
+	                ].map((r,i)=>(
+	                  <tr key={r.name} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
+	                    <td style={{padding:"9px 14px",fontWeight:700,color:T.black,whiteSpace:"nowrap"}}>{r.name}</td>
+	                    <td style={{padding:"9px 14px"}}><Badge label={r.type} color={r.type==="Internal"?T.primary:T.neutral}/></td>
+	                    <td style={{padding:"9px 14px",color:r.d1==="—"?T.gray400:T.black,fontWeight:r.d1==="—"?400:600}}>{r.d1}</td>
+	                    <td style={{padding:"9px 14px",color:r.d2==="—"?T.gray400:T.black,fontWeight:r.d2==="—"?400:600}}>{r.d2}</td>
+	                    <td style={{padding:"9px 14px",color:r.d3==="—"?T.gray400:T.black,fontWeight:r.d3==="—"?400:600}}>{r.d3}</td>
+	                    <td style={{padding:"9px 14px",color:T.gray900,fontSize:11}}>{r.notes}</td>
+	                  </tr>
+	                ))}
+	              </tbody>
+	            </table>
+	          </div>
+	        </div>
+	      </div>}
+	
+	      {/* ── EXECUTION ── */}
+	      {activeTab==="execution"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+	
+	        <div style={{background:"#FEF2F2",border:`1px solid ${T.negative}30`,borderRadius:4,padding:"12px 16px",display:"flex",alignItems:"center",gap:10}}>
+	          <div style={{width:10,height:10,borderRadius:"50%",background:T.gray400,flexShrink:0}}/>
+	          <div><span style={{fontSize:12,fontWeight:800,color:T.gray900}}>Shutdown not yet active — </span><span style={{fontSize:12,color:T.gray900}}>Execution view goes live on Mar 14 at 08:00. Live job tracking, time on tool, budget actuals, and real-time schedule reoptimisation will appear here once the shutdown commences.</span></div>
+	        </div>
+	
+	        {/* Preview of what execution will look like */}
+	        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+	          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
+	            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Execution Dashboard — Preview</div>
+	            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>This is what the live execution view will show once the shutdown begins</div>
+	          </div>
+	          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:12}}>
+	            {/* Mock KPI strip */}
+	            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+	              {[
+	                {label:"Jobs Complete",value:"0/6",color:T.gray400},
+	                {label:"Hours on Tool",value:"0.0h",color:T.gray400},
+	                {label:"vs Plan",value:"—",color:T.gray400},
+	                {label:"Budget Used",value:"$0",color:T.gray400},
+	                {label:"Schedule Status",value:"Not Started",color:T.gray400},
+	              ].map(k=>(
+	                <div key={k.label} style={{flex:1,minWidth:100,textAlign:"center",padding:"10px 14px",background:T.gray100,borderRadius:4,opacity:0.5}}>
+	                  <div style={{fontSize:16,fontWeight:800,color:k.color}}>{k.value}</div>
+	                  <div style={{fontSize:10,color:T.gray400}}>{k.label}</div>
+	                </div>
+	              ))}
+	            </div>
+	            {/* Mock job status board */}
+	            {SHUTDOWN_JOBS.map(j=>(
+	              <div key={j.id} style={{background:T.gray100,borderRadius:4,borderLeft:`4px solid ${T.border}`,padding:"12px 16px",opacity:0.5}}>
+	                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+	                  <div>
+	                    <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:2}}><span style={{fontSize:12,fontWeight:800,color:T.gray400}}>{j.id}</span><Badge label="Not Started" color={T.neutral}/></div>
+	                    <div style={{fontSize:12,color:T.gray400}}>{j.title}</div>
+	                  </div>
+	                  <div style={{display:"flex",gap:10,fontSize:11,color:T.gray400}}>
+	                    <span>Est: {j.minHrs}h</span>
+	                    <span>Actual: —</span>
+	                    <span>Start: —</span>
+	                  </div>
+	                </div>
+	              </div>
+	            ))}
+	            <div style={{background:T.primary+"10",border:`1px solid ${T.primary}30`,borderRadius:4,padding:"12px 16px"}}>
+	              <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>🧠 What the Schedule Optimizer will do on Day 2</div>
+	              <div style={{fontSize:12,color:T.black}}>When SJ-005 opens and the diagnostic finding comes in, the agent will immediately re-model the remaining schedule. If cracks are found and SJ-005 extends to 16hrs, it will: flag the Day 3 overrun, recommend extending the SteelWeld shift, notify Apex Refrigeration of a delayed start, and recalculate budget actuals. All in real time, before the supervisor has had a chance to react.</div>
+	            </div>
+	          </div>
+	        </div>
+	      </div>}
+	
+	    </div>
+	  </div>);
+	}
+	
+	
+	
+	// ── SETPOINT & RECIPE OPTIMIZATION DATA ──────────────────────────────────────
+	const SP_LINE = "Line 3";
+	
+	const SP_EQUIPMENT = [
+	  {id:"slicer",label:"Slicer",short:"SL",x:60,y:140,w:70,h:50,
+	   params:[
+	     {name:"Slice Thickness",unit:"mm",setpoint:1.5,actual:1.58,min:1.2,max:1.8,status:"warning",tag:"slicer@thickness"},
+	     {name:"Feed Rate",unit:"kg/h",setpoint:820,actual:818,min:750,max:900,status:"ok",tag:"slicer@feed_rate"},
+	   ],
+	   agentNote:"Slice thickness drifting +0.08mm above setpoint. Recommend recalibration — linked to uneven frying and 3% QC reject uptick on Line 3."},
+	  {id:"blancher",label:"Blancher",short:"BL",x:190,y:140,w:70,h:50,
+	   params:[
+	     {name:"Water Temp",unit:"°C",setpoint:70,actual:68.2,min:65,max:75,status:"warning",tag:"blancher@temp"},
+	     {name:"Dwell Time",unit:"min",setpoint:10,actual:10.1,min:7,max:15,status:"ok",tag:"blancher@dwell"},
+	   ],
+	   agentNote:"Water temp 1.8°C below setpoint. May cause incomplete starch removal — monitor chip colour on optical sorter output."},
+	  {id:"fryer",label:"Continuous Fryer",short:"FR",x:330,y:120,w:90,h:70,
+	   params:[
+	     {name:"Oil Temperature",unit:"°C",setpoint:175,actual:178.4,min:160,max:182,status:"warning",tag:"fryer@oil_temp"},
+	     {name:"Belt Speed",unit:"m/min",setpoint:2.8,actual:2.81,min:2.0,max:3.5,status:"ok",tag:"fryer@belt_speed"},
+	     {name:"Dwell Time",unit:"min",setpoint:2.8,actual:2.79,min:1.5,max:5.0,status:"ok",tag:"fryer@dwell"},
+	     {name:"Oil Level",unit:"%",setpoint:85,actual:82,min:75,max:95,status:"warning",tag:"fryer@oil_level"},
+	   ],
+	   agentNote:"⚠ Oil temp running 3.4°C above setpoint — primary driver of sealer degradation (WO-4421). High oil temp increases chip moisture variance, stressing the heat sealer. Recommend reducing oil temp to 175°C and monitoring seal quality."},
+	  {id:"deoiler",label:"De-oiler",short:"DO",x:480,y:140,w:70,h:50,
+	   params:[
+	     {name:"Vibration Freq",unit:"Hz",setpoint:18,actual:18.1,min:15,max:22,status:"ok",tag:"deoiler@freq"},
+	     {name:"Oil Content Out",unit:"%",setpoint:28,actual:29.2,min:24,max:32,status:"ok",tag:"deoiler@oil_out"},
+	   ],
+	   agentNote:"Within spec. Oil content slightly elevated — consistent with high fryer oil temp. Will self-correct once fryer temp is adjusted."},
+	  {id:"cooler",label:"Cooling Conveyor",short:"CC",x:610,y:140,w:70,h:50,
+	   params:[
+	     {name:"Exit Temp",unit:"°C",setpoint:42,actual:44.1,min:35,max:50,status:"ok",tag:"cooler@exit_temp"},
+	     {name:"Belt Speed",unit:"m/min",setpoint:3.2,actual:3.2,min:2.5,max:4.0,status:"ok",tag:"cooler@belt_speed"},
+	   ],
+	   agentNote:"Operating normally. Exit temp slightly elevated — downstream of high fryer temp. Monitor seasoning adhesion."},
+	  {id:"seasoner",label:"Seasoning Drum",short:"SD",x:740,y:140,w:70,h:50,
+	   params:[
+	     {name:"Drum Speed",unit:"RPM",setpoint:12,actual:11.8,min:8,max:16,status:"ok",tag:"seasoner@speed"},
+	     {name:"Seasoning Rate",unit:"g/kg",setpoint:22,actual:23.4,min:18,max:26,status:"warning",tag:"seasoner@rate"},
+	     {name:"Drum Temp",unit:"°C",setpoint:38,actual:39.1,min:32,max:45,status:"ok",tag:"seasoner@temp"},
+	   ],
+	   agentNote:"Seasoning application rate 6.4% above target — likely caused by elevated chip temp from fryer. Chips are stickier when hot, absorbing more seasoning. Will self-correct when fryer temp is adjusted."},
+	  {id:"sealer",label:"Heat Sealer",short:"HS",x:870,y:140,w:70,h:50,
+	   params:[
+	     {name:"Seal Temp",unit:"°C",setpoint:185,actual:191.2,min:178,max:195,status:"critical",tag:"sealer@temp"},
+	     {name:"Dwell Time",unit:"ms",setpoint:600,actual:612,min:500,max:700,status:"ok",tag:"sealer@dwell"},
+	     {name:"Seal Pressure",unit:"bar",setpoint:4.2,actual:4.1,min:3.5,max:5.0,status:"ok",tag:"sealer@pressure"},
+	   ],
+	   agentNote:"⚠ CRITICAL — Seal temp 6.2°C above setpoint and drifting. Root cause: fryer oil temp running high → chips arrive at sealer with higher moisture variance → sealer compensating with higher temp → element degradation (WO-4421). Fix the fryer first."},
+	  {id:"packager",label:"Packager",short:"PK",x:1000,y:140,w:70,h:50,
+	   params:[
+	     {name:"Nitrogen Fill",unit:"%",setpoint:92,actual:91.8,min:88,max:96,status:"ok",tag:"packager@n2"},
+	     {name:"Seal Integrity",unit:"%",setpoint:99.5,actual:98.1,min:98,max:100,status:"warning",tag:"packager@seal"},
+	   ],
+	   agentNote:"Seal integrity below target — downstream effect of heat sealer running hot. 1.9% reject rate above 1.5% target. Will improve once sealer is stabilized."},
+	];
+	
+	const SP_RECS = [
+	  {id:"sr1",priority:"Critical",equipment:"Continuous Fryer",tag:"fryer@oil_temp",title:"Reduce Fryer Oil Temperature",current:178.4,target:175.0,unit:"°C",delta:-3.4,rationale:"Oil temp 3.4°C above setpoint is the root cause of a cascade: elevated chip moisture variance → sealer overcompensation → element degradation (WO-4421). Reducing to 175°C will stabilize downstream equipment within 2–3 production cycles.",crossDomain:"Maintenance: reduces load on heat sealer (linked to WO-4421). Quality: expected 2.1% reduction in QC rejects. Production: no output impact expected.",impact:{quality:"+2.1% FPY",maintenance:"Reduces sealer stress — supports WO-4421 resolution",energy:"-1.8% fryer energy"},applied:false},
+	  {id:"sr2",priority:"High",equipment:"Slicer",tag:"slicer@thickness",title:"Recalibrate Slicer Thickness",current:1.58,target:1.50,unit:"mm",delta:-0.08,rationale:"Slice thickness has drifted +0.08mm over the past 48hrs, contributing to uneven frying and a 3% uptick in QC rejects on optical sorter. Recommend recalibration during next scheduled changeover.",crossDomain:"Quality: expected reduction in optical sorter rejects. Maintenance: schedule slicer blade inspection — drift pattern suggests blade wear.",impact:{quality:"-3% reject rate",maintenance:"Flag blade inspection",energy:"Neutral"},applied:false},
+	  {id:"sr3",priority:"Medium",equipment:"Blancher",tag:"blancher@temp",title:"Raise Blancher Water Temperature",current:68.2,target:70.0,unit:"°C",delta:+1.8,rationale:"Water temp 1.8°C below setpoint due to overnight heat exchanger fouling on the blancher circuit. Chip colour index trending darker — if uncorrected for 24hrs will breach QC spec for SKU 3801.",crossDomain:"Quality: chip colour drifting. Maintenance: flag heat exchanger fouling on blancher circuit for next inspection cycle.",impact:{quality:"Stabilises chip colour index",maintenance:"Flag HX inspection",energy:"+0.4% energy"},applied:false},
+	  {id:"sr4",priority:"Medium",equipment:"Seasoning Drum",tag:"seasoner@rate",title:"Reduce Seasoning Application Rate",current:23.4,target:22.0,unit:"g/kg",delta:-1.4,rationale:"Seasoning over-application is a downstream effect of elevated fryer temp. Will self-correct once fryer is adjusted. If fryer fix is delayed >4hrs, manually adjust drum feed rate to avoid SKU 3801 flavour spec breach.",crossDomain:"Quality: seasoning variance will breach spec in 4hrs if fryer not corrected. Planning: excess seasoning usage increasing material cost ~$120/shift.",impact:{quality:"Maintains flavour spec",planning:"-$120/shift seasoning cost",energy:"Neutral"},applied:false},
+	];
+	
+	const SP_RECIPES = [
+	  {sku:"SKU 3801",name:"BBQ Chips",lastUpdated:"Feb 10, 2026",frierTemp:175,sliceThick:1.5,blancherTemp:70,seasonRate:22,status:"Active",performance:"97.2% FPY last 7 days",agentRec:{
+	    hasRec:true,reason:"Fryer oil temp has been running 3.4°C above standard for 3 days. Agent recommends updating recipe standard to reflect recalibrated fryer baseline, and reducing seasoning rate from 22 to 21g/kg to account for improved chip temp consistency post-fix.",changes:[
+	      {param:"Fryer Oil Temp",current:175,proposed:175,unit:"°C",note:"Confirm actual target after recalibration — standard may need updating"},
+	      {param:"Seasoning Rate",current:22,proposed:21,unit:"g/kg",note:"Reduce to account for improved moisture consistency once fryer is fixed"},
+	    ]}},
+	  {sku:"SKU 2204",name:"Sea Salt Chips (Crimped)",lastUpdated:"Jan 28, 2026",frierTemp:172,sliceThick:1.8,blancherTemp:68,seasonRate:18,status:"Active",performance:"98.8% FPY last 7 days",agentRec:{hasRec:false}},
+	  {sku:"SKU 4412",name:"Sour Cream & Onion",lastUpdated:"Feb 18, 2026",frierTemp:176,sliceThick:1.5,blancherTemp:70,seasonRate:26,status:"On Hold",performance:"—",agentRec:{hasRec:false}},
+	  {sku:"SKU 1105",name:"Lightly Salted",lastUpdated:"Dec 15, 2025",frierTemp:173,sliceThick:1.6,blancherTemp:69,seasonRate:14,status:"Inactive",performance:"—",agentRec:{hasRec:false}},
+	];
+	
+	const SP_ANOMALIES = [
+	  {id:"a1",severity:"Critical",equipment:"Heat Sealer",param:"Seal Temperature",value:"191.2°C",threshold:"185°C target / 195°C max",trend:"↑ Increasing",since:"Feb 26 — 2 days",description:"Seal temp trending upward for 48hrs. Direct driver of WO-4421. Root cause: fryer oil temp cascade — chips arriving at sealer with higher moisture variance, sealer compensating with higher temp.",actionType:"wo",actionLabel:"View WO-4421 in SAP PM →",actionNote:"WO-4421 already raised — Carlos Rivera assigned. Fix fryer temp first; sealer should stabilize within 2 production cycles."},
+	  {id:"a2",severity:"High",equipment:"Slicer",param:"Slice Thickness",value:"1.58mm",threshold:"1.50mm target ±0.05mm",trend:"↑ Drifting up",since:"Feb 27 — 1 day",description:"Thickness drift consistent with blade wear. QC rejects on optical sorter up 3% in last 24hrs. If uncorrected will breach spec by tomorrow shift.",actionType:"setpoint",actionLabel:"Apply Recalibration →",actionNote:"Recalibrate slicer to 1.50mm at next changeover. Schedule blade inspection — drift pattern suggests wear."},
+	  {id:"a3",severity:"High",equipment:"Continuous Fryer",param:"Oil Temperature",value:"178.4°C",threshold:"175°C target ±3°C",trend:"↑ Above setpoint",since:"Feb 25 — 3 days",description:"Root cause of multiple downstream anomalies. Fryer thermocouple may need recalibration. Has been above setpoint for 3 consecutive days — every downstream deviation traces back to this.",actionType:"setpoint",actionLabel:"Apply Fryer Fix (SR-001) →",actionNote:"See Optimization Recs tab — SR-001 will reduce fryer to 175°C. Estimated to resolve 4 of 5 active anomalies within 2–3 cycles."},
+	  {id:"a4",severity:"Medium",equipment:"Blancher",param:"Water Temperature",value:"68.2°C",threshold:"70°C target ±2°C",trend:"↓ Below setpoint",since:"Feb 28 — today",description:"Heat exchanger fouling on blancher circuit reducing heat transfer efficiency. Chip colour index trending darker — if uncorrected for 24hrs will breach QC spec for SKU 3801.",actionType:"escalate",actionLabel:"Escalate to Plant Leader →",actionNote:"Flag for maintenance inspection at next opportunity. Monitor chip colour index on optical sorter output."},
+	  {id:"a5",severity:"Medium",equipment:"Packager",param:"Seal Integrity",value:"98.1%",threshold:"99.5% target / 98% min",trend:"↓ Declining",since:"Feb 27 — 1 day",description:"Downstream of heat sealer running hot. At 98.1% we are just above the 98% minimum — if sealer temp continues rising this will breach minimum spec and require a line stop.",actionType:"monitor",actionLabel:"Mark as Monitoring →",actionNote:"Expect improvement once fryer and sealer are corrected. If drops below 98%, pause line and inspect packaging film spec."},
+	];
+	
+	// ── SETPOINT DASHBOARD ────────────────────────────────────────────────────────
+	function SetpointDashboard(){
+	  const [activeTab,setActiveTab]=useState("overview");
+	  const [selectedLine,setSelectedLine]=useState("Line 3");
+	  const [selectedEquip,setSelectedEquip]=useState(null);
+	  const [appliedRecs,setAppliedRecs]=useState([]);
+	  const [recs,setRecs]=useState(SP_RECS);
+	  const [anomalyActioned,setAnomalyActioned]=useState({});
+	
+	  const applyRec=(id)=>{
+	    setRecs(prev=>prev.map(r=>r.id===id?{...r,applied:true}:r));
+	    setAppliedRecs(prev=>[...prev,id]);
+	  };
+	
+	  const statusColor=s=>s==="critical"?T.negative:s==="warning"?T.warning:T.positive;
+	  const statusDot=s=>s==="critical"?"●":s==="warning"?"●":"●";
+	  const severityColor=s=>s==="Critical"?T.negative:s==="High"?T.warning:T.info;
+	  const priorityColor=p=>p==="Critical"?T.negative:p==="High"?T.warning:p==="Medium"?T.info:T.neutral;
+	
+	  const lineHasData=selectedLine==="Line 3";
+	
+	  const TABS=[
+	    {id:"overview",label:"Process Overview"},
+	    {id:"recommendations",label:"Optimization Recs",alert:recs.filter(r=>!r.applied).length},
+	    {id:"anomalies",label:"Anomaly Detection",alert:SP_ANOMALIES.filter(a=>a.severity==="Critical"||a.severity==="High").length},
+	    {id:"recipes",label:"Recipe Library"},
+	  ];
+	
+	  const SPTab=({tab})=>{
+	    const isActive=activeTab===tab.id;
+	    return(<button onClick={()=>setActiveTab(tab.id)} style={{display:"flex",alignItems:"center",gap:5,padding:"12px 16px",border:"none",borderBottom:isActive?`2px solid ${T.primary}`:"2px solid transparent",background:"transparent",cursor:"pointer",fontWeight:isActive?800:500,fontSize:12,color:isActive?T.primary:T.gray900,whiteSpace:"nowrap"}}>
+	      <span>{tab.label}</span>
+	      {tab.alert>0&&<span style={{background:tab.id==="anomalies"?T.negative:T.warning,color:T.white,borderRadius:10,padding:"1px 6px",fontSize:10,fontWeight:800}}>{tab.alert}</span>}
+	    </button>);
+	  };
+	
+	  // Gauge bar component
+	  const GaugeBar=({min,max,setpoint,actual,unit,status})=>{
+	    const pct=v=>Math.max(0,Math.min(100,((v-min)/(max-min))*100));
+	    const spPct=pct(setpoint);
+	    const actPct=pct(actual);
+	    const color=statusColor(status);
+	    return(<div style={{position:"relative",height:8,background:T.border,borderRadius:4,marginTop:4}}>
+	      <div style={{position:"absolute",left:0,width:`${actPct}%`,height:"100%",background:color,borderRadius:4,transition:"width 0.3s"}}/>
+	      <div style={{position:"absolute",left:`${spPct}%`,top:-2,width:2,height:12,background:T.black,borderRadius:1,transform:"translateX(-50%)"}}/>
+	    </div>);
+	  };
+	
+	  const noDataView=(<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"60vh",gap:12}}>
+	    <div style={{fontSize:32}}>📊</div>
+	    <div style={{fontSize:15,fontWeight:800,color:T.black}}>{selectedLine} — No Data Available</div>
+	    <div style={{fontSize:13,color:T.gray900}}>Process data for {selectedLine} is not yet connected to the Setpoint & Recipe Optimization Agent.</div>
+	    <div style={{background:T.primary+"12",border:`1px solid ${T.primary}30`,borderRadius:4,padding:"10px 20px",fontSize:12,color:T.primary,fontWeight:600}}>Line 3 is the active demo line — select Line 3 to view live data</div>
+	  </div>);
+	
+	  return(<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
+	    {/* Header */}
+	    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px 0",flexShrink:0}}>
+	      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12,flexWrap:"wrap",gap:8}}>
+	        <div>
+	          <div style={{fontSize:18,fontWeight:800,color:T.black}}>Setpoint & Recipe Optimization</div>
+	          <div style={{fontSize:12,color:T.gray900,marginTop:2}}>Process Engineering · Real-time setpoint monitoring & AI-driven optimization</div>
+	        </div>
+	        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+	          {/* Line filter */}
+	          <div style={{display:"flex",gap:4}}>
+	            {["Line 1","Line 2","Line 3"].map(l=>(
+	              <button key={l} onClick={()=>setSelectedLine(l)} style={{padding:"6px 14px",borderRadius:4,fontSize:12,fontWeight:700,cursor:"pointer",border:`1px solid ${selectedLine===l?T.primary:T.border}`,background:selectedLine===l?T.primary:T.white,color:selectedLine===l?T.white:T.gray900}}>{l}</button>
+	            ))}
+	          </div>
+	        </div>
+	      </div>
+	      <div style={{display:"flex",gap:0,overflowX:"auto"}}>
+	        {TABS.map(t=><SPTab key={t.id} tab={t}/>)}
+	      </div>
+	    </div>
+	
+	    <div style={{flex:1,overflowY:"auto",background:T.gray100}}>
+	      {!lineHasData ? noDataView : (<>
+	
+	      {/* ── PROCESS OVERVIEW ── */}
+	      {activeTab==="overview"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+	
+	        {/* Agent banner */}
+	        <div style={{background:T.primary+"10",border:`1px solid ${T.primary}30`,borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"12px 16px"}}>
+	          <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>🧠 Setpoint & Recipe Optimization Agent — {selectedLine} · SKU 3801 (BBQ Chips) · Feb 28, 2026 07:00</div>
+	          <div style={{fontSize:12,color:T.black,marginBottom:6}}>Root cause identified: fryer oil temperature running 3.4°C above setpoint for 3 days, creating a cascade of downstream issues — elevated chip moisture variance, sealer overcompensation, seasoning over-application, and packaging seal integrity decline. Applying SR-001 (reduce fryer to 175°C) is expected to resolve 4 of 5 active anomalies within 2–3 production cycles.</div>
+	          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+	            <Badge label="1 Critical anomaly" color={T.negative}/>
+	            <Badge label="2 High warnings" color={T.warning}/>
+	            <Badge label="4 Optimization recs" color={T.info}/>
+	            <Badge label="Root cause: Fryer oil temp" color={T.primary}/>
+	          </div>
+	        </div>
+	
+	        {/* Process flow diagram */}
+	        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+	          <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+	            <div>
+	              <div style={{fontSize:13,fontWeight:800,color:T.black}}>Process Flow — {selectedLine} · Live Setpoints</div>
+	
+	            </div>
+	            <div style={{display:"flex",gap:10,fontSize:11,color:T.gray900}}>
+	              <span style={{display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:"50%",background:T.positive,display:"inline-block"}}/> On spec</span>
+	              <span style={{display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:"50%",background:T.warning,display:"inline-block"}}/> Warning</span>
+	              <span style={{display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:"50%",background:T.negative,display:"inline-block"}}/> Critical</span>
+	            </div>
+	          </div>
+	          <div style={{padding:"20px",overflowX:"auto"}}>
+	            {/* SVG Process Flow Diagram */}
+	            <svg viewBox="0 0 1120 320" xmlns="http://www.w3.org/2000/svg" style={{width:"100%",minWidth:900,display:"block"}}>
+	              {/* Flow arrows between equipment */}
+	              {[[125,165,190,165],[260,165,330,165],[420,165,480,165],[550,165,610,165],[680,165,740,165],[810,165,870,165],[940,165,1000,165]].map(([x1,y1,x2,y2],i)=>(
+	                <g key={i}>
+	                  <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#94A3B8" strokeWidth="2" markerEnd="url(#arrow)"/>
+	                </g>
+	              ))}
+	              <defs>
+	                <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+	                  <path d="M0,0 L8,3 L0,6 Z" fill="#94A3B8"/>
+	                </marker>
+	              </defs>
+	
+	              {/* Raw material input */}
+	              <rect x="10" y="148" width="50" height="34" rx="4" fill="#F1F5F9" stroke="#CBD5E1" strokeWidth="1.5"/>
+	              <text x="35" y="161" textAnchor="middle" fontSize="8" fontWeight="700" fill="#64748B">RAW</text>
+	              <text x="35" y="173" textAnchor="middle" fontSize="8" fontWeight="700" fill="#64748B">INPUT</text>
+	              <line x1="60" y1="165" x2="55" y2="165" stroke="#94A3B8" strokeWidth="2"/>
+	
+	              {/* Equipment nodes */}
+	              {SP_EQUIPMENT.map(eq=>{
+	                const worstStatus=eq.params.reduce((w,p)=>p.status==="critical"?"critical":p.status==="warning"&&w!=="critical"?"warning":w,"ok");
+	                const borderCol=statusColor(worstStatus);
+	                const isSelected=selectedEquip===eq.id;
+	                const mainParam=eq.params[0];
+	                const pctActual=((mainParam.actual-mainParam.min)/(mainParam.max-mainParam.min))*100;
+	                const pctSP=((mainParam.setpoint-mainParam.min)/(mainParam.max-mainParam.min))*100;
+	
+	                return(<g key={eq.id} onClick={()=>setSelectedEquip(isSelected?null:eq.id)} style={{cursor:"pointer"}}>
+	                  {/* Equipment box */}
+	                  <rect x={eq.x} y={eq.y} width={eq.w} height={eq.h} rx="5"
+	                    fill={isSelected?"#EFF6FF":T.white}
+	                    stroke={isSelected?T.primary:borderCol}
+	                    strokeWidth={isSelected?2.5:1.5}/>
+	                  {/* Status dot */}
+	                  <circle cx={eq.x+eq.w-8} cy={eq.y+8} r="5" fill={borderCol}/>
+	                  {/* Equipment label */}
+	                  <text x={eq.x+eq.w/2} y={eq.y+16} textAnchor="middle" fontSize="8" fontWeight="800" fill="#1E293B">{eq.short}</text>
+	                  {/* Equipment name */}
+	                  {eq.label.split(" ").map((word,wi)=>(
+	                    <text key={wi} x={eq.x+eq.w/2} y={eq.y+eq.h+12+(wi*10)} textAnchor="middle" fontSize="8" fill="#64748B">{word}</text>
+	                  ))}
+	                  {/* Main param value */}
+	                  <text x={eq.x+eq.w/2} y={eq.y+30} textAnchor="middle" fontSize="9" fontWeight="700" fill={borderCol}>{mainParam.actual}{mainParam.unit}</text>
+	                  {/* Mini gauge */}
+	                  <rect x={eq.x+8} y={eq.y+38} width={eq.w-16} height="5" rx="2" fill="#E2E8F0"/>
+	                  <rect x={eq.x+8} y={eq.y+38} width={Math.max(0,Math.min(eq.w-16,(pctActual/100)*(eq.w-16)))} height="5" rx="2" fill={borderCol}/>
+	                  <rect x={eq.x+8+(pctSP/100)*(eq.w-16)-1} y={eq.y+36} width="2" height="9" rx="1" fill="#1E293B"/>
+	                </g>);
+	              })}
+	
+	              {/* Output box */}
+	              <rect x="1070" y="148" width="50" height="34" rx="4" fill="#F0FDF4" stroke="#86EFAC" strokeWidth="1.5"/>
+	              <text x="1095" y="161" textAnchor="middle" fontSize="8" fontWeight="700" fill="#16A34A">PACKED</text>
+	              <text x="1095" y="173" textAnchor="middle" fontSize="8" fontWeight="700" fill="#16A34A">OUTPUT</text>
+	
+	              {/* Root cause callout arrow for fryer */}
+	              <path d="M375,115 L375,100 L375,85" stroke={T.negative} strokeWidth="1.5" strokeDasharray="3 2" fill="none"/>
+	              <rect x="290" y="60" width="170" height="24" rx="4" fill={T.negative+"18"} stroke={T.negative} strokeWidth="1"/>
+	              <text x="375" y="75" textAnchor="middle" fontSize="8" fontWeight="800" fill={T.negative}>⚠ ROOT CAUSE — Fix First</text>
+	            </svg>
+	          </div>
+	        </div>
+	
+	        {/* Selected equipment detail */}
+	        {selectedEquip&&SP_EQUIPMENT.filter(e=>e.id===selectedEquip).map(eq=>{
+	          const worstStatus=eq.params.reduce((w,p)=>p.status==="critical"?"critical":p.status==="warning"&&w!=="critical"?"warning":w,"ok");
+	          return(<div key={eq.id} style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",borderTop:`3px solid ${statusColor(worstStatus)}`}}>
+	            <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+	              <div style={{fontSize:13,fontWeight:800,color:T.black}}>{eq.label} — All Parameters</div>
+	              <button onClick={()=>setSelectedEquip(null)} style={{background:"none",border:"none",cursor:"pointer",color:T.gray400,fontSize:16}}>✕</button>
+	            </div>
+	            <div style={{padding:"16px 20px",display:"flex",gap:16,flexWrap:"wrap"}}>
+	              <div style={{flex:"2 1 300px",display:"flex",flexDirection:"column",gap:10}}>
+	                {eq.params.map(p=>(
+	                  <div key={p.tag} style={{background:T.gray100,borderRadius:4,padding:"10px 14px",borderLeft:`3px solid ${statusColor(p.status)}`}}>
+	                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+	                      <span style={{fontSize:12,fontWeight:700,color:T.black}}>{p.name}</span>
+	                      <div style={{display:"flex",gap:6,alignItems:"center"}}>
+	                        <span style={{fontSize:11,color:T.gray400}}>SP: {p.setpoint}{p.unit}</span>
+	                        <span style={{fontSize:13,fontWeight:800,color:statusColor(p.status)}}>{p.actual}{p.unit}</span>
+	                        <Badge label={p.status==="critical"?"Critical":p.status==="warning"?"Warning":"On Spec"} color={statusColor(p.status)}/>
+	                      </div>
+	                    </div>
+	                    <GaugeBar min={p.min} max={p.max} setpoint={p.setpoint} actual={p.actual} unit={p.unit} status={p.status}/>
+	                    <div style={{display:"flex",justifyContent:"space-between",marginTop:3,fontSize:9,color:T.gray400}}>
+	                      <span>{p.min}{p.unit}</span><span style={{color:T.gray900,fontWeight:600}}>SP: {p.setpoint}{p.unit}</span><span>{p.max}{p.unit}</span>
+	                    </div>
+	                  </div>
+	                ))}
+	              </div>
+	              <div style={{flex:"1 1 200px",background:T.primary+"08",borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"12px 14px"}}>
+	                <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:6}}>🧠 Agent Note</div>
+	                <div style={{fontSize:12,color:T.black,lineHeight:1.6}}>{eq.agentNote}</div>
+	              </div>
+	            </div>
+	          </div>);
+	        })}
+	
+	        {/* Quick equipment overview grid */}
+	        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+	          {SP_EQUIPMENT.map(eq=>{
+	            const worstStatus=eq.params.reduce((w,p)=>p.status==="critical"?"critical":p.status==="warning"&&w!=="critical"?"warning":w,"ok");
+	            const mp=eq.params[0];
+	            return(<div key={eq.id} onClick={()=>setSelectedEquip(selectedEquip===eq.id?null:eq.id)} style={{flex:"1 1 120px",background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",padding:"10px 14px",cursor:"pointer",borderTop:`3px solid ${statusColor(worstStatus)}`,border:selectedEquip===eq.id?`2px solid ${T.primary}`:undefined}}>
+	              <div style={{fontSize:11,fontWeight:800,color:T.black,marginBottom:2}}>{eq.label}</div>
+	              <div style={{fontSize:14,fontWeight:800,color:statusColor(worstStatus)}}>{mp.actual}{mp.unit}</div>
+	              <div style={{fontSize:10,color:T.gray400}}>SP: {mp.setpoint}{mp.unit}</div>
+	              <div style={{fontSize:10,color:statusColor(worstStatus),fontWeight:700,marginTop:2}}>{worstStatus==="critical"?"⚠ Critical":worstStatus==="warning"?"⚠ Warning":"✓ On Spec"}</div>
+	            </div>);
+	          })}
+	        </div>
+	      </div>}
+	
+	      {/* ── OPTIMIZATION RECOMMENDATIONS ── */}
+	      {activeTab==="recommendations"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:12}}>
+	        <div style={{background:T.white,borderRadius:4,padding:"12px 16px",boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+	          <div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:4}}>Setpoint Optimization Recommendations — {selectedLine}</div>
+	          <div style={{fontSize:12,color:T.gray900}}>Agent-generated recommendations ranked by impact. Apply to send setpoint change to operator co-pilot and notify line supervisor.</div>
+	        </div>
+	        {recs.map(r=>(
+	          <div key={r.id} style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",borderLeft:`4px solid ${r.applied?T.positive:priorityColor(r.priority)}`,overflow:"hidden",opacity:r.applied?0.75:1}}>
+	            <div style={{padding:"14px 18px"}}>
+	              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap",marginBottom:8}}>
+	                <div style={{flex:1}}>
+	                  <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
+	                    <Badge label={r.priority} color={r.applied?T.positive:priorityColor(r.priority)}/>
+	                    <Badge label={r.equipment} color={T.primary}/>
+	                    {r.applied&&<Badge label="✓ Applied" color={T.positive}/>}
+	                  </div>
+	                  <div style={{fontSize:14,fontWeight:800,color:T.black,marginBottom:4}}>{r.title}</div>
+	                  <div style={{display:"flex",gap:20,flexWrap:"wrap",marginBottom:8}}>
+	                    <div style={{textAlign:"center",padding:"6px 14px",background:T.negative+"10",borderRadius:4}}>
+	                      <div style={{fontSize:10,color:T.gray400,marginBottom:2}}>Current</div>
+	                      <div style={{fontSize:16,fontWeight:800,color:T.negative}}>{r.current}{r.unit}</div>
+	                    </div>
+	                    <div style={{display:"flex",alignItems:"center",fontSize:16,color:T.gray400}}>→</div>
+	                    <div style={{textAlign:"center",padding:"6px 14px",background:T.positive+"10",borderRadius:4}}>
+	                      <div style={{fontSize:10,color:T.gray400,marginBottom:2}}>Target</div>
+	                      <div style={{fontSize:16,fontWeight:800,color:T.positive}}>{r.target}{r.unit}</div>
+	                    </div>
+	                    <div style={{textAlign:"center",padding:"6px 14px",background:T.gray100,borderRadius:4}}>
+	                      <div style={{fontSize:10,color:T.gray400,marginBottom:2}}>Delta</div>
+	                      <div style={{fontSize:16,fontWeight:800,color:r.delta<0?T.info:T.warning}}>{r.delta>0?"+":""}{r.delta}{r.unit}</div>
+	                    </div>
+	                  </div>
+	                  <div style={{fontSize:12,color:T.gray900,marginBottom:8}}>{r.rationale}</div>
+	                  <div style={{background:T.primary+"08",borderLeft:`2px solid ${T.primary}`,borderRadius:3,padding:"8px 12px",marginBottom:8}}>
+	                    <div style={{fontSize:10,fontWeight:700,color:T.primary,marginBottom:3}}>CROSS-DOMAIN IMPACT</div>
+	                    <div style={{fontSize:11,color:T.black}}>{r.crossDomain}</div>
+	                  </div>
+	                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+	                    {Object.entries(r.impact).map(([k,v])=>(
+	                      <span key={k} style={{fontSize:10,background:T.positive+"12",color:T.positive,border:`1px solid ${T.positive}30`,borderRadius:3,padding:"2px 8px",fontWeight:600}}>{k}: {v}</span>
+	                    ))}
+	                  </div>
+	                </div>
+	              </div>
+	              {!r.applied&&<div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+	                <button onClick={()=>applyRec(r.id)} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"7px 16px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Apply & Notify Operator →</button>
+	                <button style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"7px 14px",fontSize:12,cursor:"pointer",color:T.gray900}}>Add to Dashboard</button>
+	              </div>}
+	              {r.applied&&<div style={{background:"#F0FDF4",border:`1px solid ${T.positive}`,borderRadius:4,padding:"8px 12px",fontSize:12,color:T.positive,fontWeight:700}}>✅ Applied — Operator notified. Monitoring outcome over next 2–3 production cycles.</div>}
+	            </div>
+	          </div>
+	        ))}
+	      </div>}
+	
+	      {/* ── ANOMALY DETECTION ── */}
+	      {activeTab==="anomalies"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:12}}>
+	        <div style={{background:T.primary+"10",border:`1px solid ${T.primary}30`,borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"12px 16px"}}>
+	          <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>🧠 Setpoint & Recipe Optimization Agent — Anomaly Feed · {selectedLine}</div>
+	          <div style={{fontSize:12,color:T.black}}>The agent continuously monitors all process parameters against recipe standards and historical baselines. Anomalies are things already outside acceptable range — they need a decision. Each one has a recommended action: apply a setpoint fix, raise or view a work order, escalate, or mark as monitoring.</div>
+	        </div>
+	        {SP_ANOMALIES.map(a=>{
+	          const actColor=a.actionType==="wo"?"#4F46E5":a.actionType==="setpoint"?T.primary:a.actionType==="escalate"?T.negative:T.neutral;
+	          const actBg=a.actionType==="wo"?"#EEF2FF":a.actionType==="setpoint"?T.primary+"10":a.actionType==="escalate"?T.negative+"10":T.gray100;
+	          return(<div key={a.id} style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",borderLeft:`4px solid ${severityColor(a.severity)}`}}>
+	            <div style={{padding:"14px 18px"}}>
+	              {/* Header row */}
+	              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap",marginBottom:8}}>
+	                <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+	                  <Badge label={a.severity} color={severityColor(a.severity)}/>
+	                  <Badge label={a.equipment} color={T.primary}/>
+	                  <span style={{fontSize:13,fontWeight:800,color:T.black}}>{a.param}</span>
+	                </div>
+	                <span style={{fontSize:11,color:T.gray400}}>Detected: {a.since}</span>
+	              </div>
+	              {/* Values row */}
+	              <div style={{display:"flex",gap:16,flexWrap:"wrap",marginBottom:10}}>
+	                <div style={{padding:"6px 12px",background:severityColor(a.severity)+"10",borderRadius:4,textAlign:"center"}}>
+	                  <div style={{fontSize:10,color:T.gray400,marginBottom:2}}>Current</div>
+	                  <div style={{fontSize:16,fontWeight:800,color:severityColor(a.severity)}}>{a.value}</div>
+	                </div>
+	                <div style={{padding:"6px 12px",background:T.gray100,borderRadius:4,textAlign:"center"}}>
+	                  <div style={{fontSize:10,color:T.gray400,marginBottom:2}}>Target / Limit</div>
+	                  <div style={{fontSize:12,fontWeight:600,color:T.black}}>{a.threshold}</div>
+	                </div>
+	                <div style={{padding:"6px 12px",background:T.gray100,borderRadius:4,textAlign:"center"}}>
+	                  <div style={{fontSize:10,color:T.gray400,marginBottom:2}}>Trend</div>
+	                  <div style={{fontSize:12,fontWeight:700,color:severityColor(a.severity)}}>{a.trend}</div>
+	                </div>
+	              </div>
+	              {/* Description */}
+	              <div style={{fontSize:12,color:T.gray900,marginBottom:10,lineHeight:1.6}}>{a.description}</div>
+	              {/* Action section */}
+	              <div style={{background:actBg,border:`1px solid ${actColor}30`,borderRadius:4,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,flexWrap:"wrap"}}>
+	                <div style={{flex:1}}>
+	                  <div style={{fontSize:10,fontWeight:700,color:actColor,marginBottom:3,textTransform:"uppercase",letterSpacing:"0.04em"}}>
+	                    {a.actionType==="wo"?"🔧 Maintenance Action":a.actionType==="setpoint"?"⚙ Setpoint Fix Available":a.actionType==="escalate"?"🚨 Escalation Recommended":"👁 Monitoring"}
+	                  </div>
+	                  <div style={{fontSize:11,color:T.black}}>{a.actionNote}</div>
+	                </div>
+	                {!anomalyActioned[a.id]
+	                  ?<button onClick={()=>setAnomalyActioned(prev=>({...prev,[a.id]:a.actionType}))} style={{background:actColor,color:T.white,border:"none",borderRadius:4,padding:"7px 14px",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>{a.actionLabel}</button>
+	                  :<span style={{fontSize:11,fontWeight:700,color:T.positive,whiteSpace:"nowrap",flexShrink:0}}>✓ {a.actionType==="wo"?"Opened in SAP PM":a.actionType==="setpoint"?"Fix Applied — Operator Notified":a.actionType==="escalate"?"Escalated to Plant Leader":"Marked as Monitoring"}</span>
+	                }
+	              </div>
+	              {anomalyActioned[a.id]&&<div style={{marginTop:8,background:"#F0FDF4",border:`1px solid ${T.positive}`,borderRadius:4,padding:"8px 12px",fontSize:11,color:T.positive,fontWeight:600}}>
+	                ✅ {a.actionType==="wo"?"WO-4421 opened in SAP PM. Carlos Rivera notified.":a.actionType==="setpoint"?`Setpoint fix applied. Operator notified. Monitoring next 2–3 production cycles.`:a.actionType==="escalate"?"Escalated to Plant Leader — added to dashboard recommendations.":"Anomaly flagged as monitoring. Agent will alert if it worsens."}
+	              </div>}
+	            </div>
+	          </div>);
+	        })}
+	      </div>}
+	
+	      {/* ── RECIPE LIBRARY ── */}
+	      {activeTab==="recipes"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
+	
+	        {/* Agent banner */}
+	        <div style={{background:T.primary+"10",border:`1px solid ${T.primary}30`,borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"12px 16px"}}>
+	          <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>🧠 Recipe Optimization Agent — {selectedLine}</div>
+	          <div style={{fontSize:12,color:T.black}}>Agent continuously monitors production performance against recipe standards. When actual conditions drift from standard for more than 24hrs, or when FPY falls below target, the agent recommends recipe updates for process engineering review. Updates require process engineer approval before taking effect.</div>
+	        </div>
+	
+	        {/* Recipes with agent recs */}
+	        {SP_RECIPES.map(r=>{
+	          const statusColor=r.status==="Active"?T.positive:r.status==="On Hold"?T.warning:T.neutral;
+	          return(<div key={r.sku} style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",overflow:"hidden",borderLeft:`4px solid ${r.agentRec.hasRec?T.warning:statusColor}`}}>
+	            <div style={{padding:"14px 18px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
+	              <div style={{flex:1}}>
+	                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
+	                  <span style={{fontSize:13,fontWeight:800,color:T.black}}>{r.sku}</span>
+	                  <span style={{fontSize:13,color:T.gray900}}>{r.name}</span>
+	                  <Badge label={r.status} color={statusColor}/>
+	                  {r.agentRec.hasRec&&<Badge label="🧠 Recipe update recommended" color={T.warning}/>}
+	                </div>
+	                <div style={{display:"flex",gap:16,flexWrap:"wrap",fontSize:11,color:T.gray900,marginBottom:r.agentRec.hasRec?8:0}}>
+	                  <span>Fryer: <strong>{r.frierTemp}°C</strong></span>
+	                  <span>Slice: <strong>{r.sliceThick}mm</strong></span>
+	                  <span>Blancher: <strong>{r.blancherTemp}°C</strong></span>
+	                  <span>Seasoning: <strong>{r.seasonRate}g/kg</strong></span>
+	                  <span>Last updated: <strong>{r.lastUpdated}</strong></span>
+	                  {r.performance!=="—"&&<span>Performance: <strong style={{color:T.positive}}>{r.performance}</strong></span>}
+	                </div>
+	              </div>
+	            </div>
+	
+	            {/* Agent recommendation */}
+	            {r.agentRec.hasRec&&<div style={{borderTop:`1px solid ${T.border}`,padding:"12px 18px",background:T.warning+"06"}}>
+	              <div style={{fontSize:11,fontWeight:700,color:T.warning,marginBottom:6}}>🧠 Recommended Recipe Changes — Review & Approve</div>
+	              <div style={{fontSize:12,color:T.black,marginBottom:10}}>{r.agentRec.reason}</div>
+	              <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:10}}>
+	                {r.agentRec.changes.map((c,i)=>(
+	                  <div key={i} style={{background:T.white,border:`1px solid ${T.border}`,borderRadius:4,padding:"10px 14px",flex:"1 1 200px"}}>
+	                    <div style={{fontSize:11,fontWeight:700,color:T.black,marginBottom:4}}>{c.param}</div>
+	                    <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:4}}>
+	                      <span style={{fontSize:12,color:T.gray400}}>{c.current}{c.unit}</span>
+	                      <span style={{fontSize:11,color:T.gray400}}>→</span>
+	                      <span style={{fontSize:13,fontWeight:800,color:T.positive}}>{c.proposed}{c.unit}</span>
+	                    </div>
+	                    <div style={{fontSize:10,color:T.gray900,fontStyle:"italic"}}>{c.note}</div>
+	                  </div>
+	                ))}
+	              </div>
+	              <div style={{display:"flex",gap:8}}>
+	                <button style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"7px 16px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Approve & Update Recipe</button>
+	                <button style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"7px 14px",fontSize:12,cursor:"pointer",color:T.gray900}}>Dismiss</button>
+	              </div>
+	            </div>}
+	          </div>);
+	        })}
+	      </div>}
+	
+	      </>)}
+	    </div>
+	  </div>);
+	}
+	
+	
+	// ── DISRUPTION MODAL ──────────────────────────────────────────────────────────
+	const DISRUPTION_RECS={A:{title:"SKU 4412 → SKU 3802 Swap Executed — Line 1",priority:"High",domain:"Production",icon:"⚙️",lines:["All","Line 1"],agents:["Scheduling Agent","Inbound Materials Agent","Quality Monitoring Agent","Supervisor & Operator Co-Pilot"],suggestedAction:"Monitor Line 1 changeover to SKU 3802, confirm quality checks pass.",summary:"Line 1 switched from SKU 4412 to SKU 3802 following inbound materials failure. 35-min changeover underway.",detail:{issue:"Inbound seasoning blend Lot #SB-2291 for SKU 4412 was rejected at intake — sodium content 14% above spec.",action:"Monitor changeover progress, confirm quality sign-off on SKU 3802 first run.",steps:[{agent:"Inbound Materials Agent",domain:"Quality",action:"Quarantine Lot #SB-2291 and raise supplier deviation report.",status:"complete"},{agent:"Scheduling Agent",domain:"Planning",action:"Update Line 1 production schedule — replace SKU 4412 run with SKU 3802.",status:"complete"},{agent:"Quality Monitoring Agent",domain:"Quality",action:"Monitor first-pass yield on SKU 3802 run.",status:"pending"},{agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Guide Line 1 operator through SKU 3802 changeover SOP.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"}]}},B:{title:"Emergency SKU 4412 Batch Sourcing — Line 1 On Hold",priority:"Critical",domain:"Production",icon:"📦",lines:["All","Line 1"],agents:["Inbound Materials Agent","Planning Agent","Scheduling Agent"],suggestedAction:"Track emergency batch delivery ETA, hold Line 1.",summary:"Emergency replacement batch ordered. Line 1 on hold pending delivery.",detail:{issue:"SKU 4412 inbound materials rejected. Emergency batch ordered — 60% confidence on timing.",action:"Monitor delivery ETA. If batch arrives by 11am, proceed. If delayed, activate SKU 3802 contingency.",steps:[{agent:"Inbound Materials Agent",domain:"Quality",action:"Raise emergency PO with approved seasoning supplier.",status:"complete"},{agent:"Planning Agent",domain:"Planning",action:"Place Line 1 on hold. Prepare SKU 3802 contingency.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"}]}},C:{title:"Line 1 Held — SKU 4412 Rescheduled to Tomorrow",priority:"High",domain:"Planning",icon:"📋",lines:["All","Line 1"],agents:["Planning Agent","Scheduling Agent"],suggestedAction:"Confirm Line 1 hold and reschedule SKU 4412 to tomorrow.",summary:"Line 1 Day shift held. SKU 4412 rescheduled to tomorrow pending fresh batch.",detail:{issue:"SKU 4412 cannot run today. Full Day shift volume on Line 1 lost.",action:"Reschedule SKU 4412 to tomorrow's Day shift. Notify DC-West.",steps:[{agent:"Scheduling Agent",domain:"Planning",action:"Reschedule SKU 4412 Line 1 run to tomorrow Day shift.",status:"complete"},{agent:"Planning Agent",domain:"Planning",action:"Notify DC-West of one-day delay.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Priya Nair",role:"Scheduler",avatar:"SC"}]}}};
+	
+	function DisruptionModal({onClose,onAddRec}){
+	  const [selected,setSelected]=useState(null);const [dispatched,setDispatched]=useState(false);const [dispatching,setDispatching]=useState(false);
+	  const dispatch=()=>{if(!selected)return;setDispatching(true);setTimeout(()=>{setDispatching(false);setDispatched(true);const recTemplate=DISRUPTION_RECS[selected];if(recTemplate&&onAddRec){onAddRec({...recTemplate,id:Date.now(),fromDisruption:true});}},1800);};
+	  return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+	    <div style={{background:T.white,borderRadius:6,width:"100%",maxWidth:680,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
+	      <div style={{background:T.negative,padding:"14px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+	        <div><div style={{fontSize:11,fontWeight:700,color:"#ffffff99",marginBottom:2}}>🚨 REAL-TIME DISRUPTION · {disruptionAlert.time}</div><div style={{fontSize:15,fontWeight:800,color:T.white}}>{disruptionAlert.title}</div></div>
+	        <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:4,padding:"6px 12px",color:T.white,cursor:"pointer",fontWeight:700,fontSize:12}}>✕ Close</button>
+	      </div>
+	      <div style={{padding:"20px",display:"flex",flexDirection:"column",gap:16}}>
+	        {dispatched&&<div style={{background:"#F0FDF4",border:`2px solid ${T.positive}`,borderRadius:4,padding:"12px 16px"}}><div style={{fontSize:13,fontWeight:800,color:T.positive}}>✅ Response Dispatched</div><div style={{fontSize:12,color:T.black,marginTop:3}}>{disruptionAlert.notifyList.join(", ")} notified. Recommendation added to dashboard.</div></div>}
+	        <div style={{fontSize:12,color:T.black,lineHeight:1.6}}>{disruptionAlert.description}</div>
+	        <div style={{background:"#FEF2F2",borderRadius:4,padding:"12px 16px",borderLeft:`3px solid ${T.negative}`}}><div style={{fontSize:11,fontWeight:700,color:T.negative,marginBottom:6}}>IMMEDIATE IMPACTS</div>{disruptionAlert.impacts.map((imp,i)=><div key={i} style={{fontSize:12,color:T.black,marginBottom:3}}>• {imp}</div>)}</div>
+	        <div><div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:10}}>Select Response Option</div><div style={{display:"flex",flexDirection:"column",gap:8}}>{disruptionAlert.options.map(opt=>(<div key={opt.id} onClick={()=>!dispatched&&setSelected(opt.id)} style={{padding:"12px 16px",borderRadius:4,border:`2px solid ${selected===opt.id?T.primary:T.border}`,background:selected===opt.id?T.primary+"08":T.white,cursor:dispatched?"default":"pointer"}}>
+	          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4,gap:8,flexWrap:"wrap"}}><div style={{display:"flex",gap:6,alignItems:"center"}}><span style={{fontSize:13,fontWeight:800,color:T.black}}>Option {opt.id}: {opt.label}</span>{opt.recommended&&<Badge label="✓ Recommended" color={T.positive}/>}</div><Badge label={`Impact: ${opt.impact}`} color={opt.impact==="Low"?T.positive:opt.impact==="Medium"?T.warning:T.negative}/></div>
+	          <div style={{fontSize:12,color:T.gray900}}>{opt.description}</div>
+	        </div>))}</div></div>
+	        <div style={{background:T.gray100,borderRadius:4,padding:"10px 14px"}}><div style={{fontSize:11,fontWeight:700,color:T.gray900,marginBottom:4}}>WILL NOTIFY</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{disruptionAlert.notifyList.map(n=><Badge key={n} label={n} color={T.primary}/>)}</div></div>
+	        <button onClick={dispatch} disabled={!selected||dispatched||dispatching} style={{width:"100%",padding:"12px",background:selected&&!dispatched?T.negative:T.gray400,color:T.white,border:"none",borderRadius:4,fontSize:14,fontWeight:800,cursor:selected&&!dispatched?"pointer":"not-allowed"}}>{dispatching?"⏳ Dispatching response...":dispatched?"✅ Response Dispatched":selected?`🚨 Execute Option ${selected} & Notify Team`:"Select a response option above"}</button>
+	      </div>
+	    </div>
+	  </div>);
+	}
+	
+	// ── APP ───────────────────────────────────────────────────────────────────────
+	export default function App(){
+	  const [tab,setTab]=useState("dashboard");
+	  const [selectedRec,setSelectedRec]=useState(null);
+	  const [showDisruption,setShowDisruption]=useState(false);
+	  const [disruptionActive,setDisruptionActive]=useState(true);
+	  const [recs,setRecs]=useState(initialRecommendations);
+	  const [persona,setPersona]=useState("plant_leader");
+	  const [personaOpen,setPersonaOpen]=useState(false);
+	  const [chatMode,setChatMode]=useState(null); // null | 'scenario' | 'copilot'
+	  const personaRef=useRef(null);
+	  useEffect(()=>{const h=(e)=>{if(personaRef.current&&!personaRef.current.contains(e.target))setPersonaOpen(false);};document.addEventListener("mousedown",h);return()=>document.removeEventListener("mousedown",h);},[]);
+	  const addRec=rec=>setRecs(prev=>[rec,...prev]);
+	  const handleViewDashboardRec=(recId)=>{const rec=[...recs,...initialRecommendations].find(r=>r.id===recId);if(rec){setSelectedRec(rec);setTab("dashboard");setChatMode(null);}};
+	
+	  const personas=[{id:"plant_leader",label:"Plant Leader",avatar:"PL"},{id:"maint_manager",label:"Maintenance Manager",avatar:"MM"},{id:"technician",label:"Technician",avatar:"TC"},{id:"process_eng",label:"Process Engineer",avatar:"PE"},{id:"scheduler",label:"Scheduler",avatar:"SC"},{id:"quality_manager",label:"Quality Manager",avatar:"QM"},{id:"safety_lead",label:"Safety Lead",avatar:"SL"}];
+	  const personaNav={plant_leader:["dashboard","actions","lineperf","quality","maintenance","technician","shutdown","setpoint","assethealth","materials","schedule","labor","safety"],maint_manager:["dashboard","actions","lineperf","maintenance","technician","shutdown","assethealth","schedule"],technician:["technician"],process_eng:["dashboard","actions","setpoint","lineperf","quality"],scheduler:["dashboard","actions","schedule","materials","labor","lineperf"],quality_manager:["dashboard","actions","quality","materials","lineperf"],safety_lead:["dashboard","actions","safety","lineperf"]};
+	  const allNavItems=[{id:"dashboard",icon:"▦",label:"Summary Dashboard"},{id:"actions",icon:"☑",label:"Action Log"},{id:"lineperf",icon:"↗",label:"Line Performance"},{id:"quality",icon:"◎",label:"Quality Dashboard"},{id:"maintenance",icon:"⚙",label:"Maintenance Dashboard"},{id:"technician",icon:"⬡",label:"Technician Dashboard"},{id:"shutdown",icon:"◈",label:"Shutdown Management"},{id:"setpoint",icon:"⊕",label:"Setpoint & Recipe Optimization"},{id:"assethealth",icon:"♡",label:"Asset Health"},{id:"materials",icon:"▤",label:"Inbound Materials"},{id:"schedule",icon:"▦",label:"Production Schedule"},{id:"labor",icon:"♟",label:"Labor Scheduling"},{id:"safety",icon:"◬",label:"Safety & EHS"}];
+	  const activeNavIds=personaNav[persona]||personaNav.plant_leader;
+	  const builtTabs=["dashboard","actions","lineperf","schedule","maintenance","technician","shutdown","setpoint"];
+	
+	  const handleTabClick=(id)=>{setTab(id);setSelectedRec(null);setChatMode(null);};
+	
+	  return(<div style={{background:T.gray100,minHeight:"100vh",fontFamily:"'Inter',system-ui,sans-serif",display:"flex",flexDirection:"column"}}>
+	    {/* Top bar */}
+	    <div style={{background:T.primary,padding:"0 20px",display:"flex",alignItems:"center",justifyContent:"space-between",height:48,flexShrink:0,gap:8}}>
+	      <div style={{display:"flex",alignItems:"center",gap:10}}><span style={{color:T.white,fontWeight:800,fontSize:15}}>🏭 Plant Orchestration Agent</span><span style={{color:"#ffffff60",fontSize:12}}>Austin Plant · Snack Chips</span></div>
+	      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+	        {recs.some(r=>r.fromChat)&&<span style={{background:T.info,borderRadius:4,padding:"3px 10px",fontSize:11,color:T.white,fontWeight:700}}>✦ {recs.filter(r=>r.fromChat).length} new from chat</span>}
+	        {disruptionActive&&persona==="plant_leader"&&<button onClick={()=>setShowDisruption(true)} style={{background:T.negative,border:"none",borderRadius:4,padding:"5px 12px",color:T.white,fontWeight:700,fontSize:11,cursor:"pointer"}}>🚨 Live Disruption</button>}
+	
+	        {/* Scenario Simulation button */}
+	        <button onClick={()=>{setChatMode(chatMode==="scenario"?null:"scenario");setSelectedRec(null);}}
+	          style={{background:chatMode==="scenario"?"rgba(255,255,255,0.25)":"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.3)",borderRadius:4,padding:"6px 14px",color:T.white,fontWeight:700,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+	          💬 Scenario Simulation
+	        </button>
+	
+	        {/* Co-Pilot button */}
+	        <button onClick={()=>{setChatMode(chatMode==="copilot"?null:"copilot");setSelectedRec(null);}}
+	          style={{background:chatMode==="copilot"?"rgba(255,255,255,0.25)":"rgba(255,255,255,0.12)",border:`1px solid ${chatMode==="copilot"?"rgba(255,255,255,0.6)":"rgba(255,255,255,0.3)"}`,borderRadius:4,padding:"6px 14px",color:T.white,fontWeight:700,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+	          🤖 Co-Pilot
+	        </button>
+	
+	        {/* Persona switcher */}
+	        <div ref={personaRef} style={{position:"relative"}}>
+	          <button onClick={()=>setPersonaOpen(o=>!o)} style={{display:"flex",alignItems:"center",gap:8,background:"rgba(255,255,255,0.15)",border:"1px solid rgba(255,255,255,0.3)",borderRadius:4,padding:"5px 10px",cursor:"pointer",color:T.white}}>
+	            <div style={{width:24,height:24,borderRadius:"50%",background:"rgba(255,255,255,0.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800}}>{personas.find(p=>p.id===persona)?.avatar}</div>
+	            <span style={{fontSize:12,fontWeight:700}}>{personas.find(p=>p.id===persona)?.label}</span>
+	            <span style={{fontSize:9}}>▼</span>
+	          </button>
+	          {personaOpen&&<div style={{position:"absolute",right:0,top:"110%",background:T.white,border:`1px solid ${T.border}`,borderRadius:4,boxShadow:"0 4px 16px rgba(0,0,0,0.15)",zIndex:200,minWidth:200,overflow:"hidden"}}>
+	            <div style={{padding:"8px 14px 6px",fontSize:10,fontWeight:800,color:T.gray400,textTransform:"uppercase",letterSpacing:"0.06em"}}>Switch Persona</div>
+	            {personas.map(p=>(<button key={p.id} onClick={()=>{setPersona(p.id);setPersonaOpen(false);setTab(p.id==="technician"?"technician":p.id==="process_eng"?"setpoint":"dashboard");setSelectedRec(null);setChatMode(null);}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"9px 14px",border:"none",cursor:"pointer",textAlign:"left",fontSize:13,background:persona===p.id?T.primary+"10":"transparent",fontWeight:persona===p.id?800:400,color:persona===p.id?T.primary:T.black}}>
+	              <div style={{width:28,height:28,borderRadius:"50%",background:persona===p.id?T.primary:T.gray100,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:persona===p.id?T.white:T.gray900,flexShrink:0}}>{p.avatar}</div>
+	              <span>{p.label}</span>
+	              {persona===p.id&&<span style={{marginLeft:"auto",fontSize:11,color:T.primary}}>✓</span>}
+	            </button>))}
+	          </div>}
+	        </div>
+	      </div>
+	    </div>
+	
+	    {/* Body */}
+	    <div style={{display:"flex",flex:1,overflow:"hidden"}}>
+	      {/* Left nav */}
+	      <div style={{width:52,background:T.white,borderRight:`1px solid ${T.border}`,display:"flex",flexDirection:"column",alignItems:"center",paddingTop:8,flexShrink:0}}>
+	        {allNavItems.map(item=>{const isActive=tab===item.id&&!chatMode;const isEnabled=activeNavIds.includes(item.id);return(<div key={item.id} style={{position:"relative",width:"100%"}} title={`${item.label}${!isEnabled?" (not available for your role)":""}`}>
+	          <button onClick={()=>{if(isEnabled)handleTabClick(item.id);}} style={{width:"100%",height:44,border:"none",cursor:isEnabled?"pointer":"default",background:isActive?T.primary+"18":"transparent",borderLeft:isActive?`3px solid ${T.primary}`:"3px solid transparent",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:600,color:isActive?T.primary:isEnabled?T.gray900:T.gray400,opacity:isEnabled?1:0.3}}>
+	            {item.icon}
+	            {item.id==="actions"&&isEnabled&&actionLog.filter(a=>a.status==="Open"||a.status==="In Progress").length>0&&<span style={{position:"absolute",top:6,right:6,width:7,height:7,borderRadius:"50%",background:T.negative,display:"block"}}/>}
+	          </button>
+	        </div>);})}
+	        <div style={{marginTop:"auto",paddingBottom:12,display:"flex",flexDirection:"column",alignItems:"center",gap:5}}>
+	          <div style={{width:24,height:1,background:T.border,marginBottom:4}}/>
+	          {[{c:T.warning,l:"L1"},{c:T.positive,l:"L2"},{c:T.negative,l:"L3"}].map(l=>(<div key={l.l} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}><span style={{width:7,height:7,borderRadius:"50%",background:l.c,display:"inline-block"}}/><span style={{fontSize:8,color:T.gray400,fontWeight:700}}>{l.l}</span></div>))}
+	        </div>
+	      </div>
+	
+	      {/* Main content */}
+	      <div style={{flex:1,overflowY:"auto"}}>
+	        {/* Chat modes */}
+	        {chatMode==="scenario"&&<ScenarioChat recs={recs} onAddRec={addRec}/>}
+	        {chatMode==="copilot"&&<CoPilotChat activeTab={tab}/>}
+	
+	        {/* Tab content (only when chat not open) */}
+	        {!chatMode&&(<>
+	          {tab==="dashboard"&&!selectedRec&&<Dashboard recs={recs} onSelectRec={r=>setSelectedRec(r)} onShowDisruption={()=>setShowDisruption(true)} disruptionActive={disruptionActive} persona={persona}/>}
+	          {tab==="dashboard"&&selectedRec&&<DetailPage rec={selectedRec} onBack={()=>setSelectedRec(null)}/>}
+	          {tab==="actions"&&<ActionLog/>}
+	          {tab==="lineperf"&&<LinePerformanceView/>}
+	          {tab==="schedule"&&<ProductionScheduleView onViewDashboardRec={handleViewDashboardRec}/>}
+	          {tab==="maintenance"&&!selectedRec&&<MaintenanceDashboard onSelectRec={r=>setSelectedRec(r)}/>}
+	          {tab==="maintenance"&&selectedRec&&<DetailPage rec={selectedRec} onBack={()=>setSelectedRec(null)}/>}
+	          {tab==="technician"&&<TechnicianDashboard/>}
+	          {tab==="shutdown"&&<ShutdownDashboard/>}
+	          {tab==="setpoint"&&<SetpointDashboard/>}
+	          {!builtTabs.includes(tab)&&(<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"60vh",gap:12}}>
+	            <div style={{fontSize:40}}>{allNavItems.find(n=>n.id===tab)?.icon}</div>
+	            <div style={{fontSize:16,fontWeight:800,color:T.black}}>{allNavItems.find(n=>n.id===tab)?.label}</div>
+	            <div style={{fontSize:13,color:T.gray900}}>This view is part of the full vision — coming in a future build.</div>
+	            <div style={{background:T.primary+"12",border:`1px solid ${T.primary}30`,borderRadius:4,padding:"10px 20px",fontSize:12,color:T.primary,fontWeight:600}}>💬 Use Scenario Simulation to ask questions about this domain</div>
+	          </div>)}
+	        </>)}
+	      </div>
+	    </div>
+	
+	    {showDisruption&&<DisruptionModal onClose={()=>{setShowDisruption(false);setDisruptionActive(false);}} onAddRec={addRec}/>}
+	  </div>);
+	}
