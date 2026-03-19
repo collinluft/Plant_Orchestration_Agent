@@ -1919,6 +1919,8 @@ const SHUTDOWN_INTERNAL = [
 function ShutdownDashboard(){
   const [activeTab,setActiveTab]=useState("planning");
   const [scheduleView,setScheduleView]=useState("optimistic");
+  const [selectedLine,setSelectedLine]=useState("Line 3");
+  const lineHasData=selectedLine==="Line 3";
 
   const TABS=[
     {id:"planning",label:"Planning & Prep"},
@@ -1970,21 +1972,28 @@ function ShutdownDashboard(){
     <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px 0",flexShrink:0}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12,flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:18,fontWeight:800,color:T.black}}>{SHUTDOWN.name}</div>
-          <div style={{fontSize:12,color:T.gray900,marginTop:2}}>{SHUTDOWN.dates} · {SHUTDOWN.duration} · Austin Plant · {SHUTDOWN.daysOut} days out</div>
+          <div style={{fontSize:18,fontWeight:800,color:T.black}}>Shutdown Management</div>
+          <div style={{fontSize:12,color:T.gray900,marginTop:2}}>{lineHasData?`${SHUTDOWN.name} - ${SHUTDOWN.dates} - ${SHUTDOWN.duration} - ${SHUTDOWN.daysOut} days out`:`${selectedLine} - No active shutdown scheduled`}</div>
         </div>
-        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-          {[
-            {label:"Jobs",value:`${SHUTDOWN.jobsReady}/${SHUTDOWN.jobsTotal} Ready`,color:SHUTDOWN.jobsReady===SHUTDOWN.jobsTotal?T.positive:T.warning},
-            {label:"Parts Readiness",value:`${SHUTDOWN.partsReadiness}%`,color:SHUTDOWN.partsReadiness>=90?T.positive:T.warning},
-            {label:"Contractors",value:`${SHUTDOWN.contractorsConfirmed}/${SHUTDOWN.contractorsConfirmed+SHUTDOWN.contractorsPending} Confirmed`,color:SHUTDOWN.contractorsPending>0?T.warning:T.positive},
-            {label:"Budget Est.",value:`$${(totalBudget/1000).toFixed(0)}k`,color:T.black},
-          ].map(k=>(
-            <div key={k.label} style={{textAlign:"center",padding:"6px 14px",background:T.gray100,borderRadius:4}}>
-              <div style={{fontSize:15,fontWeight:800,color:k.color}}>{k.value}</div>
-              <div style={{fontSize:10,color:T.gray400}}>{k.label}</div>
-            </div>
-          ))}
+        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+          <div style={{display:"flex",gap:4}}>
+            {["Line 1","Line 2","Line 3"].map(l=>(
+              <button key={l} onClick={()=>setSelectedLine(l)} style={{padding:"6px 14px",borderRadius:4,fontSize:12,fontWeight:700,cursor:"pointer",border:`1px solid ${selectedLine===l?T.primary:T.border}`,background:selectedLine===l?T.primary:T.white,color:selectedLine===l?T.white:T.gray900}}>{l}</button>
+            ))}
+          </div>
+          {lineHasData&&<div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+            {[
+              {label:"Jobs",value:`${SHUTDOWN.jobsReady}/${SHUTDOWN.jobsTotal} Ready`,color:SHUTDOWN.jobsReady===SHUTDOWN.jobsTotal?T.positive:T.warning},
+              {label:"Parts Readiness",value:`${SHUTDOWN.partsReadiness}%`,color:SHUTDOWN.partsReadiness>=90?T.positive:T.warning},
+              {label:"Contractors",value:`${SHUTDOWN.contractorsConfirmed}/${SHUTDOWN.contractorsConfirmed+SHUTDOWN.contractorsPending} Confirmed`,color:SHUTDOWN.contractorsPending>0?T.warning:T.positive},
+              {label:"Budget Est.",value:`$${(totalBudget/1000).toFixed(0)}k`,color:T.black},
+            ].map(k=>(
+              <div key={k.label} style={{textAlign:"center",padding:"6px 14px",background:T.gray100,borderRadius:4}}>
+                <div style={{fontSize:15,fontWeight:800,color:k.color}}>{k.value}</div>
+                <div style={{fontSize:10,color:T.gray400}}>{k.label}</div>
+              </div>
+            ))}
+          </div>}
         </div>
       </div>
       <div style={{display:"flex",gap:0,overflowX:"auto"}}>
@@ -1993,6 +2002,12 @@ function ShutdownDashboard(){
     </div>
 
     <div style={{flex:1,overflowY:"auto",background:T.gray100}}>
+      {!lineHasData?(<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"60vh",gap:12}}>
+        <div style={{fontSize:32}}>◈</div>
+        <div style={{fontSize:15,fontWeight:800,color:T.black}}>{selectedLine} — No Active Shutdown Scheduled</div>
+        <div style={{fontSize:13,color:T.gray900}}>No shutdown is currently planned for {selectedLine}. Select Line 3 to view the active shutdown.</div>
+        <div style={{background:T.primary+"12",border:`1px solid ${T.primary}30`,borderRadius:4,padding:"10px 20px",fontSize:12,color:T.primary,fontWeight:600}}>Line 3 Annual Shutdown - Mar 14-16, 2026 - 14 days out</div>
+      </div>):(<>
 
       {/* ── PLANNING & PREP ── */}
       {activeTab==="planning"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
@@ -2799,9 +2814,7 @@ function SetpointDashboard(){
   </div>);
 }
 
-
-// ── DISRUPTION MODAL ──────────────────────────────────────────────────────────
-const DISRUPTION_RECS={A:{title:"SKU 4412 → SKU 3802 Swap Executed — Line 1",priority:"High",domain:"Production",icon:"⚙️",lines:["All","Line 1"],agents:["Scheduling Agent","Inbound Materials Agent","Quality Monitoring Agent","Supervisor & Operator Co-Pilot"],suggestedAction:"Monitor Line 1 changeover to SKU 3802, confirm quality checks pass.",summary:"Line 1 switched from SKU 4412 to SKU 3802 following inbound materials failure. 35-min changeover underway.",detail:{issue:"Inbound seasoning blend Lot #SB-2291 for SKU 4412 was rejected at intake — sodium content 14% above spec.",action:"Monitor changeover progress, confirm quality sign-off on SKU 3802 first run.",steps:[{agent:"Inbound Materials Agent",domain:"Quality",action:"Quarantine Lot #SB-2291 and raise supplier deviation report.",status:"complete"},{agent:"Scheduling Agent",domain:"Planning",action:"Update Line 1 production schedule — replace SKU 4412 run with SKU 3802.",status:"complete"},{agent:"Quality Monitoring Agent",domain:"Quality",action:"Monitor first-pass yield on SKU 3802 run.",status:"pending"},{agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Guide Line 1 operator through SKU 3802 changeover SOP.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"}]}},B:{title:"Emergency SKU 4412 Batch Sourcing — Line 1 On Hold",priority:"Critical",domain:"Production",icon:"📦",lines:["All","Line 1"],agents:["Inbound Materials Agent","Planning Agent","Scheduling Agent"],suggestedAction:"Track emergency batch delivery ETA, hold Line 1.",summary:"Emergency replacement batch ordered. Line 1 on hold pending delivery.",detail:{issue:"SKU 4412 inbound materials rejected. Emergency batch ordered — 60% confidence on timing.",action:"Monitor delivery ETA. If batch arrives by 11am, proceed. If delayed, activate SKU 3802 contingency.",steps:[{agent:"Inbound Materials Agent",domain:"Quality",action:"Raise emergency PO with approved seasoning supplier.",status:"complete"},{agent:"Planning Agent",domain:"Planning",action:"Place Line 1 on hold. Prepare SKU 3802 contingency.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"}]}},C:{title:"Line 1 Held — SKU 4412 Rescheduled to Tomorrow",priority:"High",domain:"Planning",icon:"📋",lines:["All","Line 1"],agents:["Planning Agent","Scheduling Agent"],suggestedAction:"Confirm Line 1 hold and reschedule SKU 4412 to tomorrow.",summary:"Line 1 Day shift held. SKU 4412 rescheduled to tomorrow pending fresh batch.",detail:{issue:"SKU 4412 cannot run today. Full Day shift volume on Line 1 lost.",action:"Reschedule SKU 4412 to tomorrow's Day shift. Notify DC-West.",steps:[{agent:"Scheduling Agent",domain:"Planning",action:"Reschedule SKU 4412 Line 1 run to tomorrow Day shift.",status:"complete"},{agent:"Planning Agent",domain:"Planning",action:"Notify DC-West of one-day delay.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Priya Nair",role:"Scheduler",avatar:"SC"}]}}};
+// ── DISRUPTION MODAL ──────────────────────────────────────────────────────────{A:{title:"SKU 4412 → SKU 3802 Swap Executed — Line 1",priority:"High",domain:"Production",icon:"⚙️",lines:["All","Line 1"],agents:["Scheduling Agent","Inbound Materials Agent","Quality Monitoring Agent","Supervisor & Operator Co-Pilot"],suggestedAction:"Monitor Line 1 changeover to SKU 3802, confirm quality checks pass.",summary:"Line 1 switched from SKU 4412 to SKU 3802 following inbound materials failure. 35-min changeover underway.",detail:{issue:"Inbound seasoning blend Lot #SB-2291 for SKU 4412 was rejected at intake — sodium content 14% above spec.",action:"Monitor changeover progress, confirm quality sign-off on SKU 3802 first run.",steps:[{agent:"Inbound Materials Agent",domain:"Quality",action:"Quarantine Lot #SB-2291 and raise supplier deviation report.",status:"complete"},{agent:"Scheduling Agent",domain:"Planning",action:"Update Line 1 production schedule — replace SKU 4412 run with SKU 3802.",status:"complete"},{agent:"Quality Monitoring Agent",domain:"Quality",action:"Monitor first-pass yield on SKU 3802 run.",status:"pending"},{agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Guide Line 1 operator through SKU 3802 changeover SOP.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"}]}},B:{title:"Emergency SKU 4412 Batch Sourcing — Line 1 On Hold",priority:"Critical",domain:"Production",icon:"📦",lines:["All","Line 1"],agents:["Inbound Materials Agent","Planning Agent","Scheduling Agent"],suggestedAction:"Track emergency batch delivery ETA, hold Line 1.",summary:"Emergency replacement batch ordered. Line 1 on hold pending delivery.",detail:{issue:"SKU 4412 inbound materials rejected. Emergency batch ordered — 60% confidence on timing.",action:"Monitor delivery ETA. If batch arrives by 11am, proceed. If delayed, activate SKU 3802 contingency.",steps:[{agent:"Inbound Materials Agent",domain:"Quality",action:"Raise emergency PO with approved seasoning supplier.",status:"complete"},{agent:"Planning Agent",domain:"Planning",action:"Place Line 1 on hold. Prepare SKU 3802 contingency.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"}]}},C:{title:"Line 1 Held — SKU 4412 Rescheduled to Tomorrow",priority:"High",domain:"Planning",icon:"📋",lines:["All","Line 1"],agents:["Planning Agent","Scheduling Agent"],suggestedAction:"Confirm Line 1 hold and reschedule SKU 4412 to tomorrow.",summary:"Line 1 Day shift held. SKU 4412 rescheduled to tomorrow pending fresh batch.",detail:{issue:"SKU 4412 cannot run today. Full Day shift volume on Line 1 lost.",action:"Reschedule SKU 4412 to tomorrow's Day shift. Notify DC-West.",steps:[{agent:"Scheduling Agent",domain:"Planning",action:"Reschedule SKU 4412 Line 1 run to tomorrow Day shift.",status:"complete"},{agent:"Planning Agent",domain:"Planning",action:"Notify DC-West of one-day delay.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Priya Nair",role:"Scheduler",avatar:"SC"}]}}};
 
 function DisruptionModal({onClose,onAddRec}){
   const [selected,setSelected]=useState(null);const [dispatched,setDispatched]=useState(false);const [dispatching,setDispatching]=useState(false);
