@@ -1,17 +1,18 @@
 import { useState, useRef, useEffect } from "react";
 
 const T = {
-  primary:"#197A56", positive:"#29BA74", negative:"#D64454", neutral:"#7C7C7C",
-  warning:"#F59E0B", info:"#1976D2", black:"#000000", gray900:"#4C4D4D",
-  gray400:"#B1B1B7", gray100:"#F3F3F3", white:"#FFFFFF", border:"#E0E0E0",
+  primary:"#29BA74", positive:"#29BA74", negative:"#C93C37", neutral:"#6E7681",
+  warning:"#D29922", info:"#388BFD", black:"#E6EDF3", gray900:"#8B949E",
+  gray400:"#484F58", gray100:"#161B22", white:"#0D1117", border:"#21262D",
+  surface:"#161B22", bg:"#0D1117", navbg:"#010409",
 };
 
-const Badge=({label,color})=>(<span style={{background:color+"18",color,border:`1px solid ${color}40`,borderRadius:3,padding:"2px 8px",fontSize:11,fontWeight:700,whiteSpace:"nowrap"}}>{label}</span>);
+const Badge=({label,color})=>(<span style={{background:color+"22",color,border:`1px solid ${color}50`,borderRadius:3,padding:"2px 8px",fontSize:11,fontWeight:700,whiteSpace:"nowrap"}}>{label}</span>);
 const PriorityColor=p=>p==="Critical"?T.negative:p==="High"?T.warning:p==="Medium"?T.info:T.neutral;
 const statusColor=s=>s==="Complete"?T.positive:s==="In Progress"?T.info:s==="Action Required"?T.negative:T.warning;
 const Metric=({label,value,target,unit="",good,bad})=>{
   const color=good?T.positive:bad?T.negative:T.warning;
-  return(<div style={{display:"flex",flexDirection:"column",gap:2}}><div style={{fontSize:10,color:T.gray900,fontWeight:600,whiteSpace:"nowrap"}}>{label}</div><div style={{fontSize:16,fontWeight:800,color,lineHeight:1}}>{value}{unit}</div>{target!=null&&<div style={{fontSize:10,color:T.gray400}}>Target: {target}{unit}</div>}</div>);
+  return(<div style={{display:"flex",flexDirection:"column",gap:2}}><div style={{fontSize:10,color:T.gray400,fontWeight:500,whiteSpace:"nowrap"}}>{label}</div><div style={{fontSize:16,fontWeight:800,color,lineHeight:1}}>{value}{unit}</div>{target!=null&&<div style={{fontSize:10,color:T.gray900}}>Target: {target}{unit}</div>}</div>);
 };
 
 // ── MAINTENANCE DATA ──────────────────────────────────────────────────────────
@@ -118,14 +119,14 @@ const techPerformance = [
 
 // ── ORCHESTRATOR RECS (cross-domain + maintenance-specific) ───────────────────
 const crossDomainMaintRecs = [
-  {id:"cd1",priority:"Critical",domain:"Maintenance",icon:"🌐",lines:["All","Line 3"],title:"Line 3 Sealer Failure Will Halt Production & Miss Friday Customer Order",summary:"Plant Orchestration Agent has identified that the Line 3 sealer failure risk directly threatens SKU 3801 production and conflicts with a maintenance window needed today.",suggestedAction:"Coordinate maintenance window with Scheduler to protect SKU 3801 order — reschedule to Line 1 Thursday before executing sealer repair.",agents:["Asset Health Monitoring Agent","Scheduling Agent","Plant Orchestration Agent"],detail:{issue:"Line 3 heat sealer failure risk (vibration 8.4, threshold 7.0) directly conflicts with SKU 3801 customer order due Friday.",compounding:"SKU 3801 requires the heat sealer. If sealer fails before maintenance window, CO-8820 (6,200 units) cannot be fulfilled.",risk:"Customer order CO-8820 missed. ~$42,000 unplanned downtime cost. Quality escapes on in-process product.",action:"Reschedule SKU 3801 to Line 1 Thursday 1–5pm before executing sealer maintenance. Confirm labor reallocation for Thursday.",steps:[{agent:"Plant Orchestration Agent",domain:"Maintenance",action:"Flag cross-domain conflict: sealer failure risk vs. SKU 3801 production schedule.",status:"complete"},{agent:"Scheduling Agent",domain:"Planning",action:"Reschedule SKU 3801 from Line 3 to Line 1, Thursday 1–5pm.",status:"complete"},{agent:"Maintenance Planning & Scheduling Agent",domain:"Maintenance",action:"Lock in Line 3 maintenance window today 2–4pm after SKU 3801 rescheduled.",status:"pending"},{agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Notify Line 3 supervisor of maintenance window and schedule change.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Carlos Rivera",role:"Maintenance Manager",avatar:"MM"},{name:"Priya Nair",role:"Scheduler",avatar:"SC"}]}},
-  {id:"cd2",priority:"High",domain:"Maintenance",icon:"🌐",lines:["All","Line 2"],title:"Line 2 Heat Tunnel — Safety & Maintenance Risk Flagged Across Two Domains",summary:"Safety Agent and Maintenance Strategy Agent both flagging the Line 2 Heat Tunnel. No PM program despite High criticality and burn risk. 3 operators also have overdue LOTO recertification.",suggestedAction:"Initiate PM program and complete LOTO recertification before first PM is executed.",agents:["Safety Agent","Maintenance Strategy Agent","Plant Orchestration Agent"],detail:{issue:"Line 2 Heat Tunnel has no PM program. Safety Agent flags burn risk. 3 operators have overdue LOTO recertification.",compounding:"Executing the first PM without LOTO-certified operators creates a compliance violation.",risk:"Operator safety incident during maintenance. LOTO audit failure. Heat tunnel failure causing quality escapes.",action:"Complete LOTO recertification by Mar 4. Initiate PM program with first inspection week of Mar 9.",steps:[{agent:"Safety Agent",domain:"Safety",action:"Confirm LOTO recertification status — 3 operators overdue, deadline Mar 4.",status:"complete"},{agent:"Maintenance Strategy Agent",domain:"Maintenance",action:"Define PM program for Line 2 Heat Tunnel — 6-week cycle, starting Mar 9.",status:"pending"},{agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Schedule LOTO recertification session for J. Park, D. Williams, M. Santos.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Carlos Rivera",role:"Maintenance Manager",avatar:"MM"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"}]}},
+  {id:"cd1",priority:"Critical",domain:"Maintenance",icon:"",lines:["All","Line 3"],title:"Line 3 Sealer Failure Will Halt Production & Miss Friday Customer Order",summary:"Plant Orchestration Agent has identified that the Line 3 sealer failure risk directly threatens SKU 3801 production and conflicts with a maintenance window needed today.",suggestedAction:"Coordinate maintenance window with Scheduler to protect SKU 3801 order — reschedule to Line 1 Thursday before executing sealer repair.",agents:["Asset Health Agent","Scheduling Agent","Plant Orchestration Agent"],detail:{issue:"Line 3 heat sealer failure risk (vibration 8.4, threshold 7.0) directly conflicts with SKU 3801 customer order due Friday.",compounding:"SKU 3801 requires the heat sealer. If sealer fails before maintenance window, CO-8820 (6,200 units) cannot be fulfilled.",risk:"Customer order CO-8820 missed. ~$42,000 unplanned downtime cost. Quality escapes on in-process product.",action:"Reschedule SKU 3801 to Line 1 Thursday 1–5pm before executing sealer maintenance. Confirm labor reallocation for Thursday.",steps:[{agent:"Plant Orchestration Agent",domain:"Maintenance",action:"Flag cross-domain conflict: sealer failure risk vs. SKU 3801 production schedule.",status:"complete"},{agent:"Scheduling Agent",domain:"Planning",action:"Reschedule SKU 3801 from Line 3 to Line 1, Thursday 1–5pm.",status:"complete"},{agent:"Planning Agent",domain:"Maintenance",action:"Lock in Line 3 maintenance window today 2–4pm after SKU 3801 rescheduled.",status:"pending"},{agent:"Operator Co-Pilot",domain:"Production",action:"Notify Line 3 supervisor of maintenance window and schedule change.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Carlos Rivera",role:"Maintenance Manager",avatar:"MM"},{name:"Priya Nair",role:"Scheduler",avatar:"SC"}]}},
+  {id:"cd2",priority:"High",domain:"Maintenance",icon:"",lines:["All","Line 2"],title:"Line 2 Heat Tunnel — Safety & Maintenance Risk Flagged Across Two Domains",summary:"Safety Agent and Maintenance Strategy Agent both flagging the Line 2 Heat Tunnel. No PM program despite High criticality and burn risk. 3 operators also have overdue LOTO recertification.",suggestedAction:"Initiate PM program and complete LOTO recertification before first PM is executed.",agents:["Safety Agent","Strategy Agent","Plant Orchestration Agent"],detail:{issue:"Line 2 Heat Tunnel has no PM program. Safety Agent flags burn risk. 3 operators have overdue LOTO recertification.",compounding:"Executing the first PM without LOTO-certified operators creates a compliance violation.",risk:"Operator safety incident during maintenance. LOTO audit failure. Heat tunnel failure causing quality escapes.",action:"Complete LOTO recertification by Mar 4. Initiate PM program with first inspection week of Mar 9.",steps:[{agent:"Safety Agent",domain:"Safety",action:"Confirm LOTO recertification status — 3 operators overdue, deadline Mar 4.",status:"complete"},{agent:"Strategy Agent",domain:"Maintenance",action:"Define PM program for Line 2 Heat Tunnel — 6-week cycle, starting Mar 9.",status:"pending"},{agent:"Operator Co-Pilot",domain:"Production",action:"Schedule LOTO recertification session for J. Park, D. Williams, M. Santos.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Carlos Rivera",role:"Maintenance Manager",avatar:"MM"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"}]}},
 ];
 
 const maintOnlyRecs = [
-  {id:"m2",priority:"High",domain:"Maintenance",icon:"🔧",lines:["All","Line 2"],title:"Line 2 Heat Tunnel Has No PM Program — Initiate Immediately",summary:"Maintenance Strategy Agent flagged Line 2 Heat Tunnel as reactive with no PM schedule despite High criticality and safety impact. Failure risk is increasing.",suggestedAction:"Assign WO-4422 to Marcus Webb this afternoon and initiate 6-week PM cycle.",agents:["Maintenance Strategy Agent","Maintenance Planning & Scheduling Agent"],detail:{issue:"Line 2 Heat Tunnel has zero PM history. Reactive-only strategy is unacceptable given High criticality and Medium safety impact.",compounding:"Current health score 67 and unknown degradation trend. No baseline data to detect future anomalies.",risk:"Undetected heating element failure. Safety incident. Quality escapes on Line 2 seal integrity.",action:"Raise WO-4422, assign to Marcus Webb today after WO-4425 completes. Initiate 6-week PM cycle.",steps:[{agent:"Maintenance Planning & Scheduling Agent",domain:"Maintenance",action:"Assign WO-4422 to Marcus Webb — heat tunnel certified, available 1pm today.",status:"pending"},{agent:"Technician Co-Pilot",domain:"Maintenance",action:"Pre-load heat tunnel PM checklist (v1.1) for Marcus Webb.",status:"pending"}],approvers:[{name:"Carlos Rivera",role:"Maintenance Manager",avatar:"MM"},{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"}]}},
-  {id:"m3",priority:"High",domain:"Maintenance",icon:"👷",lines:["All"],title:"2 High-Priority Work Orders Unassigned — Technician Reallocation Needed",summary:"WO-4422 and WO-4423 are both unassigned. Priya Singh has 6.5hrs available today. James Okafor is fully unassigned.",suggestedAction:"Assign WO-4423 to Priya Singh now and WO-4422 to Marcus Webb after WO-4425 completes at 1pm.",agents:["Maintenance Planning & Scheduling Agent"],detail:{issue:"WO-4422 (Heat Tunnel PM, High priority, due Mar 3) and WO-4423 (Filler calibration, High priority, due Mar 4) are both unassigned.",compounding:"Overall technician utilization is 27% — capacity exists but is not being allocated to priority work.",risk:"Both work orders miss due dates. Line 2 heat tunnel remains uninspected. Line 3 filler calibration drift continues.",action:"Assign WO-4423 to Priya Singh immediately. Assign WO-4422 to Marcus Webb when WO-4425 completes (~1pm).",steps:[{agent:"Maintenance Planning & Scheduling Agent",domain:"Maintenance",action:"Assign WO-4423 to Priya Singh — filler-certified, 6.5hrs available today.",status:"pending"},{agent:"Maintenance Planning & Scheduling Agent",domain:"Maintenance",action:"Schedule WO-4422 for Marcus Webb post-1pm after WO-4425 completes.",status:"pending"},{agent:"Technician Co-Pilot",domain:"Maintenance",action:"Notify Priya Singh and Marcus Webb of new assignments with WO context.",status:"pending"}],approvers:[{name:"Carlos Rivera",role:"Maintenance Manager",avatar:"MM"}]}},
-  {id:"m4",priority:"Medium",domain:"Maintenance",icon:"📦",lines:["All","Line 3"],title:"2 Parts Stock-Outs Blocking Active Work Orders",summary:"Part #SE-442 (Sealer Temperature Probe) and Part #FC-112 (Filler Calibration Weight Set) are both at zero stock and blocking WO-4421 and WO-4423.",suggestedAction:"Raise emergency PO for Part #FC-112 today. Part #SE-441 PO already in transit.",agents:["Maintenance Planning & Scheduling Agent"],detail:{issue:"SE-442 and FC-112 are both at zero stock. WO-4421 and WO-4423 cannot be fully completed without these parts.",compounding:"Part #SE-441 already has an emergency PO in transit (arriving tomorrow). FC-112 and SE-442 have not been ordered yet.",risk:"WO-4423 cannot proceed. Sealer inspection incomplete without temperature probe.",action:"Raise emergency PO for FC-112 from Supplier C ($130, 1-day delivery). Raise emergency PO for SE-442 from Supplier B ($360, 1-day delivery).",steps:[{agent:"Maintenance Planning & Scheduling Agent",domain:"Maintenance",action:"Raise emergency PO for Part #FC-112 from Supplier C — next-day AM delivery.",status:"pending"},{agent:"Maintenance Planning & Scheduling Agent",domain:"Maintenance",action:"Raise emergency PO for Part #SE-442 from Supplier B — next-day AM delivery.",status:"pending"}],approvers:[{name:"Carlos Rivera",role:"Maintenance Manager",avatar:"MM"},{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"}]}},
+  {id:"m2",priority:"High",domain:"Maintenance",icon:"",lines:["All","Line 2"],title:"Line 2 Heat Tunnel Has No PM Program — Initiate Immediately",summary:"Maintenance Strategy Agent flagged Line 2 Heat Tunnel as reactive with no PM schedule despite High criticality and safety impact. Failure risk is increasing.",suggestedAction:"Assign WO-4422 to Marcus Webb this afternoon and initiate 6-week PM cycle.",agents:["Strategy Agent","Planning Agent"],detail:{issue:"Line 2 Heat Tunnel has zero PM history. Reactive-only strategy is unacceptable given High criticality and Medium safety impact.",compounding:"Current health score 67 and unknown degradation trend. No baseline data to detect future anomalies.",risk:"Undetected heating element failure. Safety incident. Quality escapes on Line 2 seal integrity.",action:"Raise WO-4422, assign to Marcus Webb today after WO-4425 completes. Initiate 6-week PM cycle.",steps:[{agent:"Planning Agent",domain:"Maintenance",action:"Assign WO-4422 to Marcus Webb — heat tunnel certified, available 1pm today.",status:"pending"},{agent:"Technician Co-Pilot",domain:"Maintenance",action:"Pre-load heat tunnel PM checklist (v1.1) for Marcus Webb.",status:"pending"}],approvers:[{name:"Carlos Rivera",role:"Maintenance Manager",avatar:"MM"},{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"}]}},
+  {id:"m3",priority:"High",domain:"Maintenance",icon:"",lines:["All"],title:"2 High-Priority Work Orders Unassigned — Technician Reallocation Needed",summary:"WO-4422 and WO-4423 are both unassigned. Priya Singh has 6.5hrs available today. James Okafor is fully unassigned.",suggestedAction:"Assign WO-4423 to Priya Singh now and WO-4422 to Marcus Webb after WO-4425 completes at 1pm.",agents:["Planning Agent"],detail:{issue:"WO-4422 (Heat Tunnel PM, High priority, due Mar 3) and WO-4423 (Filler calibration, High priority, due Mar 4) are both unassigned.",compounding:"Overall technician utilization is 27% — capacity exists but is not being allocated to priority work.",risk:"Both work orders miss due dates. Line 2 heat tunnel remains uninspected. Line 3 filler calibration drift continues.",action:"Assign WO-4423 to Priya Singh immediately. Assign WO-4422 to Marcus Webb when WO-4425 completes (~1pm).",steps:[{agent:"Planning Agent",domain:"Maintenance",action:"Assign WO-4423 to Priya Singh — filler-certified, 6.5hrs available today.",status:"pending"},{agent:"Planning Agent",domain:"Maintenance",action:"Schedule WO-4422 for Marcus Webb post-1pm after WO-4425 completes.",status:"pending"},{agent:"Technician Co-Pilot",domain:"Maintenance",action:"Notify Priya Singh and Marcus Webb of new assignments with WO context.",status:"pending"}],approvers:[{name:"Carlos Rivera",role:"Maintenance Manager",avatar:"MM"}]}},
+  {id:"m4",priority:"Medium",domain:"Maintenance",icon:"",lines:["All","Line 3"],title:"2 Parts Stock-Outs Blocking Active Work Orders",summary:"Part #SE-442 (Sealer Temperature Probe) and Part #FC-112 (Filler Calibration Weight Set) are both at zero stock and blocking WO-4421 and WO-4423.",suggestedAction:"Raise emergency PO for Part #FC-112 today. Part #SE-441 PO already in transit.",agents:["Planning Agent"],detail:{issue:"SE-442 and FC-112 are both at zero stock. WO-4421 and WO-4423 cannot be fully completed without these parts.",compounding:"Part #SE-441 already has an emergency PO in transit (arriving tomorrow). FC-112 and SE-442 have not been ordered yet.",risk:"WO-4423 cannot proceed. Sealer inspection incomplete without temperature probe.",action:"Raise emergency PO for FC-112 from Supplier C ($130, 1-day delivery). Raise emergency PO for SE-442 from Supplier B ($360, 1-day delivery).",steps:[{agent:"Planning Agent",domain:"Maintenance",action:"Raise emergency PO for Part #FC-112 from Supplier C — next-day AM delivery.",status:"pending"},{agent:"Planning Agent",domain:"Maintenance",action:"Raise emergency PO for Part #SE-442 from Supplier B — next-day AM delivery.",status:"pending"}],approvers:[{name:"Carlos Rivera",role:"Maintenance Manager",avatar:"MM"},{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"}]}},
 ];
 
 // ── PM SCHEDULE DATA ──────────────────────────────────────────────────────────
@@ -144,7 +145,7 @@ const pmSchedule = [
 function ViewAllBtn({label,total}){
   return(
     <div style={{padding:"12px 20px",borderTop:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-      <span style={{fontSize:11,color:T.gray400}}>{total!=null?`Showing priority items · ${total} total`:"Full view available in production"}</span>
+      <span style={{fontSize:11,color:T.gray400}}>{total!=null?`Priority items · ${total} total`:"Full view available in production"}</span>
       <button style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"5px 14px",fontSize:11,fontWeight:700,color:T.gray900,cursor:"pointer"}}>{label||"View All →"}</button>
     </div>
   );
@@ -154,7 +155,7 @@ function ViewAllBtn({label,total}){
 function Section({title,subtitle,icon,count,countColor,defaultOpen=true,children}){
   const [open,setOpen]=useState(defaultOpen);
   return(
-    <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",overflow:"hidden"}}>
+    <div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)",overflow:"hidden"}}>
       <div onClick={()=>setOpen(o=>!o)} style={{padding:"14px 20px",borderBottom:open?`1px solid ${T.border}`:"none",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",userSelect:"none"}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <span style={{fontSize:16}}>{icon}</span>
@@ -176,17 +177,17 @@ function Section({title,subtitle,icon,count,countColor,defaultOpen=true,children
 // ── PROMETHEUS INTEGRATION BANNER ────────────────────────────────────────────
 function PrometheusBanner({entity="data"}){
   return(
-    <div style={{background:"#EEF2FF",border:`1px solid #C7D2FE`,borderRadius:4,padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+    <div style={{background:"#1A1F3A",border:`1px solid #C7D2FE`,borderRadius:4,padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}>
       <div style={{display:"flex",alignItems:"center",gap:10}}>
         <div style={{width:8,height:8,borderRadius:"50%",background:"#4F46E5",boxShadow:"0 0 0 2px #C7D2FE"}}/>
         <div>
-          <span style={{fontSize:12,fontWeight:700,color:"#3730A3"}}>🔗 Live from Prometheus CMMS</span>
+          <span style={{fontSize:12,fontWeight:700,color:"#3730A3"}}>Live from Prometheus CMMS</span>
           <span style={{fontSize:11,color:"#6366F1",marginLeft:8}}>Last synced 7:02am · {entity} pulled directly from your system of record</span>
         </div>
       </div>
       <div style={{display:"flex",alignItems:"center",gap:8}}>
         <span style={{fontSize:11,color:"#6366F1"}}>Agents read from Prometheus — recommendations surface here</span>
-        <button style={{background:"#4F46E5",color:"#FFFFFF",border:"none",borderRadius:4,padding:"4px 12px",fontSize:11,fontWeight:700,cursor:"pointer"}}>Open Prometheus →</button>
+        <button style={{background:"#4F46E5",color:T.black,border:"none",borderRadius:4,padding:"4px 12px",fontSize:11,fontWeight:700,cursor:"pointer"}}>Open Prometheus →</button>
       </div>
     </div>
   );
@@ -215,13 +216,13 @@ function MaintenanceDashboard({onSelectRec}){
 
   const TABS=[
     {id:"overview",label:"Overview",icon:"▦",alert:crossDomainMaintRecs.length+maintOnlyRecs.length},
-    {id:"workorders",label:"Work Orders",icon:"📋",alert:attentionWOs.length},
-    {id:"technicians",label:"Technicians",icon:"👷",alert:maintTechnicians.filter(t=>t.utilization<30).length},
-    {id:"assets",label:"Asset Health",icon:"📡",alert:alertAssets.length},
-    {id:"parts",label:"Spare Parts",icon:"📦",alert:stockIssues.filter(p=>p.status==="Stock-Out").length},
-    {id:"pm",label:"PM Schedule",icon:"🗓",alert:pmSchedule.filter(p=>p.status==="Overdue"||p.status==="No Program").length},
+    {id:"workorders",label:"Work Orders",icon:"",alert:attentionWOs.length},
+    {id:"technicians",label:"Technicians",icon:"",alert:maintTechnicians.filter(t=>t.utilization<30).length},
+    {id:"assets",label:"Asset Health",icon:"",alert:alertAssets.length},
+    {id:"parts",label:"Spare Parts",icon:"",alert:stockIssues.filter(p=>p.status==="Stock-Out").length},
+    {id:"pm",label:"PM Schedule",icon:"",alert:pmSchedule.filter(p=>p.status==="Overdue"||p.status==="No Program").length},
     {id:"strategy",label:"Strategy",icon:"⚙️",alert:changeAssets.length},
-    {id:"performance",label:"My Team",icon:"📊",alert:techPerformance.filter(t=>t.coachingSuggestions.length>0).length},
+    {id:"performance",label:"My Team",icon:"",alert:techPerformance.filter(t=>t.coachingSuggestions.length>0).length},
   ];
 
   const Tab=({tab})=>{
@@ -238,11 +239,11 @@ function MaintenanceDashboard({onSelectRec}){
 
   return(<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
     {/* Header */}
-    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px 0",flexShrink:0}}>
+    <div style={{background:T.surface,borderBottom:`1px solid ${T.border}`,padding:"16px 24px 0",flexShrink:0}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
         <div>
           <div style={{fontSize:18,fontWeight:800,color:T.black}}>Maintenance Dashboard</div>
-          <div style={{fontSize:12,color:T.gray900,marginTop:2}}>Austin Plant · Feb 28, 2026 · Good morning, Carlos 👋</div>
+          <div style={{fontSize:12,color:T.gray900,marginTop:2}}>Austin Plant · Feb 28, 2026 · Good morning, Carlos</div>
         </div>
       </div>
       {/* Tab bar */}
@@ -252,7 +253,7 @@ function MaintenanceDashboard({onSelectRec}){
     </div>
 
     {/* Tab content */}
-    <div style={{flex:1,overflowY:"auto",background:T.gray100}}>
+    <div style={{flex:1,overflowY:"auto",background:T.bg}}>
 
       {/* ── OVERVIEW TAB ── */}
       {activeTab==="overview"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
@@ -265,7 +266,7 @@ function MaintenanceDashboard({onSelectRec}){
             {label:"Avg Technician Utilization",value:"27%",sub:"across 4 technicians",color:T.negative,tab:"technicians"},
             {label:"Assets at Risk",value:3,sub:"Critical or High failure risk",color:T.negative,tab:"assets"},
             {label:"Parts Stock-Outs",value:3,sub:"2 blocking active WOs",color:T.negative,tab:"parts"},
-          ].map(k=>(<div key={k.label} onClick={()=>setActiveTab(k.tab)} style={{flex:1,minWidth:120,background:T.white,borderRadius:4,borderLeft:`4px solid ${k.color}`,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",padding:"10px 14px",cursor:"pointer"}}>
+          ].map(k=>(<div key={k.label} onClick={()=>setActiveTab(k.tab)} style={{flex:1,minWidth:120,background:T.surface,borderRadius:4,borderLeft:`4px solid ${k.color}`,boxShadow:"0 1px 3px rgba(0,0,0,0.4)",padding:"10px 14px",cursor:"pointer"}}>
             <div style={{fontSize:10,color:T.gray900,fontWeight:600,marginBottom:4}}>{k.label}</div>
             <div style={{fontSize:20,fontWeight:800,color:k.color}}>{k.value}</div>
             <div style={{fontSize:10,color:T.gray400,marginTop:2}}>{k.sub}</div>
@@ -273,45 +274,43 @@ function MaintenanceDashboard({onSelectRec}){
           </div>))}
         </div>
         {/* Cross-domain recs */}
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-          <div style={{background:T.primary,padding:"12px 20px",borderRadius:"4px 4px 0 0",display:"flex",alignItems:"center",gap:10}}>
-            <span style={{fontSize:14}}>🌐</span>
+        <div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}>
+          <div style={{background:"transparent",borderBottom:`1px solid ${T.border}`,padding:"12px 20px",borderRadius:"4px 4px 0 0",display:"flex",alignItems:"center",gap:10}}>
+            <span style={{fontSize:14}}></span>
             <div>
-              <div style={{fontSize:13,fontWeight:800,color:T.white}}>Plant Orchestration Agent — Cross-Domain Recommendations</div>
-              <div style={{fontSize:11,color:"#ffffff99",marginTop:1}}>Issues where maintenance intersects with production, quality, planning & scheduling, or safety</div>
+              <div style={{fontSize:13,fontWeight:800,color:T.primary}}>Plant Orchestration Agent — Cross-Domain Recommendations</div>
+              <div style={{fontSize:11,color:T.gray400,marginTop:1}}>Issues where maintenance intersects with production, quality, planning & scheduling, or safety</div>
             </div>
           </div>
           <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:10}}>
             {crossDomainMaintRecs.map(r=>(<div key={r.id} onClick={()=>onSelectRec(r)} style={{background:T.gray100,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,padding:"12px 16px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
               <div style={{flex:1}}>
-                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label="Cross-Domain" color={T.primary}/>{r.agents.slice(0,2).map(a=><Badge key={a} label={a} color={T.neutral}/>)}</div>
-                <div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:3}}>{r.title}</div>
-                <div style={{fontSize:12,color:T.gray900}}>{r.summary}</div>
-                <div style={{fontSize:12,color:T.primary,fontWeight:600,marginTop:4}}>💡 {r.suggestedAction}</div>
+                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label="Cross-Domain" color={T.primary}/>{r.agents.slice(0,1).map(a=><Badge key={a} label={a} color={T.neutral}/>)}</div>
+                <div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:4}}>{r.title}</div>
+                <div style={{fontSize:12,color:T.primary,fontWeight:600}}>{r.suggestedAction}</div>
               </div>
-              <div style={{fontSize:12,color:T.primary,fontWeight:700,whiteSpace:"nowrap"}}>View Detail →</div>
+              <div style={{fontSize:11,color:T.gray400,fontWeight:600,whiteSpace:"nowrap"}}>View →</div>
             </div>))}
           </div>
           <ViewAllBtn label="View All Recommendations →" total={crossDomainMaintRecs.length+maintOnlyRecs.length}/>
         </div>
         {/* Maintenance-only recs */}
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-          <div style={{background:"#673AB7",padding:"12px 20px",borderRadius:"4px 4px 0 0",display:"flex",alignItems:"center",gap:10}}>
-            <span style={{fontSize:14}}>⚙️</span>
+        <div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}>
+          <div style={{background:"transparent",borderBottom:`1px solid ${T.border}`,padding:"12px 20px",borderRadius:"4px 4px 0 0",display:"flex",alignItems:"center",gap:10}}>
+            <span style={{fontSize:14}}>️</span>
             <div>
-              <div style={{fontSize:13,fontWeight:800,color:T.white}}>Maintenance Orchestrator — Maintenance Recommendations</div>
-              <div style={{fontSize:11,color:"#ffffff99",marginTop:1}}>Synthesised from Strategy Agent, Asset Health Agent, and Planning & Scheduling Agent</div>
+              <div style={{fontSize:13,fontWeight:800,color:"#A371F7"}}>Maintenance Orchestrator — Maintenance Recommendations</div>
+              <div style={{fontSize:11,color:T.gray400,marginTop:1}}>Synthesised from Strategy Agent, Asset Health Agent, and Planning & Scheduling Agent</div>
             </div>
           </div>
           <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:10}}>
             {maintOnlyRecs.map(r=>(<div key={r.id} onClick={()=>onSelectRec(r)} style={{background:T.gray100,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,padding:"12px 16px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
               <div style={{flex:1}}>
-                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label="Maintenance" color="#673AB7"/>{r.agents.map(a=><Badge key={a} label={a} color={T.neutral}/>)}</div>
-                <div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:3}}>{r.icon} {r.title}</div>
-                <div style={{fontSize:12,color:T.gray900}}>{r.summary}</div>
-                <div style={{fontSize:12,color:"#673AB7",fontWeight:600,marginTop:4}}>💡 {r.suggestedAction}</div>
+                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label="Maintenance" color="#A371F7"/>{r.agents.slice(0,1).map(a=><Badge key={a} label={a} color={T.neutral}/>)}</div>
+                <div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:4}}>{r.icon} {r.title}</div>
+                <div style={{fontSize:12,color:"#A371F7",fontWeight:600}}>{r.suggestedAction}</div>
               </div>
-              <div style={{fontSize:12,color:"#673AB7",fontWeight:700,whiteSpace:"nowrap"}}>View Detail →</div>
+              <div style={{fontSize:11,color:T.gray400,fontWeight:600,whiteSpace:"nowrap"}}>View →</div>
             </div>))}
           </div>
           <ViewAllBtn label="View All Recommendations →" total={crossDomainMaintRecs.length+maintOnlyRecs.length}/>
@@ -320,10 +319,10 @@ function MaintenanceDashboard({onSelectRec}){
 
       {/* ── WORK ORDERS TAB ── */}
       {activeTab==="workorders"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+        <div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}>
           <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div>
-              <div style={{fontSize:13,fontWeight:800,color:T.black}}>📋 Work Orders — Requiring Attention</div>
+              <div style={{fontSize:13,fontWeight:800,color:T.black}}>Work Orders — Attention Required</div>
               <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Unassigned, overdue, or agent-flagged · {attentionWOs.length} of {maintWorkOrders.length} total</div>
             </div>
           </div>
@@ -341,23 +340,23 @@ function MaintenanceDashboard({onSelectRec}){
                     <div style={{fontSize:12,fontWeight:700,color:T.black,marginBottom:2}}>{wo.asset} — {wo.line}</div>
                     <div style={{fontSize:11,color:T.gray900,marginBottom:4}}>{wo.description}</div>
                     <div style={{display:"flex",gap:12,fontSize:11,color:T.gray900,flexWrap:"wrap",alignItems:"center"}}>
-                      <span>👤 {wo.assignedTo?wo.assignedTo:<span style={{color:T.negative,fontWeight:700}}>⚠ Unassigned</span>}</span>
+                      <span>{wo.assignedTo?wo.assignedTo:<span style={{color:T.negative,fontWeight:700}}>Unassigned</span>}</span>
                       <span>⏱ Est: {wo.estimatedHrs}h{wo.actualHrs>0?` · Actual: ${wo.actualHrs}h`:""}</span>
-                      <span>📅 Due: {wo.dueDate}</span>
+                      <span>Due: {wo.dueDate}</span>
                       <button style={{background:"none",border:`1px solid #C7D2FE`,borderRadius:3,padding:"2px 8px",fontSize:10,fontWeight:700,color:"#4F46E5",cursor:"pointer"}}>Open in Prometheus →</button>
                     </div>
                   </div>
                 </div>
                 {wo.agentSuggestion&&!appliedWOs[wo.id]&&(
-                  <div style={{marginTop:10,background:T.white,border:`1px solid ${T.primary}40`,borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"8px 12px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
+                  <div style={{marginTop:10,background:T.surface,border:`1px solid ${T.primary}40`,borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"8px 12px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
                     <div style={{flex:1}}>
-                      <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:2}}>🧠 Maintenance Planning & Scheduling Agent</div>
+                      <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:2}}>Maintenance Planning & Scheduling Agent</div>
                       <div style={{fontSize:11,color:T.black}}>{wo.agentSuggestion}</div>
                     </div>
                     <button onClick={()=>assignWO(wo.id)} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"5px 12px",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>Apply</button>
                   </div>
                 )}
-                {appliedWOs[wo.id]&&<div style={{marginTop:8,background:"#F0FDF4",border:`1px solid ${T.positive}`,borderRadius:4,padding:"6px 12px"}}><span style={{fontSize:11,fontWeight:700,color:T.positive}}>✅ Assignment applied — synced to Prometheus · technician notified via Co-Pilot</span></div>}
+                {appliedWOs[wo.id]&&<div style={{marginTop:8,background:"#0D2B1A",border:`1px solid ${T.positive}`,borderRadius:4,padding:"6px 12px"}}><span style={{fontSize:11,fontWeight:700,color:T.positive}}>Assignment applied — synced to Prometheus · technician notified via Co-Pilot</span></div>}
               </div>
             ))}
           </div>
@@ -367,9 +366,9 @@ function MaintenanceDashboard({onSelectRec}){
 
       {/* ── TECHNICIANS TAB ── */}
       {activeTab==="technicians"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+        <div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}>
           <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
-            <div style={{fontSize:13,fontWeight:800,color:T.black}}>👷 Technician Load & Assignments</div>
+            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Technician Load & Assignments</div>
             <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Today's capacity, current jobs, and agent-recommended reallocation · {maintTechnicians.length} technicians on shift</div>
           </div>
           <div style={{padding:"16px 20px",display:"flex",gap:12,flexWrap:"wrap"}}>
@@ -386,7 +385,7 @@ function MaintenanceDashboard({onSelectRec}){
                 <div style={{fontSize:11,color:T.gray900,marginBottom:4}}>{t.allocatedHrs}h allocated · <strong>{t.availableHrs}h free</strong> today</div>
                 <div style={{fontSize:10,color:T.gray400,marginBottom:6}}>Certified: {t.certifications.join(", ")}</div>
                 {t.currentWOs.length>0&&<div style={{fontSize:11,color:T.gray900,marginBottom:4}}>Active: {t.currentWOs.join(", ")}</div>}
-                {hasAgentFlag&&<div style={{background:T.warning+"18",border:`1px solid ${T.warning}40`,borderRadius:3,padding:"4px 8px",fontSize:10,fontWeight:700,color:T.warning}}>⚠ Under-utilised — agent has reallocation suggestion in Overview</div>}
+                {hasAgentFlag&&<div style={{background:T.warning+"18",border:`1px solid ${T.warning}40`,borderRadius:3,padding:"4px 8px",fontSize:10,fontWeight:700,color:T.warning}}>Under-utilised — agent has reallocation suggestion in Overview</div>}
               </div>);
             })}
           </div>
@@ -396,9 +395,9 @@ function MaintenanceDashboard({onSelectRec}){
 
       {/* ── ASSET HEALTH TAB ── */}
       {activeTab==="assets"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+        <div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}>
           <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
-            <div style={{fontSize:13,fontWeight:800,color:T.black}}>📡 Asset Health Monitoring Agent — Live Degradation Signals</div>
+            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Asset Health — Live Signals</div>
             <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Showing {alertAssets.length} assets with active alerts or degradation signals · Real-time sensor data</div>
           </div>
           <div style={{padding:"16px 20px",display:"flex",gap:12,flexWrap:"wrap"}}>
@@ -430,23 +429,23 @@ function MaintenanceDashboard({onSelectRec}){
 
       {/* ── SPARE PARTS TAB ── */}
       {activeTab==="parts"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+        <div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}>
           <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
-            <div style={{fontSize:13,fontWeight:800,color:T.black}}>📦 Spare Parts — Stock-Outs & Low Stock</div>
-            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Parts at zero or below minimum · Blocked work orders · Agent PO recommendations</div>
+            <div style={{fontSize:13,fontWeight:800,color:T.black}}>Spare Parts — Stock-Outs & Low Stock</div>
+            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Stock-outs, low stock, and blocked WOs</div>
           </div>
           <div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-              <thead><tr style={{background:T.gray100}}>
-                {["Part","Part No.","Asset / Line","Stock","Status","Blocking WOs","Supplier","Lead Time","Agent Recommendation","Action"].map(h=>(<th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>))}
+              <thead><tr style={{background:T.bg}}>
+                {["Part","Part #","Asset / Line","Stock","Status","Blocking WOs","Supplier","Lead","Agent Recommendation","Action"].map(h=>(<th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>))}
               </tr></thead>
-              <tbody>{stockIssues.map((p,i)=>(<tr key={p.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
+              <tbody>{stockIssues.map((p,i)=>(<tr key={p.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.surface:"#1C2128"+"88"}}>
                 <td style={{padding:"10px 14px",fontWeight:700,color:T.black}}>{p.name}</td>
                 <td style={{padding:"10px 14px",color:T.gray400,fontFamily:"monospace",fontSize:11}}>{p.partNo}</td>
                 <td style={{padding:"10px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{p.asset}<br/><span style={{fontSize:10,color:T.gray400}}>{p.line}</span></td>
                 <td style={{padding:"10px 14px",fontWeight:800,color:p.stock===0?T.negative:T.warning}}>{p.stock} units</td>
                 <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}><Badge label={p.status} color={p.status==="Stock-Out"?T.negative:p.status==="Low Stock"?T.warning:T.info}/></td>
-                <td style={{padding:"10px 14px"}}>{p.blockedWOs.length>0?p.blockedWOs.map(wo=><div key={wo} style={{fontSize:11,color:T.negative,fontWeight:700}}>⚠ {wo}</div>):<span style={{fontSize:11,color:T.gray400}}>None</span>}</td>
+                <td style={{padding:"10px 14px"}}>{p.blockedWOs.length>0?p.blockedWOs.map(wo=><div key={wo} style={{fontSize:11,color:T.negative,fontWeight:700}}>{wo}</div>):<span style={{fontSize:11,color:T.gray400}}>None</span>}</td>
                 <td style={{padding:"10px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{p.supplier}</td>
                 <td style={{padding:"10px 14px",color:T.gray900,whiteSpace:"nowrap"}}>
                   <div style={{fontSize:11}}>Standard: {p.leadTimeDays}d</div>
@@ -467,11 +466,11 @@ function MaintenanceDashboard({onSelectRec}){
 
       {/* ── PM SCHEDULE TAB ── */}
       {activeTab==="pm"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+        <div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}>
           <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
             <div>
-              <div style={{fontSize:13,fontWeight:800,color:T.black}}>🗓 Preventive Maintenance Schedule</div>
-              <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Upcoming, overdue, and program-less assets needing attention</div>
+              <div style={{fontSize:13,fontWeight:800,color:T.black}}>Preventive Maintenance Schedule</div>
+              <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Overdue and unscheduled assets</div>
             </div>
             <div style={{display:"flex",gap:4}}>
               {["Action Required","All PMs"].map(f=>(<button key={f} onClick={()=>setPmFilter(f)} style={{padding:"4px 10px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",border:`1px solid ${pmFilter===f?T.primary:T.border}`,background:pmFilter===f?T.primary:T.white,color:pmFilter===f?T.white:T.gray900}}>{f}</button>))}
@@ -479,10 +478,10 @@ function MaintenanceDashboard({onSelectRec}){
           </div>
           <div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-              <thead><tr style={{background:T.gray100}}>
-                {["Asset","Line","PM Interval","Last PM","Next PM","Status","WO Coverage","Agent Note",""].map(h=>(<th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>))}
+              <thead><tr style={{background:T.bg}}>
+                {["Asset","Line","PM Interval","Last PM","Next PM","Status","WO Coverage",""].map(h=>(<th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>))}
               </tr></thead>
-              <tbody>{displayPMs.map((p,i)=>(<tr key={p.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
+              <tbody>{displayPMs.map((p,i)=>(<tr key={p.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.surface:"#1C2128"+"88"}}>
                 <td style={{padding:"9px 14px",fontWeight:700,color:T.black,whiteSpace:"nowrap"}}>{p.asset}</td>
                 <td style={{padding:"9px 14px",color:T.gray900}}>{p.line}</td>
                 <td style={{padding:"9px 14px",color:T.gray900}}>{p.interval}</td>
@@ -501,19 +500,19 @@ function MaintenanceDashboard({onSelectRec}){
 
       {/* ── STRATEGY TAB ── */}
       {activeTab==="strategy"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+        <div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}>
           <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
             <div>
-              <div style={{fontSize:13,fontWeight:800,color:T.black}}>⚙️ Maintenance Strategy Agent — Assets Requiring Strategy Change</div>
+              <div style={{fontSize:13,fontWeight:800,color:T.black}}>Strategy Agent — Assets Requiring Review</div>
               <div style={{fontSize:11,color:T.gray900,marginTop:2}}>{changeAssets.length} assets where agent recommends a strategy change · Driven by criticality and consequence of failure</div>
             </div>
           </div>
           <div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-              <thead><tr style={{background:T.gray100}}>
-                {["Asset","Line","Criticality","Failure Impact","Current Strategy","Recommended Change","Reason"].map(h=>(<th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>))}
+              <thead><tr style={{background:T.bg}}>
+                {["Asset","Line","Criticality","Current Strategy","Recommendation","Reason"].map(h=>(<th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>))}
               </tr></thead>
-              <tbody>{changeAssets.map((a,i)=>(<tr key={a.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
+              <tbody>{changeAssets.map((a,i)=>(<tr key={a.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.surface:"#1C2128"+"88"}}>
                 <td style={{padding:"10px 14px",fontWeight:700,color:T.black,whiteSpace:"nowrap"}}>{a.name}</td>
                 <td style={{padding:"10px 14px",color:T.gray900}}>{a.line}</td>
                 <td style={{padding:"10px 14px"}}><Badge label={a.criticality} color={critColor(a.criticality)}/></td>
@@ -525,7 +524,7 @@ function MaintenanceDashboard({onSelectRec}){
                 </td>
                 <td style={{padding:"10px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{a.currentStrategy}</td>
                 <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}><Badge label={a.agentRec} color={recColor(a.agentRec)}/></td>
-                <td style={{padding:"10px 14px",maxWidth:240,fontSize:11,color:T.gray900,lineHeight:1.5}}>{a.recReason}</td>
+                <td style={{padding:"10px 14px",maxWidth:200,fontSize:11,color:T.gray900,lineHeight:1.5}}>{a.recReason.split(".")[0]}.</td>
               </tr>))}</tbody>
             </table>
           </div>
@@ -537,10 +536,10 @@ function MaintenanceDashboard({onSelectRec}){
       {activeTab==="performance"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:20}}>
 
         {/* ── SECTION 1: PERFORMANCE & COACHING ── */}
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+        <div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}>
           <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
             <div style={{fontSize:13,fontWeight:800,color:T.black}}>Performance & Coaching</div>
-            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>On-time completion rate, efficiency vs. estimate, and Co-Pilot coaching suggestions</div>
+            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Performance and coaching</div>
           </div>
           <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:16}}>
             {techPerformance.map(t=>(
@@ -574,7 +573,7 @@ function MaintenanceDashboard({onSelectRec}){
                   <div style={{fontSize:11,fontWeight:700,color:T.gray900,marginBottom:6}}>This Week's Work Orders</div>
                   <div style={{display:"flex",flexDirection:"column",gap:3}}>
                     {t.wosThisWeek.map(wo=>(
-                      <div key={wo.id} style={{display:"flex",gap:8,alignItems:"center",fontSize:11,background:T.white,borderRadius:3,padding:"5px 10px"}}>
+                      <div key={wo.id} style={{display:"flex",gap:8,alignItems:"center",fontSize:11,background:T.surface,borderRadius:3,padding:"5px 10px"}}>
                         <span style={{fontWeight:700,color:T.black,minWidth:70}}>{wo.id}</span>
                         <span style={{flex:1,color:T.gray900}}>{wo.asset}</span>
                         <span style={{color:T.gray900,minWidth:80}}>Est: {wo.estHrs}h</span>
@@ -585,11 +584,11 @@ function MaintenanceDashboard({onSelectRec}){
                   </div>
                 </div>
                 {t.coachingSuggestions.length>0&&(
-                  <div style={{background:T.white,borderRadius:4,border:`1px solid ${"#673AB7"}40`,borderLeft:`3px solid ${"#673AB7"}`,padding:"10px 14px"}}>
-                    <div style={{fontSize:11,fontWeight:700,color:"#673AB7",marginBottom:6}}>🤖 Co-Pilot Coaching Suggestions</div>
+                  <div style={{background:T.surface,borderRadius:4,border:`1px solid ${"#A371F7"}40`,borderLeft:`3px solid ${"#A371F7"}`,padding:"10px 14px"}}>
+                    <div style={{fontSize:11,fontWeight:700,color:"#A371F7",marginBottom:6}}>Co-Pilot Coaching Suggestions</div>
                     {t.coachingSuggestions.map((c,i)=>(
                       <div key={i} style={{display:"flex",gap:8,alignItems:"flex-start",marginBottom:i<t.coachingSuggestions.length-1?6:0}}>
-                        <Badge label={c.type} color={c.type==="SOP"?T.primary:c.type==="Training"?T.info:c.type==="Pairing"?T.warning:"#673AB7"}/>
+                        <Badge label={c.type} color={c.type==="SOP"?T.primary:c.type==="Training"?T.info:c.type==="Pairing"?T.warning:"#A371F7"}/>
                         <span style={{fontSize:11,color:T.gray900,flex:1}}>{c.note}</span>
                       </div>
                     ))}
@@ -597,7 +596,7 @@ function MaintenanceDashboard({onSelectRec}){
                 )}
                 {t.strengths.length>0&&(
                   <div style={{marginTop:8,display:"flex",gap:6,flexWrap:"wrap"}}>
-                    {t.strengths.map(s=><span key={s} style={{fontSize:10,color:T.positive,background:T.positive+"12",border:`1px solid ${T.positive}30`,borderRadius:3,padding:"2px 8px"}}>✓ {s}</span>)}
+                    {t.strengths.map(s=><span key={s} style={{fontSize:10,color:T.positive,background:T.positive+"12",border:`1px solid ${T.positive}30`,borderRadius:3,padding:"2px 8px"}}>{s}</span>)}
                   </div>
                 )}
               </div>
@@ -607,15 +606,15 @@ function MaintenanceDashboard({onSelectRec}){
         </div>
 
         {/* ── SECTION 2: SKILLS MATRIX ── */}
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+        <div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}>
           <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
             <div style={{fontSize:13,fontWeight:800,color:T.black}}>Skills Matrix — Certified Competency by Asset Type</div>
-            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Certification status per technician · Agent flags gaps and single points of failure</div>
+            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Agent-flagged gaps</div>
           </div>
           <div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
               <thead>
-                <tr style={{background:T.gray100}}>
+                <tr style={{background:T.bg}}>
                   <th style={{padding:"10px 16px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,minWidth:160}}>Technician</th>
                   {["Heat Sealer","Heat Tunnel","Filler / Calibration","Conveyor / Belt","Packaging","Electrical","General Mechanical"].map(skill=>(
                     <th key={skill} style={{padding:"10px 12px",textAlign:"center",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,minWidth:100,whiteSpace:"nowrap"}}>{skill}</th>
@@ -629,7 +628,7 @@ function MaintenanceDashboard({onSelectRec}){
                   {name:"Priya Singh",role:"Technician",avatar:"PS",skills:{"Heat Sealer":"none","Heat Tunnel":"none","Filler / Calibration":"certified","Conveyor / Belt":"in-progress","Packaging":"none","Electrical":"none","General Mechanical":"certified"}},
                   {name:"James Okafor",role:"Junior Technician",avatar:"JO",skills:{"Heat Sealer":"none","Heat Tunnel":"none","Filler / Calibration":"none","Conveyor / Belt":"certified","Packaging":"none","Electrical":"none","General Mechanical":"certified"}},
                 ].map((tech,i)=>(
-                  <tr key={tech.name} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
+                  <tr key={tech.name} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.surface:"#1C2128"+"88"}}>
                     <td style={{padding:"10px 16px"}}>
                       <div style={{display:"flex",alignItems:"center",gap:8}}>
                         <div style={{width:28,height:28,borderRadius:"50%",background:T.primary,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:T.white,flexShrink:0}}>{tech.avatar}</div>
@@ -643,7 +642,7 @@ function MaintenanceDashboard({onSelectRec}){
                       const status=tech.skills[skill];
                       return(
                         <td key={skill} style={{padding:"10px 12px",textAlign:"center"}}>
-                          {status==="certified"&&<div style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:28,height:28,borderRadius:"50%",background:T.positive+"18",border:`2px solid ${T.positive}`}}><span style={{fontSize:13,color:T.positive,fontWeight:800}}>✓</span></div>}
+                          {status==="certified"&&<div style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:28,height:28,borderRadius:"50%",background:T.positive+"18",border:`2px solid ${T.positive}`}}><span style={{fontSize:13,color:T.positive,fontWeight:800}}></span></div>}
                           {status==="in-progress"&&<div style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:28,height:28,borderRadius:"50%",background:T.warning+"18",border:`2px solid ${T.warning}`}}><span style={{fontSize:10,color:T.warning,fontWeight:800}}>~</span></div>}
                           {status==="none"&&<div style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:28,height:28,borderRadius:"50%",background:T.gray100,border:`1px solid ${T.border}`}}><span style={{fontSize:13,color:T.gray400}}>—</span></div>}
                         </td>
@@ -666,7 +665,7 @@ function MaintenanceDashboard({onSelectRec}){
           </div>
           {/* Agent gap analysis */}
           <div style={{padding:"0 20px 20px",display:"flex",flexDirection:"column",gap:8}}>
-            <div style={{fontSize:12,fontWeight:800,color:T.black,marginBottom:4}}>🧠 Skills Gap Analysis — Maintenance Strategy Agent</div>
+            <div style={{fontSize:12,fontWeight:800,color:T.black,marginBottom:4}}>Skills Gap Analysis</div>
             {[
               {priority:"High",flag:"Single point of failure — Heat Sealer",detail:"Only Carlos Rivera is certified on Heat Sealer. If Carlos is unavailable, no other technician can execute sealer work. Recommend cross-training Marcus Webb as backup.",action:"Initiate Heat Sealer certification for Marcus Webb"},
               {priority:"High",flag:"Single point of failure — Electrical",detail:"Only Carlos Rivera holds Electrical certification. Critical for fault diagnosis across all lines. Recommend cross-training at least one additional technician.",action:"Identify candidate for Electrical certification — recommend Priya Singh"},
@@ -679,7 +678,7 @@ function MaintenanceDashboard({onSelectRec}){
                   <span style={{fontSize:12,fontWeight:700,color:T.black}}>{gap.flag}</span>
                 </div>
                 <div style={{fontSize:12,color:T.gray900,marginBottom:6}}>{gap.detail}</div>
-                <div style={{fontSize:11,color:T.primary,fontWeight:600}}>💡 {gap.action}</div>
+                <div style={{fontSize:11,color:T.primary,fontWeight:600}}>{gap.action}</div>
               </div>
             ))}
           </div>
@@ -733,10 +732,10 @@ const COPILOT_SUGGESTIONS = [
   "I'm calibrating the Line 3 filler (WO-4423) — what's the zero-point calibration procedure?",
 ];
 const COPILOT_SUGGESTION_LABELS = [
-  "🔒 WO-4421 sealer — walk me through LOTO first",
-  "🔧 WO-4422 heat tunnel PM — tools and parts list?",
-  "⚠️ Line 3 sealer fault code E-14 — what is it?",
-  "📋 WO-4423 filler calibration — zero-point procedure",
+  "WO-4421 sealer — walk me through LOTO first",
+  "WO-4422 heat tunnel PM — tools and parts list?",
+  "Line 3 sealer fault code E-14 — what is it?",
+  "WO-4423 filler calibration — zero-point procedure",
 ];
 
 // ── LINE DATA (same as before) ─────────────────────────────────────────────
@@ -770,16 +769,16 @@ const domainActions = {
 
 const domainRecMap = { Safety:[5], Quality:[], Production:[3,4], Maintenance:[1,2], "Planning & Scheduling":[3,4] };
 
-const VALID_AGENTS = ["Asset Health Monitoring Agent","Maintenance Planning & Scheduling Agent","Technician Co-Pilot","Maintenance Strategy Agent","Scheduling Agent","Planning Agent","Supervisor & Operator Co-Pilot","Quality Monitoring Agent","Inbound Materials Agent","Final Quality Agent","Setpoint & Recipe Optimization Agent","Root Cause Analysis Agent","Safety Agent","Plant Orchestration Agent"];
+const VALID_AGENTS = ["Asset Health Agent","Planning Agent","Technician Co-Pilot","Strategy Agent","Scheduling Agent","Planning Agent","Operator Co-Pilot","Quality Agent","Inbound Materials Agent","Final Quality Agent","Setpoint & Recipe Optimization Agent","Root Cause Analysis Agent","Safety Agent","Plant Orchestration Agent"];
 const VALID_APPROVERS = {"Plant Leader":{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},"Maintenance Manager":{name:"Carlos Rivera",role:"Maintenance Manager",avatar:"MM"},"Scheduler":{name:"Priya Nair",role:"Scheduler",avatar:"SC"},"Production Supervisor":{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"},"Quality Manager":{name:"Quality Manager",role:"Quality Manager",avatar:"QM"}};
-const DOMAIN_ICONS = { Safety:"🦺", Quality:"✅", Production:"⚙️", Maintenance:"🔧", Planning:"📋" };
+const DOMAIN_ICONS = { Safety:"", Quality:"", Production:"", Maintenance:"", Planning:"" };
 
 const initialRecommendations = [
-  {id:1,lines:["All","Line 3"],priority:"Critical",domain:"Maintenance",icon:"🔧",fromChat:false,title:"Line 3 Sealer — Unplanned Failure Risk Within 48hrs",summary:"Asset Health Monitoring Agent detected vibration index 8.4 (threshold 7.0) and temp variance ±6°C on the Line 3 heat sealer. Unplanned failure likely within 48 hours.",agents:["Asset Health Monitoring Agent","Maintenance Planning & Scheduling Agent","Scheduling Agent"],suggestedAction:"Perform planned maintenance during today's 2–4pm changeover window and expedite spare part procurement.",detail:{issue:"Asset Health Monitoring Agent has detected vibration index 8.4 (threshold: 7.0) and temperature variance of ±6°C on the Line 3 heat sealer.",compounding:"Part #SE-441 is out of stock. Emergency procurement from Supplier B can deliver by tomorrow 7am.",risk:"Unplanned failure would result in 4–6 hours unplanned downtime and ~8,000 units of lost output.",action:"Perform planned maintenance during today's 2:00–4:00pm changeover window. Raise emergency PO for Part #SE-441.",steps:[{agent:"Asset Health Monitoring Agent",domain:"Maintenance",action:"Confirm degradation signal — vibration index 8.4, temp variance ±6°C.",status:"complete"},{agent:"Maintenance Planning & Scheduling Agent",domain:"Maintenance",action:"Check Part #SE-441 inventory — out of stock. Raise emergency PO.",status:"complete"},{agent:"Scheduling Agent",domain:"Planning",action:"Identify 2:00–4:00pm changeover slot on Line 3.",status:"complete"},{agent:"Planning Agent",domain:"Planning",action:"Reallocate 1 operator from Line 2 to Line 1 Thursday afternoon.",status:"pending"},{agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Notify supervisors of maintenance window and schedule change.",status:"pending"},{agent:"Technician Co-Pilot",domain:"Maintenance",action:"Pre-load sealer maintenance SOP for technician.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Carlos Rivera",role:"Maintenance Manager",avatar:"MM"},{name:"Priya Nair",role:"Scheduler",avatar:"SC"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"}]}},
-  {id:2,lines:["All","Line 3"],priority:"Critical",domain:"Maintenance",icon:"🔩",fromChat:false,title:"Spare Part Stock-Out — Sealer Heating Element Unavailable",summary:"Part #SE-441 is out of stock. Standard lead time 3 days. Emergency procurement available for next-morning delivery.",agents:["Maintenance Planning & Scheduling Agent","Technician Co-Pilot"],suggestedAction:"Raise emergency PO to approved supplier for next-day delivery.",detail:{issue:"Part #SE-441 has zero inventory. Required for the Line 3 maintenance intervention.",compounding:"Without the part, planned maintenance cannot be completed during today's window.",risk:"If not raised today, earliest arrival is Tuesday — by which time failure is highly likely.",action:"Raise emergency PO to Supplier B ($340/unit). Confirm next-day AM delivery.",steps:[{agent:"Maintenance Planning & Scheduling Agent",domain:"Maintenance",action:"Confirm Part #SE-441 stock — zero units on hand.",status:"complete"},{agent:"Maintenance Planning & Scheduling Agent",domain:"Maintenance",action:"Raise emergency PO to Supplier B — next-day AM delivery confirmed.",status:"pending"},{agent:"Technician Co-Pilot",domain:"Maintenance",action:"Flag part dependency in maintenance work order.",status:"pending"}],approvers:[{name:"Carlos Rivera",role:"Maintenance Manager",avatar:"MM"},{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"}]}},
-  {id:3,lines:["All","Line 3","Line 1"],priority:"High",domain:"Planning",icon:"📋",fromChat:false,title:"Scheduling Conflict — Maintenance Window vs. Friday Customer Order",summary:"Conflict between proposed Line 3 maintenance window and high-priority customer order for SKU 3801 due Friday.",agents:["Scheduling Agent","Planning Agent","Supervisor & Operator Co-Pilot"],suggestedAction:"Shift SKU 3801 run to Line 1 for Thursday afternoon.",detail:{issue:"Line 3 maintenance window conflicts with SKU 3801 order — 6,200 units due Friday.",compounding:"Line 3 capacity already constrained due to sealer issue.",risk:"Either maintenance is missed or customer order is late.",action:"Move SKU 3801 to Line 1, Thursday 1–5pm slot.",steps:[{agent:"Scheduling Agent",domain:"Planning",action:"Model SKU 3801 on Line 1 Thursday — capacity confirmed.",status:"complete"},{agent:"Planning Agent",domain:"Planning",action:"Reallocate operator from Line 2 to Line 1.",status:"pending"},{agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Notify supervisors of schedule change.",status:"pending"}],approvers:[{name:"Priya Nair",role:"Scheduler",avatar:"SC"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"},{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"}]}},
-  {id:4,lines:["All","Line 1","Line 3"],priority:"High",domain:"Planning",icon:"👷",fromChat:false,title:"Labor Shortage — Afternoon Shift Short 2 Operators",summary:"Afternoon shift is short 2 operators. Lines 1 and 3 will have coverage gaps unless resolved before 2pm handover.",agents:["Planning Agent","Supervisor & Operator Co-Pilot"],suggestedAction:"Offer voluntary overtime to 3 identified Day shift operators.",detail:{issue:"Two afternoon shift operators called out — Lines 1 and 3 under-staffed.",compounding:"Labor shortage coincides with planned maintenance window on Line 3.",risk:"Line 1 changeover may be delayed and Line 3 requires minimum 1 operator during maintenance.",action:"Contact 3 Day shift operators for voluntary overtime.",steps:[{agent:"Planning Agent",domain:"Planning",action:"Identify Day shift operators for voluntary overtime — 3 candidates.",status:"complete"},{agent:"Planning Agent",domain:"Planning",action:"Send overtime offer. Response required by 12pm.",status:"pending"},{agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"If declined, activate single-operator protocol on Line 3.",status:"pending"}],approvers:[{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"},{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"}]}},
-  {id:5,lines:["All","Line 2"],priority:"Medium",domain:"Safety",icon:"🦺",fromChat:false,title:"Safety Recertification Overdue — 3 Operators on Line 2",summary:"3 Line 2 operators have overdue LOTO recertification. Policy requires completion within 5 working days.",agents:["Safety Agent","Supervisor & Operator Co-Pilot"],suggestedAction:"Schedule 45-minute recertification session during Line 2 downtime window.",detail:{issue:"J. Park, D. Williams, M. Santos have not completed annual LOTO recertification.",compounding:"Non-compliance creates audit risk on the best-performing line.",risk:"If not completed by Mar 4, operators removed from LOTO-related tasks.",action:"Schedule recertification session Wednesday 10–11am.",steps:[{agent:"Safety Agent",domain:"Safety",action:"Flag 3 overdue LOTO recertifications. Deadline Mar 4.",status:"complete"},{agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Training slot confirmed — Wed 10–11am.",status:"complete"},{agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Book trainer, notify 3 operators.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"}]}},
+  {id:1,lines:["All","Line 3"],priority:"Critical",domain:"Maintenance",icon:"",fromChat:false,title:"Line 3 Sealer — Unplanned Failure Risk Within 48hrs",summary:"Asset Health Monitoring Agent detected vibration index 8.4 (threshold 7.0) and temp variance ±6°C on the Line 3 heat sealer. Unplanned failure likely within 48 hours.",agents:["Asset Health Agent","Planning Agent","Scheduling Agent"],suggestedAction:"Perform planned maintenance during today's 2–4pm changeover window and expedite spare part procurement.",detail:{issue:"Asset Health Monitoring Agent has detected vibration index 8.4 (threshold: 7.0) and temperature variance of ±6°C on the Line 3 heat sealer.",compounding:"Part #SE-441 is out of stock. Emergency procurement from Supplier B can deliver by tomorrow 7am.",risk:"Unplanned failure would result in 4–6 hours unplanned downtime and ~8,000 units of lost output.",action:"Perform planned maintenance during today's 2:00–4:00pm changeover window. Raise emergency PO for Part #SE-441.",steps:[{agent:"Asset Health Agent",domain:"Maintenance",action:"Confirm degradation signal — vibration index 8.4, temp variance ±6°C.",status:"complete"},{agent:"Planning Agent",domain:"Maintenance",action:"Check Part #SE-441 inventory — out of stock. Raise emergency PO.",status:"complete"},{agent:"Scheduling Agent",domain:"Planning",action:"Identify 2:00–4:00pm changeover slot on Line 3.",status:"complete"},{agent:"Planning Agent",domain:"Planning",action:"Reallocate 1 operator from Line 2 to Line 1 Thursday afternoon.",status:"pending"},{agent:"Operator Co-Pilot",domain:"Production",action:"Notify supervisors of maintenance window and schedule change.",status:"pending"},{agent:"Technician Co-Pilot",domain:"Maintenance",action:"Pre-load sealer maintenance SOP for technician.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Carlos Rivera",role:"Maintenance Manager",avatar:"MM"},{name:"Priya Nair",role:"Scheduler",avatar:"SC"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"}]}},
+  {id:2,lines:["All","Line 3"],priority:"Critical",domain:"Maintenance",icon:"",fromChat:false,title:"Spare Part Stock-Out — Sealer Heating Element Unavailable",summary:"Part #SE-441 is out of stock. Standard lead time 3 days. Emergency procurement available for next-morning delivery.",agents:["Planning Agent","Technician Co-Pilot"],suggestedAction:"Raise emergency PO to approved supplier for next-day delivery.",detail:{issue:"Part #SE-441 has zero inventory. Required for the Line 3 maintenance intervention.",compounding:"Without the part, planned maintenance cannot be completed during today's window.",risk:"If not raised today, earliest arrival is Tuesday — by which time failure is highly likely.",action:"Raise emergency PO to Supplier B ($340/unit). Confirm next-day AM delivery.",steps:[{agent:"Planning Agent",domain:"Maintenance",action:"Confirm Part #SE-441 stock — zero units on hand.",status:"complete"},{agent:"Planning Agent",domain:"Maintenance",action:"Raise emergency PO to Supplier B — next-day AM delivery confirmed.",status:"pending"},{agent:"Technician Co-Pilot",domain:"Maintenance",action:"Flag part dependency in maintenance work order.",status:"pending"}],approvers:[{name:"Carlos Rivera",role:"Maintenance Manager",avatar:"MM"},{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"}]}},
+  {id:3,lines:["All","Line 3","Line 1"],priority:"High",domain:"Planning",icon:"",fromChat:false,title:"Scheduling Conflict — Maintenance Window vs. Friday Customer Order",summary:"Conflict between proposed Line 3 maintenance window and high-priority customer order for SKU 3801 due Friday.",agents:["Scheduling Agent","Planning Agent","Operator Co-Pilot"],suggestedAction:"Shift SKU 3801 run to Line 1 for Thursday afternoon.",detail:{issue:"Line 3 maintenance window conflicts with SKU 3801 order — 6,200 units due Friday.",compounding:"Line 3 capacity already constrained due to sealer issue.",risk:"Either maintenance is missed or customer order is late.",action:"Move SKU 3801 to Line 1, Thursday 1–5pm slot.",steps:[{agent:"Scheduling Agent",domain:"Planning",action:"Model SKU 3801 on Line 1 Thursday — capacity confirmed.",status:"complete"},{agent:"Planning Agent",domain:"Planning",action:"Reallocate operator from Line 2 to Line 1.",status:"pending"},{agent:"Operator Co-Pilot",domain:"Production",action:"Notify supervisors of schedule change.",status:"pending"}],approvers:[{name:"Priya Nair",role:"Scheduler",avatar:"SC"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"},{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"}]}},
+  {id:4,lines:["All","Line 1","Line 3"],priority:"High",domain:"Planning",icon:"",fromChat:false,title:"Labor Shortage — Afternoon Shift Short 2 Operators",summary:"Afternoon shift is short 2 operators. Lines 1 and 3 will have coverage gaps unless resolved before 2pm handover.",agents:["Planning Agent","Operator Co-Pilot"],suggestedAction:"Offer voluntary overtime to 3 identified Day shift operators.",detail:{issue:"Two afternoon shift operators called out — Lines 1 and 3 under-staffed.",compounding:"Labor shortage coincides with planned maintenance window on Line 3.",risk:"Line 1 changeover may be delayed and Line 3 requires minimum 1 operator during maintenance.",action:"Contact 3 Day shift operators for voluntary overtime.",steps:[{agent:"Planning Agent",domain:"Planning",action:"Identify Day shift operators for voluntary overtime — 3 candidates.",status:"complete"},{agent:"Planning Agent",domain:"Planning",action:"Send overtime offer. Response required by 12pm.",status:"pending"},{agent:"Operator Co-Pilot",domain:"Production",action:"If declined, activate single-operator protocol on Line 3.",status:"pending"}],approvers:[{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"},{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"}]}},
+  {id:5,lines:["All","Line 2"],priority:"Medium",domain:"Safety",icon:"",fromChat:false,title:"Safety Recertification Overdue — 3 Operators on Line 2",summary:"3 Line 2 operators have overdue LOTO recertification. Policy requires completion within 5 working days.",agents:["Safety Agent","Operator Co-Pilot"],suggestedAction:"Schedule 45-minute recertification session during Line 2 downtime window.",detail:{issue:"J. Park, D. Williams, M. Santos have not completed annual LOTO recertification.",compounding:"Non-compliance creates audit risk on the best-performing line.",risk:"If not completed by Mar 4, operators removed from LOTO-related tasks.",action:"Schedule recertification session Wednesday 10–11am.",steps:[{agent:"Safety Agent",domain:"Safety",action:"Flag 3 overdue LOTO recertifications. Deadline Mar 4.",status:"complete"},{agent:"Operator Co-Pilot",domain:"Production",action:"Training slot confirmed — Wed 10–11am.",status:"complete"},{agent:"Operator Co-Pilot",domain:"Production",action:"Book trainer, notify 3 operators.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"}]}},
 ];
 
 const actionLog = [
@@ -816,7 +815,7 @@ const LINE_COLORS_PERF={"Line 1":T.primary,"Line 2":T.positive,"Line 3":T.negati
 const INIT_ORDERS=[{id:"RUN-1021",line:"Line 1",sku:"SKU 3802",desc:"Original Chips",units:4200,target:4500,start:"Feb 28 06:00",end:"Feb 28 11:30",dueDate:"Feb 28",dc:"DC-East"},{id:"RUN-1022",line:"Line 1",sku:"SKU 4412",desc:"Seasoned Chips",units:4200,target:4500,start:"Feb 28 12:00",end:"Feb 28 17:30",dueDate:"Feb 28",dc:"DC-West",riskReason:"Inbound materials out of spec"},{id:"RUN-1023",line:"Line 1",sku:"SKU 2204",desc:"Crimped Seal Chips",units:3800,target:4000,start:"Mar 1 06:00",end:"Mar 1 11:00",dueDate:"Mar 3",dc:"DC-South"},{id:"RUN-1024",line:"Line 1",sku:"SKU 3801",desc:"Premium Chips",units:6200,target:6200,start:"Mar 1 13:00",end:"Mar 1 18:00",dueDate:"Mar 7",dc:"DC-East",riskReason:"Moved from Line 3 per orchestration rec"},{id:"RUN-1025",line:"Line 1",sku:"SKU 3804",desc:"BBQ Chips",units:5000,target:5000,start:"Mar 2 06:00",end:"Mar 2 12:30",dueDate:"Mar 5",dc:"DC-West"},{id:"RUN-1026",line:"Line 2",sku:"SKU 3802",desc:"Original Chips",units:7000,target:7000,start:"Feb 28 06:00",end:"Feb 28 14:00",dueDate:"Feb 28",dc:"DC-North"},{id:"RUN-1027",line:"Line 2",sku:"SKU 2204",desc:"Crimped Seal Chips",units:6500,target:6500,start:"Mar 1 06:00",end:"Mar 1 13:00",dueDate:"Mar 4",dc:"DC-East"},{id:"RUN-1028",line:"Line 2",sku:"SKU 3804",desc:"BBQ Chips",units:7000,target:7000,start:"Mar 2 06:00",end:"Mar 2 14:00",dueDate:"Mar 6",dc:"DC-South"},{id:"RUN-1029",line:"Line 2",sku:"SKU 3801",desc:"Premium Chips",units:3500,target:3500,start:"Mar 3 08:00",end:"Mar 3 12:30",dueDate:"Mar 7",dc:"DC-West"},{id:"RUN-1030",line:"Line 3",sku:"SKU 2204",desc:"Crimped Seal Chips",units:2800,target:4500,start:"Feb 28 10:00",end:"Feb 28 14:00",dueDate:"Mar 1",dc:"DC-North",riskReason:"Sealer downtime constraining output"},{id:"RUN-1031",line:"Line 3",sku:"SKU 2204",desc:"Crimped Seal Chips",units:4000,target:4000,start:"Mar 1 06:00",end:"Mar 1 14:00",dueDate:"Mar 3",dc:"DC-East"},{id:"RUN-1032",line:"Line 3",sku:"SKU 3804",desc:"BBQ Chips",units:5500,target:5500,start:"Mar 2 08:00",end:"Mar 2 16:00",dueDate:"Mar 5",dc:"DC-South",riskReason:"Dependent on sealer repair"}];
 const schedAgentRecs=[{id:"sa1",priority:"High",title:"Sequence Optimisation — Line 1 Thursday",impact:"Save 45 min changeover",action:"Resequence RUN-1023 → RUN-1025 on Line 1 Thursday",detail:"Grouping RUN-1023 (SKU 2204) and RUN-1025 (SKU 3804) back-to-back on Line 1 Thursday saves an estimated 45 min of changeover time."},{id:"sa2",priority:"Medium",title:"Idle Capacity — Line 2 Friday Afternoon",impact:"~1,800 units buffer stock",action:"Add SKU 2204 buffer run to Line 2, Mar 6 1–3:30pm",detail:"Line 2 has 2.5 hours of unallocated capacity Friday afternoon."},{id:"sa3",priority:"Medium",title:"Changeover Reduction — Line 3 Next Week",impact:"Save ~1.5 hrs changeover",action:"Regroup Line 3 schedule Mar 2–3 by SKU family",detail:"Current Line 3 schedule alternates between incompatible SKU families."}];
 const orchSchedulingRecs=[{id:3,priority:"High",title:"SKU 3801 Rescheduled to Line 1 — Thursday Afternoon",status:"Partially Executed",detail:"SKU 3801 (RUN-1024) moved from Line 3 to Line 1, Thursday 1–5pm due to Line 3 sealer risk."},{id:1,priority:"Critical",title:"Line 3 Maintenance Window — Today 2–4pm",status:"Action Required",detail:"Planned maintenance window approved on Line 3 today 2–4pm. RUN-1030 volume shortfall of ~1,700 units vs DC-North target."}];
-const GANTT_SKUS={"SKU 3802":T.primary,"SKU 4412":T.negative,"SKU 2204":T.positive,"SKU 3801":"#673AB7","SKU 3804":T.warning};
+const GANTT_SKUS={"SKU 3802":T.primary,"SKU 4412":T.negative,"SKU 2204":T.positive,"SKU 3801":"#A371F7","SKU 3804":T.warning};
 const GANTT_DAYS=["Feb 28","Mar 1","Mar 2","Mar 3"];
 const GANTT_HOURS=[6,8,10,12,14,16,18];
 const DAY_START=6;const DAY_END=18;
@@ -858,23 +857,23 @@ function DetailPage({rec,onBack}){
   const approve=i=>{const u=[...approverState];u[i].status="approved";setApproverState(u);};
   const execute=()=>{setExecuting(true);setTimeout(()=>{setExecuting(false);setExecuted(true);},2000);};
   return(<div>
-    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+    <div style={{background:T.surface,borderBottom:`1px solid ${T.border}`,padding:"16px 24px",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
       <button onClick={onBack} style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"6px 12px",fontSize:12,cursor:"pointer",color:T.gray900,fontWeight:700}}>← Back</button>
       <div style={{flex:1}}><div style={{fontSize:16,fontWeight:800,color:T.black}}>{rec.icon} {rec.title}</div><div style={{fontSize:12,color:T.gray900,marginTop:2}}>Recommendation Detail & Orchestrated Response Plan</div></div>
       <Badge label={rec.priority} color={PriorityColor(rec.priority)}/>
     </div>
-    <div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16,background:T.gray100}}>
-      {executed&&<div style={{background:"#F0FDF4",border:`2px solid ${T.positive}`,borderRadius:4,padding:"14px 18px"}}><div style={{fontSize:14,fontWeight:800,color:T.positive}}>✅ Orchestrated Response Executed</div><div style={{fontSize:12,color:T.black,marginTop:4}}>All agent actions dispatched. Relevant supervisors and managers notified.</div></div>}
-      <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",overflow:"hidden"}}>
+    <div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16,background:T.bg}}>
+      {executed&&<div style={{background:"#0D2B1A",border:`2px solid ${T.positive}`,borderRadius:4,padding:"14px 18px"}}><div style={{fontSize:14,fontWeight:800,color:T.positive}}>Orchestrated Response Executed</div><div style={{fontSize:12,color:T.black,marginTop:4}}>All agent actions dispatched. Relevant supervisors and managers notified.</div></div>}
+      <div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)",overflow:"hidden"}}>
         <div style={{background:PriorityColor(rec.priority),padding:"10px 18px",display:"flex",gap:10,alignItems:"center"}}><Badge label={rec.priority} color={T.white}/><span style={{fontSize:13,fontWeight:800,color:T.white}}>{rec.domain}</span></div>
         <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:12}}>
           {[["ISSUE",d.issue],["COMPOUNDING FACTOR",d.compounding],["RISK IF NOT ACTED ON",d.risk]].filter(([,v])=>v).map(([lbl,txt])=>(<div key={lbl}><div style={{fontSize:11,fontWeight:700,color:T.gray900,marginBottom:3}}>{lbl}</div><div style={{fontSize:12,color:T.black,lineHeight:1.6}}>{txt}</div></div>))}
           {!d.issue&&<div style={{fontSize:12,color:T.black,lineHeight:1.6}}>{rec.summary}</div>}
-          <div style={{background:T.primary+"10",borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"10px 14px"}}><div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:3}}>RECOMMENDED ACTION</div><div style={{fontSize:12,color:T.black,lineHeight:1.6}}>{d.action||rec.suggestedAction}</div></div>
+          <div style={{background:T.primary+"10",borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"10px 14px"}}><div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:3}}>Recommended action</div><div style={{fontSize:12,color:T.black,lineHeight:1.6}}>{d.action||rec.suggestedAction}</div></div>
         </div>
       </div>
-      {(d.steps||[]).length>0&&<div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
-        <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>🌐 Orchestrated Agent Response Plan</div></div>
+      {(d.steps||[]).length>0&&<div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}>
+        <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>Orchestrated Agent Response Plan</div></div>
         <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:8}}>
           {d.steps.map((s,i)=>(<div key={i} style={{display:"flex",gap:12,alignItems:"flex-start",padding:"10px 14px",background:T.gray100,borderRadius:4}}>
             <div style={{width:24,height:24,borderRadius:"50%",background:executed||s.status==="complete"?T.positive:T.gray400,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:T.white,fontWeight:800,flexShrink:0}}>{executed||s.status==="complete"?"✓":i+1}</div>
@@ -883,7 +882,7 @@ function DetailPage({rec,onBack}){
           </div>))}
         </div>
       </div>}
-      {approverState.length>0&&<div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+      {approverState.length>0&&<div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}>
         <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>✍️ Approval Required Before Execution</div></div>
         <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:8}}>
           {approverState.map((a,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:T.gray100,borderRadius:4,gap:8,flexWrap:"wrap"}}>
@@ -891,7 +890,7 @@ function DetailPage({rec,onBack}){
             {a.status==="approved"||executed?<Badge label="✓ Approved" color={T.positive}/>:<button onClick={()=>approve(i)} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Approve</button>}
           </div>))}
         </div>
-        <div style={{padding:"0 20px 20px"}}><button onClick={execute} disabled={!allApproved||executed||executing} style={{width:"100%",padding:"12px",background:allApproved&&!executed?T.primary:T.gray400,color:T.white,border:"none",borderRadius:4,fontSize:14,fontWeight:800,cursor:allApproved&&!executed?"pointer":"not-allowed"}}>{executing?"⏳ Dispatching...":executed?"✅ Response Executed":allApproved?"🚀 Execute Orchestrated Response":`Waiting for approvals (${approverState.filter(a=>a.status==="approved").length}/${approverState.length})`}</button></div>
+        <div style={{padding:"0 20px 20px"}}><button onClick={execute} disabled={!allApproved||executed||executing} style={{width:"100%",padding:"12px",background:allApproved&&!executed?T.primary:T.gray400,color:T.white,border:"none",borderRadius:4,fontSize:14,fontWeight:800,cursor:allApproved&&!executed?"pointer":"not-allowed"}}>{executing?"⏳ Dispatching...":executed?"Response Executed":allApproved?"Execute Orchestrated Response":`Waiting for approvals (${approverState.filter(a=>a.status==="approved").length}/${approverState.length})`}</button></div>
       </div>}
     </div>
   </div>);
@@ -901,16 +900,16 @@ function DomainColumn({domain,icon,metrics,actions,recCount,onScrollToRecs}){
   const [expanded,setExpanded]=useState(false);
   const actionRequired=actions.filter(a=>a.status==="Action Required").length;
   return(<div style={{flex:1,minWidth:130,display:"flex",flexDirection:"column",gap:6}}>
-    <div style={{fontSize:11,fontWeight:800,color:T.gray900,borderBottom:`2px solid ${T.border}`,paddingBottom:6,marginBottom:2}}>{icon} {domain}</div>
+    <div style={{fontSize:11,fontWeight:800,color:T.gray900,borderBottom:`1px solid ${T.border}`,paddingBottom:6,marginBottom:2}}>{domain}</div>
     {metrics.map(m=>(<div key={m.label} style={{padding:"10px 12px",background:T.gray100,borderRadius:4,borderLeft:`3px solid ${m.bad?T.negative:m.good?T.positive:T.warning}`}}><Metric {...m}/></div>))}
     <div style={{marginTop:4}}>
       <button onClick={()=>setExpanded(e=>!e)} style={{width:"100%",background:actionRequired>0?"#FEF2F2":T.gray100,border:`1px solid ${actionRequired>0?T.negative+"40":T.border}`,borderRadius:4,padding:"6px 10px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:4}}>
-        <span style={{fontSize:11,fontWeight:700,color:actionRequired>0?T.negative:T.gray900}}>{actionRequired>0?`⚠ ${actionRequired} Action Required`:`📋 ${actions.length} Actions`}</span>
+        <span style={{fontSize:11,fontWeight:700,color:actionRequired>0?T.negative:T.gray900}}>{actionRequired>0?`${actionRequired} Action Required`:`${actions.length} Actions`}</span>
         <span style={{fontSize:10,color:T.gray400}}>{expanded?"▲":"▼"}</span>
       </button>
-      {expanded&&<div style={{display:"flex",flexDirection:"column",gap:4,marginTop:4}}>{actions.map(a=>(<div key={a.id} style={{background:T.white,borderRadius:4,padding:"8px 10px",borderLeft:`3px solid ${statusColor(a.status)}`,fontSize:11}}><div style={{color:T.black,marginBottom:3,lineHeight:1.4}}>{a.text}</div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:4}}><span style={{color:T.gray900,fontSize:10}}>{a.owner}</span><Badge label={a.status} color={statusColor(a.status)}/></div></div>))}</div>}
+      {expanded&&<div style={{display:"flex",flexDirection:"column",gap:4,marginTop:4}}>{actions.map(a=>(<div key={a.id} style={{background:T.surface,borderRadius:4,padding:"8px 10px",borderLeft:`3px solid ${statusColor(a.status)}`,fontSize:11}}><div style={{color:T.black,marginBottom:3,lineHeight:1.4}}>{a.text}</div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:4}}><span style={{color:T.gray900,fontSize:10}}>{a.owner}</span><Badge label={a.status} color={statusColor(a.status)}/></div></div>))}</div>}
     </div>
-    {recCount>0&&<button onClick={onScrollToRecs} style={{marginTop:2,background:T.primary+"10",border:`1px solid ${T.primary}40`,borderRadius:4,padding:"6px 10px",cursor:"pointer",textAlign:"left",width:"100%"}}><span style={{fontSize:11,fontWeight:700,color:T.primary}}>🧠 {recCount} recommendation{recCount>1?"s":""} below ↓</span></button>}
+    {recCount>0&&<button onClick={onScrollToRecs} style={{marginTop:2,background:T.primary+"10",border:`1px solid ${T.primary}40`,borderRadius:4,padding:"6px 10px",cursor:"pointer",textAlign:"left",width:"100%"}}><span style={{fontSize:11,fontWeight:700,color:T.primary}}>{recCount} recommendation{recCount>1?"s":""} below ↓</span></button>}
   </div>);
 }
 
@@ -928,34 +927,34 @@ function Dashboard({recs,onSelectRec,onShowDisruption,disruptionActive,persona})
   const standardRecs=filteredRecs.filter(r=>!r.fromChat&&!r.fromDisruption);
   const scrollToRecs=()=>recsRef.current?.scrollIntoView({behavior:"smooth",block:"start"});
   const allDomainColumns=[
-    {domain:"Safety",icon:"🦺",metrics:[{label:"Safety Incidents",value:d.safetyIncidents,target:0,unit:"",good:d.safetyIncidents===0,bad:d.safetyIncidents>0},{label:"Near Misses",value:d.nearMisses,target:0,unit:"",good:d.nearMisses===0,bad:d.nearMisses>1}],actions:actions.Safety||[]},
-    {domain:"Quality",icon:"✅",metrics:[{label:"Quality Rate",value:d.qualityRate,target:d.qualityTarget,unit:"%",good:pct(d.qualityRate,d.qualityTarget),bad:!pct(d.qualityRate,d.qualityTarget)},{label:"First Pass Yield",value:d.firstPassYield,target:95,unit:"%",good:pct(d.firstPassYield,95),bad:!pct(d.firstPassYield,95)}],actions:actions.Quality||[]},
-    {domain:"Production",icon:"⚙️",metrics:[{label:"Units Produced",value:d.unitsProduced.toLocaleString(),target:d.unitsTarget.toLocaleString(),unit:"",good:pct(d.unitsProduced,d.unitsTarget),bad:!pct(d.unitsProduced,d.unitsTarget)},{label:"OEE",value:d.oee,target:d.oeeTarget,unit:"%",good:pct(d.oee,d.oeeTarget),bad:!pct(d.oee,d.oeeTarget)},{label:"Availability",value:d.availability,target:85,unit:"%",good:pct(d.availability,85),bad:!pct(d.availability,85)},{label:"Downtime",value:d.downtimeMins,target:d.downtimeTarget,unit:" min",good:inv(d.downtimeMins,d.downtimeTarget),bad:!inv(d.downtimeMins,d.downtimeTarget)},{label:"Scrap / Waste",value:d.scrap,target:d.scrapTarget,unit:"%",good:inv(d.scrap,d.scrapTarget),bad:!inv(d.scrap,d.scrapTarget)}],actions:actions.Production||[]},
-    {domain:"Maintenance",icon:"🔧",metrics:[{label:"Planned/Unplanned",value:`${d.plannedUnplannedRatio}% / ${100-d.plannedUnplannedRatio}%`,target:null,unit:"",good:d.plannedUnplannedRatio>=80,bad:d.plannedUnplannedRatio<60},{label:"Open Work Orders",value:d.openWorkOrders,target:null,unit:"",good:d.openWorkOrders<=2,bad:d.openWorkOrders>4},{label:"Overdue WOs",value:d.overdueWorkOrders,target:0,unit:"",good:d.overdueWorkOrders===0,bad:d.overdueWorkOrders>0}],actions:actions.Maintenance||[]},
-    {domain:"Planning & Scheduling",icon:"📋",metrics:[{label:"Plan Status",value:d.planStatus>0?`${d.planStatus} hrs ahead`:`${Math.abs(d.planStatus)} hrs behind`,target:null,unit:"",good:d.planStatus>=0,bad:d.planStatus<-2},{label:"Sched. Adherence",value:d.scheduleAdherence,target:d.scheduleTarget,unit:"%",good:pct(d.scheduleAdherence,d.scheduleTarget),bad:!pct(d.scheduleAdherence,d.scheduleTarget)},{label:"OTIF",value:d.otif,target:d.otifTarget,unit:"%",good:pct(d.otif,d.otifTarget),bad:!pct(d.otif,d.otifTarget)}],actions:actions.Planning||[]},
+    {domain:"Safety",icon:"",metrics:[{label:"Safety Incidents",value:d.safetyIncidents,target:0,unit:"",good:d.safetyIncidents===0,bad:d.safetyIncidents>0},{label:"Near Misses",value:d.nearMisses,target:0,unit:"",good:d.nearMisses===0,bad:d.nearMisses>1}],actions:actions.Safety||[]},
+    {domain:"Quality",icon:"",metrics:[{label:"Quality Rate",value:d.qualityRate,target:d.qualityTarget,unit:"%",good:pct(d.qualityRate,d.qualityTarget),bad:!pct(d.qualityRate,d.qualityTarget)},{label:"First Pass Yield",value:d.firstPassYield,target:95,unit:"%",good:pct(d.firstPassYield,95),bad:!pct(d.firstPassYield,95)}],actions:actions.Quality||[]},
+    {domain:"Production",icon:"",metrics:[{label:"Units Produced",value:d.unitsProduced.toLocaleString(),target:d.unitsTarget.toLocaleString(),unit:"",good:pct(d.unitsProduced,d.unitsTarget),bad:!pct(d.unitsProduced,d.unitsTarget)},{label:"OEE",value:d.oee,target:d.oeeTarget,unit:"%",good:pct(d.oee,d.oeeTarget),bad:!pct(d.oee,d.oeeTarget)},{label:"Availability",value:d.availability,target:85,unit:"%",good:pct(d.availability,85),bad:!pct(d.availability,85)},{label:"Downtime",value:d.downtimeMins,target:d.downtimeTarget,unit:" min",good:inv(d.downtimeMins,d.downtimeTarget),bad:!inv(d.downtimeMins,d.downtimeTarget)},{label:"Scrap / Waste",value:d.scrap,target:d.scrapTarget,unit:"%",good:inv(d.scrap,d.scrapTarget),bad:!inv(d.scrap,d.scrapTarget)}],actions:actions.Production||[]},
+    {domain:"Maintenance",icon:"",metrics:[{label:"Planned/Unplanned",value:`${d.plannedUnplannedRatio}% / ${100-d.plannedUnplannedRatio}%`,target:null,unit:"",good:d.plannedUnplannedRatio>=80,bad:d.plannedUnplannedRatio<60},{label:"Open Work Orders",value:d.openWorkOrders,target:null,unit:"",good:d.openWorkOrders<=2,bad:d.openWorkOrders>4},{label:"Overdue WOs",value:d.overdueWorkOrders,target:0,unit:"",good:d.overdueWorkOrders===0,bad:d.overdueWorkOrders>0}],actions:actions.Maintenance||[]},
+    {domain:"Planning & Scheduling",icon:"",metrics:[{label:"Plan Status",value:d.planStatus>0?`${d.planStatus} hrs ahead`:`${Math.abs(d.planStatus)} hrs behind`,target:null,unit:"",good:d.planStatus>=0,bad:d.planStatus<-2},{label:"Sched. Adherence",value:d.scheduleAdherence,target:d.scheduleTarget,unit:"%",good:pct(d.scheduleAdherence,d.scheduleTarget),bad:!pct(d.scheduleAdherence,d.scheduleTarget)},{label:"OTIF",value:d.otif,target:d.otifTarget,unit:"%",good:pct(d.otif,d.otifTarget),bad:!pct(d.otif,d.otifTarget)}],actions:actions.Planning||[]},
   ];
   const visibleDomainColumns=allDomainColumns.map(col=>({...col,actions:personaDomains.includes(col.domain)?col.actions:[]}));
   return(<div>
-    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
-      <div><div style={{fontSize:18,fontWeight:800,color:T.black}}>Good morning, Austin Plant 👋</div><div style={{fontSize:12,color:T.gray900,marginTop:2}}>Daily Direction Setting · Friday Feb 28, 2026 · 7:00am · Prior 24 hours</div></div>
+    <div style={{background:T.surface,borderBottom:`1px solid ${T.border}`,padding:"16px 24px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
+      <div><div style={{fontSize:18,fontWeight:800,color:T.black}}>Good morning, Austin Plant</div><div style={{fontSize:12,color:T.gray900,marginTop:2}}>Daily Direction Setting · Friday Feb 28, 2026 · 7:00am · Prior 24 hours</div></div>
       <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{["All","Line 1","Line 2","Line 3"].map(l=>(<button key={l} onClick={()=>setLineFilter(l)} style={{padding:"6px 14px",borderRadius:4,fontSize:12,fontWeight:700,cursor:"pointer",border:`1px solid ${lineFilter===l?T.primary:T.border}`,background:lineFilter===l?T.primary:T.white,color:lineFilter===l?T.white:T.gray900}}>{l}</button>))}</div>
     </div>
-    <div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:20,background:T.gray100}}>
-      {disruptionActive&&persona==="plant_leader"&&<div onClick={onShowDisruption} style={{background:"#FEF2F2",border:`2px solid ${T.negative}`,borderRadius:4,padding:"12px 18px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}>
-        <div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:18}}>🚨</span><div><div style={{fontSize:13,fontWeight:800,color:T.negative}}>REAL-TIME DISRUPTION · {disruptionAlert.time}</div><div style={{fontSize:12,color:T.black,marginTop:2}}>{disruptionAlert.title}</div></div></div>
+    <div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:20,background:T.bg}}>
+      {disruptionActive&&persona==="plant_leader"&&<div onClick={onShowDisruption} style={{background:"#2D0F0F",border:`2px solid ${T.negative}`,borderRadius:4,padding:"12px 18px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:18}}></span><div><div style={{fontSize:13,fontWeight:800,color:T.negative}}>REAL-TIME DISRUPTION · {disruptionAlert.time}</div><div style={{fontSize:12,color:T.black,marginTop:2}}>{disruptionAlert.title}</div></div></div>
         <Badge label="View & Respond →" color={T.negative}/>
       </div>}
-      <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+      <div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}>
         <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:8}}>
           <div><div style={{fontSize:13,fontWeight:800,color:T.black}}>Performance Scorecard — {lineFilter==="All"?"All Lines":lineFilter}</div><div style={{fontSize:11,color:T.gray900,marginTop:2}}>Prior 24 hours · 3 shifts</div></div>
-          {lineFilter!=="All"&&d.alerts.length>0&&<div style={{display:"flex",flexDirection:"column",gap:4}}>{d.alerts.map((a,i)=><div key={i} style={{fontSize:11,color:T.negative,fontWeight:600}}>⚠ {a}</div>)}</div>}
+          {lineFilter!=="All"&&d.alerts.length>0&&<div style={{display:"flex",flexDirection:"column",gap:4}}>{d.alerts.map((a,i)=><div key={i} style={{fontSize:11,color:T.negative,fontWeight:600}}>{a}</div>)}</div>}
         </div>
         <div style={{padding:"16px 20px",overflowX:"auto"}}><div style={{display:"flex",gap:12,minWidth:500}}>{visibleDomainColumns.map(col=>{const recIds=domainRecMap[col.domain]||[];const colRecCount=standardRecs.filter(r=>recIds.includes(r.id)).length;return(<DomainColumn key={col.domain} {...col} recCount={colRecCount} onScrollToRecs={scrollToRecs}/>);})}</div></div>
         <div style={{borderTop:`1px solid ${T.border}`,padding:"14px 20px"}}>
           <div style={{fontSize:12,fontWeight:700,color:T.gray900,marginBottom:10}}>Shift Breakdown</div>
           <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-            <thead><tr style={{background:T.gray100}}>{["Shift","OEE","Units","Target","Quality","Downtime","Status"].map(h=>(<th key={h} style={{padding:"7px 12px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>))}</tr></thead>
-            <tbody>{d.shifts.map((s,i)=>(<tr key={i} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
+            <thead><tr style={{background:T.bg}}>{["Shift","OEE","Units","Target","Quality","Downtime","Status"].map(h=>(<th key={h} style={{padding:"7px 12px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>))}</tr></thead>
+            <tbody>{d.shifts.map((s,i)=>(<tr key={i} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.surface:"#1C2128"+"88"}}>
               <td style={{padding:"8px 12px",fontWeight:700,color:T.black,whiteSpace:"nowrap"}}>{s.shift}</td>
               <td style={{padding:"8px 12px",fontWeight:700,color:s.oee>=85?T.positive:s.oee>=75?T.warning:T.negative}}>{s.oee}%</td>
               <td style={{padding:"8px 12px",color:T.black}}>{s.units.toLocaleString()}</td>
@@ -968,12 +967,12 @@ function Dashboard({recs,onSelectRec,onShowDisruption,disruptionActive,persona})
         </div>
       </div>
       <div ref={recsRef}>
-        {disruptionRecs.length>0&&<div style={{marginBottom:16}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>🚨 From Disruption Response</div><Badge label={`${disruptionRecs.length} active`} color={T.negative}/></div><div style={{display:"flex",flexDirection:"column",gap:8}}>{disruptionRecs.map(r=>(<div key={r.id} onClick={()=>onSelectRec(r)} style={{background:T.white,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,boxShadow:`0 0 0 2px ${T.negative}22`,padding:"14px 18px",cursor:"pointer"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}><div style={{flex:1}}><div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label={r.domain} color={T.primary}/><Badge label="🚨 Disruption" color={T.negative}/></div><div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:4}}>{r.icon} {r.title}</div><div style={{fontSize:12,color:T.gray900}}>{r.summary}</div><div style={{fontSize:12,color:T.primary,fontWeight:600,marginTop:6}}>💡 {r.suggestedAction}</div></div><div style={{fontSize:12,color:T.primary,fontWeight:700}}>View Detail →</div></div></div>))}</div></div>}
-        {chatRecs.length>0&&<div style={{marginBottom:16}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>✦ From Scenario Simulation</div><Badge label={`${chatRecs.length} new`} color={T.info}/></div><div style={{display:"flex",flexDirection:"column",gap:8}}>{chatRecs.map(r=>(<div key={r.id} onClick={()=>onSelectRec(r)} style={{background:T.white,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,boxShadow:`0 0 0 2px ${T.info}22`,padding:"14px 18px",cursor:"pointer"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}><div style={{flex:1}}><div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label={r.domain} color={T.primary}/><Badge label="✦ From Chat" color={T.info}/></div><div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:4}}>{r.icon} {r.title}</div><div style={{fontSize:12,color:T.gray900}}>{r.summary}</div><div style={{fontSize:12,color:T.primary,fontWeight:600,marginTop:6}}>💡 {r.suggestedAction}</div></div><div style={{fontSize:12,color:T.primary,fontWeight:700}}>View Detail →</div></div></div>))}</div></div>}
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4,flexWrap:"wrap",gap:8}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>🧠 Orchestration Agent — Recommendations</div>{persona!=="plant_leader"&&<Badge label={`Filtered for your role · ${standardRecs.length} relevant`} color={T.primary}/>}</div>
+        {disruptionRecs.length>0&&<div style={{marginBottom:16}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>Disruption</div><Badge label={`${disruptionRecs.length} active`} color={T.negative}/></div><div style={{display:"flex",flexDirection:"column",gap:8}}>{disruptionRecs.map(r=>(<div key={r.id} onClick={()=>onSelectRec(r)} style={{background:T.surface,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,boxShadow:`0 0 0 2px ${T.negative}22`,padding:"14px 18px",cursor:"pointer"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}><div style={{flex:1}}><div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label={r.domain} color={T.primary}/><Badge label="Disruption" color={T.negative}/></div><div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:4}}>{r.icon} {r.title}</div><div style={{fontSize:12,color:T.primary,fontWeight:600}}>{r.suggestedAction}</div></div><div style={{fontSize:12,color:T.primary,fontWeight:700}}>View Detail →</div></div></div>))}</div></div>}
+        {chatRecs.length>0&&<div style={{marginBottom:16}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>From Scenario Simulation</div><Badge label={`${chatRecs.length} new`} color={T.info}/></div><div style={{display:"flex",flexDirection:"column",gap:8}}>{chatRecs.map(r=>(<div key={r.id} onClick={()=>onSelectRec(r)} style={{background:T.surface,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,boxShadow:`0 0 0 2px ${T.info}22`,padding:"14px 18px",cursor:"pointer"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}><div style={{flex:1}}><div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label={r.domain} color={T.primary}/><Badge label="From Chat" color={T.info}/></div><div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:4}}>{r.icon} {r.title}</div><div style={{fontSize:12,color:T.primary,fontWeight:600}}>{r.suggestedAction}</div></div><div style={{fontSize:12,color:T.primary,fontWeight:700}}>View Detail →</div></div></div>))}</div></div>}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4,flexWrap:"wrap",gap:8}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>Agent Recommendations</div>{persona!=="plant_leader"&&<Badge label={`Filtered for your role · ${standardRecs.length} relevant`} color={T.primary}/>}</div>
         <div style={{fontSize:11,color:T.gray900,marginBottom:12}}>{persona==="plant_leader"?"Synthesized across all domain agents · Ranked by urgency and cross-domain impact":"Showing recommendations where you are tagged as an approver or your domain is impacted"}</div>
-        {standardRecs.length===0&&<div style={{background:T.white,borderRadius:4,padding:"20px",textAlign:"center",color:T.gray400,fontSize:13,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>No recommendations currently require your attention.</div>}
-        <div style={{display:"flex",flexDirection:"column",gap:10}}>{standardRecs.map(r=>(<div key={r.id} onClick={()=>onSelectRec(r)} style={{background:T.white,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",padding:"14px 18px",cursor:"pointer"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}><div style={{flex:1}}><div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label={r.domain} color={T.primary}/>{r.agents.slice(0,2).map(a=><Badge key={a} label={a} color={T.neutral}/>)}{r.agents.length>2&&<Badge label={`+${r.agents.length-2} more`} color={T.neutral}/>}</div><div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:4}}>{r.icon} {r.title}</div><div style={{fontSize:12,color:T.gray900}}>{r.summary}</div><div style={{fontSize:12,color:T.primary,fontWeight:600,marginTop:6}}>💡 {r.suggestedAction}</div></div><div style={{fontSize:12,color:T.primary,fontWeight:700}}>View Detail →</div></div></div>))}</div>
+        {standardRecs.length===0&&<div style={{background:T.surface,borderRadius:4,padding:"20px",textAlign:"center",color:T.gray400,fontSize:13,boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}>No recommendations currently require your attention.</div>}
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>{standardRecs.map(r=>(<div key={r.id} onClick={()=>onSelectRec(r)} style={{background:T.surface,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,boxShadow:"0 1px 3px rgba(0,0,0,0.4)",padding:"14px 18px",cursor:"pointer"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}><div style={{flex:1}}><div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label={r.domain} color={T.primary}/>{r.agents.slice(0,1).map(a=><Badge key={a} label={a} color={T.neutral}/>)}{r.agents.length>2&&<Badge label={`+${r.agents.length-2} more`} color={T.neutral}/>}</div><div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:4}}>{r.icon} {r.title}</div><div style={{fontSize:12,color:T.primary,fontWeight:600}}>{r.suggestedAction}</div></div><div style={{fontSize:12,color:T.primary,fontWeight:700}}>View Detail →</div></div></div>))}</div>
       </div>
     </div>
   </div>);
@@ -987,26 +986,26 @@ function ActionLog(){
   const cycleStatus=id=>setLocalActions(prev=>prev.map(a=>{if(a.id!==id)return a;const next=a.status==="Open"?"In Progress":a.status==="In Progress"?"Complete":"Open";return{...a,status:next};}));
   const FB=({label,value,current,onChange})=>(<button onClick={()=>onChange(value)} style={{padding:"5px 12px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",border:`1px solid ${current===value?T.primary:T.border}`,background:current===value?T.primary:T.white,color:current===value?T.white:T.gray900}}>{label}</button>);
   return(<div>
-    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
-      <div><div style={{fontSize:18,fontWeight:800,color:T.black}}>Action Log</div><div style={{fontSize:12,color:T.gray900,marginTop:2}}>All open actions across domains · Austin Plant</div></div>
+    <div style={{background:T.surface,borderBottom:`1px solid ${T.border}`,padding:"16px 24px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
+      <div><div style={{fontSize:18,fontWeight:800,color:T.black}}>Action Log</div><div style={{fontSize:12,color:T.gray900,marginTop:2}}>Open actions · Austin Plant</div></div>
       <div style={{display:"flex",gap:12,fontSize:12}}><span style={{color:T.negative,fontWeight:700}}>● {localActions.filter(a=>a.status==="Open").length} Open</span><span style={{color:T.info,fontWeight:700}}>● {localActions.filter(a=>a.status==="In Progress").length} In Progress</span><span style={{color:T.positive,fontWeight:700}}>● {localActions.filter(a=>a.status==="Complete").length} Complete</span></div>
     </div>
-    <div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16,background:T.gray100}}>
-      <div style={{background:T.white,borderRadius:4,padding:"14px 16px",boxShadow:"0 1px 3px rgba(0,0,0,0.07)",display:"flex",flexDirection:"column",gap:10}}>
+    <div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16,background:T.bg}}>
+      <div style={{background:T.surface,borderRadius:4,padding:"14px 16px",boxShadow:"0 1px 3px rgba(0,0,0,0.4)",display:"flex",flexDirection:"column",gap:10}}>
         {[{opts:["All","Open & In Progress","Open","In Progress","Complete"],cur:filterStatus,setter:setFilterStatus,lbl:"STATUS"},{opts:["All","Safety","Quality","Production","Maintenance","Planning & Scheduling"],cur:filterDomain,setter:setFilterDomain,lbl:"DOMAIN"},{opts:["All","Routine","Recommendation"],cur:filterSource,setter:setFilterSource,lbl:"SOURCE"},{opts:["All","Line 1","Line 2","Line 3"],cur:filterLine,setter:setFilterLine,lbl:"LINE"}].map(({opts,cur,setter,lbl})=>(
           <div key={lbl} style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}><span style={{fontSize:11,fontWeight:700,color:T.gray900,width:60}}>{lbl}</span>{opts.map(o=><FB key={o} label={o} value={o} current={cur} onChange={setter}/>)}</div>
         ))}
       </div>
-      <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",overflow:"hidden"}}>
+      <div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)",overflow:"hidden"}}>
         <div style={{padding:"12px 20px",borderBottom:`1px solid ${T.border}`,fontSize:12,color:T.gray900,fontWeight:600}}>Showing {filtered.length} of {localActions.length} actions</div>
         <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-          <thead><tr style={{background:T.gray100}}>{["Action","Domain","Line","Owner","Source","Due Date","Days Open","Status"].map(h=>(<th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>))}</tr></thead>
-          <tbody>{filtered.length===0&&<tr><td colSpan={8} style={{padding:"24px",textAlign:"center",color:T.gray400}}>No actions match current filters</td></tr>}{filtered.map((a,i)=>(<tr key={a.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
+          <thead><tr style={{background:T.bg}}>{["Action","Domain","Line","Owner","Source","Due Date","Days Open","Status"].map(h=>(<th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>))}</tr></thead>
+          <tbody>{filtered.length===0&&<tr><td colSpan={8} style={{padding:"24px",textAlign:"center",color:T.gray400}}>No actions match current filters</td></tr>}{filtered.map((a,i)=>(<tr key={a.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.surface:"#1C2128"+"88"}}>
             <td style={{padding:"10px 14px",color:T.black,maxWidth:280,lineHeight:1.5}}>{a.description}</td>
-            <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}><Badge label={a.domain} color={a.domain==="Safety"?T.warning:a.domain==="Quality"?T.positive:a.domain==="Production"?T.info:a.domain==="Maintenance"?"#673AB7":T.primary}/></td>
+            <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}><Badge label={a.domain} color={a.domain==="Safety"?T.warning:a.domain==="Quality"?T.positive:a.domain==="Production"?T.info:a.domain==="Maintenance"?"#A371F7":T.primary}/></td>
             <td style={{padding:"10px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{a.line}</td>
             <td style={{padding:"10px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{a.owner}</td>
-            <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}><span style={{fontSize:11,fontWeight:700,color:a.source==="Recommendation"?T.primary:T.neutral}}>{a.source==="Recommendation"?"🧠 Rec":"📋 Routine"}</span></td>
+            <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}><span style={{fontSize:11,fontWeight:700,color:a.source==="Recommendation"?T.primary:T.neutral}}>{a.source==="Recommendation"?"Rec":"Routine"}</span></td>
             <td style={{padding:"10px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{a.dueDate}</td>
             <td style={{padding:"10px 14px",fontWeight:700,color:a.daysOpen>=5?T.negative:a.daysOpen>=3?T.warning:T.gray900,whiteSpace:"nowrap"}}>{a.daysOpen}d</td>
             <td style={{padding:"10px 14px"}}><button onClick={()=>cycleStatus(a.id)} style={{background:statusColor(a.status)+"18",color:statusColor(a.status),border:`1px solid ${statusColor(a.status)}40`,borderRadius:3,padding:"3px 10px",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>{a.status}</button></td>
@@ -1038,7 +1037,7 @@ function MiniStackedBar({data,height=80}){
   return(<svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height,display:"block"}}>{rects}</svg>);
 }
 function ChartCard({title,subtitle,children,legend,lines}){
-  return(<div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",padding:"14px 16px",display:"flex",flexDirection:"column",gap:8}}>
+  return(<div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)",padding:"14px 16px",display:"flex",flexDirection:"column",gap:8}}>
     <div><div style={{fontSize:12,fontWeight:800,color:T.black}}>{title}</div>{subtitle&&<div style={{fontSize:10,color:T.gray900,marginTop:1}}>{subtitle}</div>}</div>
     {children}
     {legend&&<div style={{display:"flex",gap:12,flexWrap:"wrap"}}>{lines.map(l=>(<div key={l} style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:T.gray900}}><span style={{width:16,height:3,background:LINE_COLORS_PERF[l],display:"inline-block",borderRadius:2}}/>{l}</div>))}</div>}
@@ -1055,7 +1054,7 @@ function LinePerformanceView(){
   const avg=(metric,line)=>{const v=perf[metric][line];return v?Math.round(v.reduce((a,b)=>a+b,0)/v.length*10)/10:0;};
   const kpis=selLines.map(l=>({line:l,oee:avg("oee",l),quality:avg("quality",l),downtime:Math.round(avg("downtime",l)),otif:avg("otif",l)}));
   return(<div>
-    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
+    <div style={{background:T.surface,borderBottom:`1px solid ${T.border}`,padding:"16px 24px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
       <div><div style={{fontSize:18,fontWeight:800,color:T.black}}>Line Performance</div><div style={{fontSize:12,color:T.gray900,marginTop:2}}>Historical trends · Austin Plant · {displayLabel}</div></div>
       <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
         <div style={{display:"flex",gap:4}}>{allLines.map(l=>(<button key={l} onClick={()=>toggleLine(l)} style={{padding:"5px 12px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",border:`1px solid ${selLines.includes(l)?LINE_COLORS_PERF[l]:T.border}`,background:selLines.includes(l)?LINE_COLORS_PERF[l]+"15":T.white,color:selLines.includes(l)?LINE_COLORS_PERF[l]:T.gray900}}>{l}</button>))}</div>
@@ -1068,8 +1067,8 @@ function LinePerformanceView(){
         </div>
       </div>
     </div>
-    <div style={{padding:"20px 24px",background:T.gray100,display:"flex",flexDirection:"column",gap:16}}>
-      <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>{kpis.map(k=>(<div key={k.line} style={{flex:1,minWidth:140,background:T.white,borderRadius:4,borderLeft:`4px solid ${LINE_COLORS_PERF[k.line]}`,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",padding:"12px 14px"}}><div style={{fontSize:11,fontWeight:800,color:LINE_COLORS_PERF[k.line],marginBottom:6}}>{k.line}</div><div style={{display:"flex",gap:16,flexWrap:"wrap"}}><div><div style={{fontSize:10,color:T.gray900}}>Avg OEE</div><div style={{fontSize:18,fontWeight:800,color:k.oee>=80?T.positive:T.negative}}>{k.oee}%</div></div><div><div style={{fontSize:10,color:T.gray900}}>Avg Quality</div><div style={{fontSize:18,fontWeight:800,color:k.quality>=97?T.positive:T.warning}}>{k.quality}%</div></div><div><div style={{fontSize:10,color:T.gray900}}>Avg Downtime</div><div style={{fontSize:18,fontWeight:800,color:k.downtime>60?T.negative:T.gray900}}>{k.downtime}m</div></div><div><div style={{fontSize:10,color:T.gray900}}>Avg OTIF</div><div style={{fontSize:18,fontWeight:800,color:k.otif>=95?T.positive:T.warning}}>{k.otif}%</div></div></div></div>))}</div>
+    <div style={{padding:"20px 24px",background:T.bg,display:"flex",flexDirection:"column",gap:16}}>
+      <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>{kpis.map(k=>(<div key={k.line} style={{flex:1,minWidth:140,background:T.surface,borderRadius:4,borderLeft:`4px solid ${LINE_COLORS_PERF[k.line]}`,boxShadow:"0 1px 3px rgba(0,0,0,0.4)",padding:"12px 14px"}}><div style={{fontSize:11,fontWeight:800,color:LINE_COLORS_PERF[k.line],marginBottom:6}}>{k.line}</div><div style={{display:"flex",gap:16,flexWrap:"wrap"}}><div><div style={{fontSize:10,color:T.gray900}}>Avg OEE</div><div style={{fontSize:18,fontWeight:800,color:k.oee>=80?T.positive:T.negative}}>{k.oee}%</div></div><div><div style={{fontSize:10,color:T.gray900}}>Avg Quality</div><div style={{fontSize:18,fontWeight:800,color:k.quality>=97?T.positive:T.warning}}>{k.quality}%</div></div><div><div style={{fontSize:10,color:T.gray900}}>Avg Downtime</div><div style={{fontSize:18,fontWeight:800,color:k.downtime>60?T.negative:T.gray900}}>{k.downtime}m</div></div><div><div style={{fontSize:10,color:T.gray900}}>Avg OTIF</div><div style={{fontSize:18,fontWeight:800,color:k.otif>=95?T.positive:T.warning}}>{k.otif}%</div></div></div></div>))}</div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
         <ChartCard title="OEE Trend" subtitle="Overall Equipment Effectiveness %" legend lines={selLines}><MiniLineChart data={perf.oee} lines={selLines} yMin={40} yMax={100} target={85}/></ChartCard>
         <ChartCard title="Availability Trend" subtitle="% scheduled time running" legend lines={selLines}><MiniLineChart data={perf.availability} lines={selLines} yMin={40} yMax={100} target={90}/></ChartCard>
@@ -1092,7 +1091,7 @@ function GanttChart({filterLine,orders}){
   return(<div style={{overflowX:"auto"}}><div style={{minWidth:700}}>
     <div style={{display:"flex",marginLeft:80,marginBottom:4}}>{GANTT_DAYS.map(d=>(<div key={d} style={{flex:1,textAlign:"center",fontSize:11,fontWeight:700,color:T.gray900,borderLeft:`1px solid ${T.border}`,paddingLeft:4}}>{d}</div>))}</div>
     <div style={{display:"flex",marginLeft:80,marginBottom:8}}>{GANTT_DAYS.map(d=>(<div key={d} style={{flex:1,display:"flex",justifyContent:"space-between"}}>{GANTT_HOURS.map(h=><span key={h} style={{fontSize:9,color:T.gray400}}>{h}:00</span>)}</div>))}</div>
-    {lines.map(line=>{const lineOrders=orders.filter(o=>o.line===line);const blocks=buildBlocks(lineOrders);const ms=line==="Line 3"?timeToFrac("Feb 28 14:00"):null;const me=line==="Line 3"?timeToFrac("Feb 28 16:00"):null;const showMaint=line==="Line 3"&&ms!==null&&me!==null;const ml=showMaint?(ms/totalCols)*100:0;const mw=showMaint?((me-ms)/totalCols)*100:0;return(<div key={line} style={{display:"flex",alignItems:"center",marginBottom:8}}><div style={{width:80,fontSize:11,fontWeight:800,color:T.black,flexShrink:0}}>{line}</div><div style={{flex:1,height:36,background:T.gray100,borderRadius:4,position:"relative",border:`1px solid ${T.border}`}}>{GANTT_DAYS.map((_,i)=>(<div key={i} style={{position:"absolute",left:`${(i/totalCols)*100}%`,top:0,bottom:0,borderLeft:`1px dashed ${T.border}40`,zIndex:0}}/>))}{showMaint&&<div key="maint" style={{position:"absolute",left:`${ml}%`,width:`${mw}%`,top:0,bottom:0,background:"#ef444430",borderLeft:`2px dashed ${T.negative}`,borderRight:`2px dashed ${T.negative}`,zIndex:4,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:8,color:T.negative,fontWeight:800,whiteSpace:"nowrap"}}>MAINT</span></div>}{blocks.map((b,bi)=>{const left=(b.start/totalCols)*100;const width=((b.end-b.start)/totalCols)*100;if(b.type==="gap")return(<div key={bi} title="Changeover / Sanitation" style={{position:"absolute",left:`${left}%`,width:`${width}%`,top:3,bottom:3,background:"#cbd5e1",borderRadius:3,zIndex:1,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>{width>2&&<span style={{fontSize:8,color:"#64748b",fontWeight:600}}>⟳</span>}</div>);const o=b.order;const color=GANTT_SKUS[o.sku]||T.neutral;return(<div key={bi} title={`${o.id} · ${o.sku} · ${o.units.toLocaleString()} units${o.riskReason?"\n"+o.riskReason:""}`} style={{position:"absolute",left:`${left}%`,width:`${width}%`,top:3,bottom:3,background:color,borderRadius:3,opacity:0.88,zIndex:2,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}><span style={{fontSize:9,color:T.white,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",padding:"0 3px"}}>{o.sku}</span></div>);})}
+    {lines.map(line=>{const lineOrders=orders.filter(o=>o.line===line);const blocks=buildBlocks(lineOrders);const ms=line==="Line 3"?timeToFrac("Feb 28 14:00"):null;const me=line==="Line 3"?timeToFrac("Feb 28 16:00"):null;const showMaint=line==="Line 3"&&ms!==null&&me!==null;const ml=showMaint?(ms/totalCols)*100:0;const mw=showMaint?((me-ms)/totalCols)*100:0;return(<div key={line} style={{display:"flex",alignItems:"center",marginBottom:8}}><div style={{width:80,fontSize:11,fontWeight:800,color:T.black,flexShrink:0}}>{line}</div><div style={{flex:1,height:36,background:T.gray100,borderRadius:4,position:"relative",border:`1px solid ${T.border}`}}>{GANTT_DAYS.map((_,i)=>(<div key={i} style={{position:"absolute",left:`${(i/totalCols)*100}%`,top:0,bottom:0,borderLeft:`1px dashed ${T.border}40`,zIndex:0}}/>))}{showMaint&&<div key="maint" style={{position:"absolute",left:`${ml}%`,width:`${mw}%`,top:0,bottom:0,background:"#ef444430",borderLeft:`2px dashed ${T.negative}`,borderRight:`2px dashed ${T.negative}`,zIndex:4,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:8,color:T.negative,fontWeight:800,whiteSpace:"nowrap"}}>MAINT</span></div>}{blocks.map((b,bi)=>{const left=(b.start/totalCols)*100;const width=((b.end-b.start)/totalCols)*100;if(b.type==="gap")return(<div key={bi} title="Changeover / Sanitation" style={{position:"absolute",left:`${left}%`,width:`${width}%`,top:3,bottom:3,background:"#cbd5e1",borderRadius:3,zIndex:1,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>{width>2&&<span style={{fontSize:8,color:T.gray900,fontWeight:600}}>⟳</span>}</div>);const o=b.order;const color=GANTT_SKUS[o.sku]||T.neutral;return(<div key={bi} title={`${o.id} · ${o.sku} · ${o.units.toLocaleString()} units${o.riskReason?"\n"+o.riskReason:""}`} style={{position:"absolute",left:`${left}%`,width:`${width}%`,top:3,bottom:3,background:color,borderRadius:3,opacity:0.88,zIndex:2,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}><span style={{fontSize:9,color:T.white,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",padding:"0 3px"}}>{o.sku}</span></div>);})}
     </div></div>);})}
     <div style={{display:"flex",gap:12,marginLeft:80,marginTop:8,flexWrap:"wrap"}}>{Object.entries(GANTT_SKUS).map(([sku,color])=>(<div key={sku} style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:T.gray900}}><span style={{width:12,height:12,borderRadius:2,background:color,display:"inline-block"}}/>{sku}</div>))}<div style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:T.gray900}}><span style={{width:12,height:12,borderRadius:2,background:"#cbd5e1",display:"inline-block"}}/>Changeover</div><div style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:T.gray900}}><span style={{width:12,height:12,borderRadius:2,background:"#ef444430",border:`1px dashed ${T.negative}`,display:"inline-block"}}/>Maintenance Window</div></div>
   </div></div>);
@@ -1103,17 +1102,17 @@ function ProductionScheduleView({onViewDashboardRec}){
   const filteredOrders=filterLine==="All"?orders:orders.filter(o=>o.line===filterLine);
   const applyRec=(id)=>{setAppliedRecs(prev=>[...prev,id]);setExpandedSched(null);if(id==="sa1"){setOrders(prev=>prev.map(o=>{if(o.id==="RUN-1023")return{...o,start:"Mar 1 13:00",end:"Mar 1 18:00",desc:"Crimped Seal Chips (resequenced)"};if(o.id==="RUN-1025")return{...o,start:"Mar 1 06:00",end:"Mar 1 12:00",desc:"BBQ Chips (resequenced)"};return o;}));}if(id==="sa2"){setOrders(prev=>[...prev,{id:"RUN-1033",line:"Line 2",sku:"SKU 2204",desc:"Buffer Run (added)",units:1800,target:1800,start:"Mar 3 13:00",end:"Mar 3 15:30",dueDate:"Mar 10",dc:"DC-East Buffer"}]);}if(id==="sa3"){setOrders(prev=>prev.map(o=>{if(o.id==="RUN-1032")return{...o,start:"Mar 3 06:00",end:"Mar 3 14:00",desc:"BBQ Chips (regrouped)"};return o;}));}};
   return(<div>
-    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
+    <div style={{background:T.surface,borderBottom:`1px solid ${T.border}`,padding:"16px 24px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
       <div><div style={{fontSize:18,fontWeight:800,color:T.black}}>Production Schedule</div><div style={{fontSize:12,color:T.gray900,marginTop:2}}>Feb 28 – Mar 3, 2026 · Austin Plant</div></div>
       <div style={{display:"flex",gap:6}}>{["All","Line 1","Line 2","Line 3"].map(l=>(<button key={l} onClick={()=>setFilterLine(l)} style={{padding:"6px 14px",borderRadius:4,fontSize:12,fontWeight:700,cursor:"pointer",border:`1px solid ${filterLine===l?T.primary:T.border}`,background:filterLine===l?T.primary:T.white,color:filterLine===l?T.white:T.gray900}}>{l}</button>))}</div>
     </div>
-    <div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16,background:T.gray100}}>
-      <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>{[{label:"Total Units Today",value:"18,400",sub:"vs 21,000 target",good:false},{label:"Total Units This Week",value:"85,400",sub:"vs 105,000 target",good:false},{label:"Total Changeover Today",value:"3 hrs 20 min",sub:"across all lines",good:null},{label:"Overall Schedule Adherence",value:"82%",sub:"vs 95% target",good:false},{label:"Overall OTIF",value:"87%",sub:"vs 95% target",good:false}].map(k=>(<div key={k.label} style={{flex:1,minWidth:130,background:T.white,borderRadius:4,borderLeft:`4px solid ${k.good===true?T.positive:k.good===false?T.negative:T.warning}`,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",padding:"10px 14px"}}><div style={{fontSize:10,color:T.gray900,fontWeight:600,marginBottom:4}}>{k.label}</div><div style={{fontSize:18,fontWeight:800,color:k.good===true?T.positive:k.good===false?T.negative:T.warning}}>{k.value}</div><div style={{fontSize:10,color:T.gray400,marginTop:2}}>{k.sub}</div></div>))}</div>
-      <div style={{display:"flex",flexDirection:"column",gap:8}}><div style={{fontSize:12,fontWeight:800,color:T.black}}>🌐 From Plant Orchestration Agent</div>{orchSchedulingRecs.map(r=>(<div key={r.id} style={{background:T.white,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",overflow:"hidden"}}><div style={{padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap",cursor:"pointer"}} onClick={()=>setExpandedOrch(expandedOrch===r.id?null:r.id)}><div style={{display:"flex",gap:8,alignItems:"center",flex:1,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label="🌐 Orchestration" color={T.info}/><Badge label={r.status} color={r.status==="Action Required"?T.negative:T.warning}/><span style={{fontSize:13,fontWeight:700,color:T.black}}>{r.title}</span></div><span style={{fontSize:11,color:T.gray400}}>{expandedOrch===r.id?"▲":"▼"}</span></div>{expandedOrch===r.id&&<div style={{padding:"12px 16px 14px",borderTop:`1px solid ${T.border}`}}><div style={{fontSize:12,color:T.black,lineHeight:1.6,marginBottom:10}}>{r.detail}</div><button onClick={()=>onViewDashboardRec(r.id)} style={{background:T.info,color:T.white,border:"none",borderRadius:4,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>View in Dashboard →</button></div>}</div>))}</div>
-      <div style={{display:"flex",flexDirection:"column",gap:8}}><div style={{fontSize:12,fontWeight:800,color:T.black}}>🗓 Scheduling Agent — Optimisation Opportunities</div>{schedAgentRecs.map(r=>(<div key={r.id} style={{background:T.white,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",overflow:"hidden",opacity:appliedRecs.includes(r.id)?0.6:1}}><div style={{padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap",cursor:"pointer"}} onClick={()=>!appliedRecs.includes(r.id)&&setExpandedSched(expandedSched===r.id?null:r.id)}><div style={{display:"flex",gap:8,alignItems:"center",flex:1,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label="🗓 Scheduling Agent" color={T.primary}/><Badge label={r.impact} color={T.positive}/>{appliedRecs.includes(r.id)&&<Badge label="✓ Applied" color={T.positive}/>}<span style={{fontSize:13,fontWeight:700,color:T.black}}>{r.title}</span></div>{!appliedRecs.includes(r.id)&&<span style={{fontSize:11,color:T.gray400}}>{expandedSched===r.id?"▲":"▼"}</span>}</div>{expandedSched===r.id&&!appliedRecs.includes(r.id)&&<div style={{padding:"12px 16px 14px",borderTop:`1px solid ${T.border}`}}><div style={{fontSize:12,color:T.black,lineHeight:1.6,marginBottom:6}}>{r.detail}</div><div style={{background:T.primary+"10",borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"8px 12px",marginBottom:10}}><div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:2}}>RECOMMENDED ACTION</div><div style={{fontSize:12,color:T.black}}>{r.action}</div></div><div style={{display:"flex",gap:8}}><button onClick={()=>applyRec(r.id)} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>✓ Apply to Schedule</button><button onClick={()=>setExpandedSched(null)} style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"6px 14px",fontSize:12,fontWeight:600,cursor:"pointer",color:T.gray900}}>Dismiss</button></div></div>}</div>))}</div>
-      {appliedRecs.length>0&&<div style={{background:"#F0FDF4",border:`2px solid ${T.positive}`,borderRadius:4,padding:"12px 16px",display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:16}}>✅</span><div><div style={{fontSize:13,fontWeight:800,color:T.positive}}>Schedule Updated</div><div style={{fontSize:12,color:T.black,marginTop:2}}>{appliedRecs.length} optimisation{appliedRecs.length>1?"s":""} applied.</div></div></div>}
-      <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}><div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>Production Schedule — Gantt View</div></div><div style={{padding:"16px 20px"}}><GanttChart filterLine={filterLine} orders={orders}/></div></div>
-      <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}><div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>Production Run Schedule</div><div style={{fontSize:11,color:T.gray900,marginTop:2}}>{filteredOrders.length} runs scheduled</div></div><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}><thead><tr style={{background:T.gray100}}>{["Run","Line","SKU","Description","Units","Target","% vs Target","Start","End","DC","Notes"].map(h=>(<th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>))}</tr></thead><tbody>{filteredOrders.map((o,i)=>{const pct=o.target?Math.round(o.units/o.target*100):100;const volColor=pct>=100?T.positive:pct>=85?T.warning:T.negative;return(<tr key={o.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}><td style={{padding:"9px 14px",fontWeight:700,color:T.black}}>{o.id}</td><td style={{padding:"9px 14px"}}><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{width:8,height:8,borderRadius:"50%",background:LINE_COLORS_PERF[o.line],display:"inline-block"}}/>{o.line}</div></td><td style={{padding:"9px 14px"}}><span style={{background:(GANTT_SKUS[o.sku]||T.neutral)+"20",color:GANTT_SKUS[o.sku]||T.neutral,border:`1px solid ${(GANTT_SKUS[o.sku]||T.neutral)}40`,borderRadius:3,padding:"2px 7px",fontSize:11,fontWeight:700}}>{o.sku}</span></td><td style={{padding:"9px 14px",color:T.gray900}}>{o.desc}</td><td style={{padding:"9px 14px",fontWeight:700,color:T.black}}>{o.units.toLocaleString()}</td><td style={{padding:"9px 14px",color:T.gray400}}>{o.target?o.target.toLocaleString():"-"}</td><td style={{padding:"9px 14px",fontWeight:700,color:volColor}}>{pct}%</td><td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{o.start}</td><td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{o.end}</td><td style={{padding:"9px 14px",color:T.gray900}}>{o.dc||"-"}</td><td style={{padding:"9px 14px"}}>{o.riskReason&&<div style={{fontSize:10,color:T.negative}}>⚠ {o.riskReason}</div>}</td></tr>);})}</tbody></table></div></div>
+    <div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16,background:T.bg}}>
+      <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>{[{label:"Total Units Today",value:"18,400",sub:"vs 21,000 target",good:false},{label:"Total Units This Week",value:"85,400",sub:"vs 105,000 target",good:false},{label:"Total Changeover Today",value:"3 hrs 20 min",sub:"across all lines",good:null},{label:"Overall Schedule Adherence",value:"82%",sub:"vs 95% target",good:false},{label:"Overall OTIF",value:"87%",sub:"vs 95% target",good:false}].map(k=>(<div key={k.label} style={{flex:1,minWidth:130,background:T.surface,borderRadius:4,borderLeft:`4px solid ${k.good===true?T.positive:k.good===false?T.negative:T.warning}`,boxShadow:"0 1px 3px rgba(0,0,0,0.4)",padding:"10px 14px"}}><div style={{fontSize:10,color:T.gray900,fontWeight:600,marginBottom:4}}>{k.label}</div><div style={{fontSize:18,fontWeight:800,color:k.good===true?T.positive:k.good===false?T.negative:T.warning}}>{k.value}</div><div style={{fontSize:10,color:T.gray400,marginTop:2}}>{k.sub}</div></div>))}</div>
+      <div style={{display:"flex",flexDirection:"column",gap:8}}><div style={{fontSize:12,fontWeight:800,color:T.black}}>From Plant Orchestration Agent</div>{orchSchedulingRecs.map(r=>(<div key={r.id} style={{background:T.surface,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,boxShadow:"0 1px 3px rgba(0,0,0,0.4)",overflow:"hidden"}}><div style={{padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap",cursor:"pointer"}} onClick={()=>setExpandedOrch(expandedOrch===r.id?null:r.id)}><div style={{display:"flex",gap:8,alignItems:"center",flex:1,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label="Orchestration" color={T.info}/><Badge label={r.status} color={r.status==="Action Required"?T.negative:T.warning}/><span style={{fontSize:13,fontWeight:700,color:T.black}}>{r.title}</span></div><span style={{fontSize:11,color:T.gray400}}>{expandedOrch===r.id?"▲":"▼"}</span></div>{expandedOrch===r.id&&<div style={{padding:"12px 16px 14px",borderTop:`1px solid ${T.border}`}}><div style={{fontSize:12,color:T.black,lineHeight:1.6,marginBottom:10}}>{r.detail}</div><button onClick={()=>onViewDashboardRec(r.id)} style={{background:T.info,color:T.white,border:"none",borderRadius:4,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>View in Dashboard →</button></div>}</div>))}</div>
+      <div style={{display:"flex",flexDirection:"column",gap:8}}><div style={{fontSize:12,fontWeight:800,color:T.black}}>Scheduling Agent — Opportunities</div>{schedAgentRecs.map(r=>(<div key={r.id} style={{background:T.surface,borderRadius:4,borderLeft:`4px solid ${PriorityColor(r.priority)}`,boxShadow:"0 1px 3px rgba(0,0,0,0.4)",overflow:"hidden",opacity:appliedRecs.includes(r.id)?0.6:1}}><div style={{padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap",cursor:"pointer"}} onClick={()=>!appliedRecs.includes(r.id)&&setExpandedSched(expandedSched===r.id?null:r.id)}><div style={{display:"flex",gap:8,alignItems:"center",flex:1,flexWrap:"wrap"}}><Badge label={r.priority} color={PriorityColor(r.priority)}/><Badge label="Scheduling Agent" color={T.primary}/><Badge label={r.impact} color={T.positive}/>{appliedRecs.includes(r.id)&&<Badge label="Applied" color={T.positive}/>}<span style={{fontSize:13,fontWeight:700,color:T.black}}>{r.title}</span></div>{!appliedRecs.includes(r.id)&&<span style={{fontSize:11,color:T.gray400}}>{expandedSched===r.id?"▲":"▼"}</span>}</div>{expandedSched===r.id&&!appliedRecs.includes(r.id)&&<div style={{padding:"12px 16px 14px",borderTop:`1px solid ${T.border}`}}><div style={{fontSize:12,color:T.black,lineHeight:1.6,marginBottom:6}}>{r.detail}</div><div style={{background:T.primary+"10",borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"8px 12px",marginBottom:10}}><div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:2}}>Recommended action</div><div style={{fontSize:12,color:T.black}}>{r.action}</div></div><div style={{display:"flex",gap:8}}><button onClick={()=>applyRec(r.id)} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Apply</button><button onClick={()=>setExpandedSched(null)} style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"6px 14px",fontSize:12,fontWeight:600,cursor:"pointer",color:T.gray900}}>Dismiss</button></div></div>}</div>))}</div>
+      {appliedRecs.length>0&&<div style={{background:"#0D2B1A",border:`2px solid ${T.positive}`,borderRadius:4,padding:"12px 16px",display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:16}}></span><div><div style={{fontSize:13,fontWeight:800,color:T.positive}}>Schedule Updated</div><div style={{fontSize:12,color:T.black,marginTop:2}}>{appliedRecs.length} optimisation{appliedRecs.length>1?"s":""} applied.</div></div></div>}
+      <div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}><div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>Production Schedule — Gantt View</div></div><div style={{padding:"16px 20px"}}><GanttChart filterLine={filterLine} orders={orders}/></div></div>
+      <div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}><div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>Production Run Schedule</div><div style={{fontSize:11,color:T.gray900,marginTop:2}}>{filteredOrders.length} runs scheduled</div></div><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}><thead><tr style={{background:T.bg}}>{["Run","Line","SKU","Description","Units","Target","% vs Target","Start","End","DC","Notes"].map(h=>(<th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>))}</tr></thead><tbody>{filteredOrders.map((o,i)=>{const pct=o.target?Math.round(o.units/o.target*100):100;const volColor=pct>=100?T.positive:pct>=85?T.warning:T.negative;return(<tr key={o.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.surface:"#1C2128"+"88"}}><td style={{padding:"9px 14px",fontWeight:700,color:T.black}}>{o.id}</td><td style={{padding:"9px 14px"}}><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{width:8,height:8,borderRadius:"50%",background:LINE_COLORS_PERF[o.line],display:"inline-block"}}/>{o.line}</div></td><td style={{padding:"9px 14px"}}><span style={{background:(GANTT_SKUS[o.sku]||T.neutral)+"20",color:GANTT_SKUS[o.sku]||T.neutral,border:`1px solid ${(GANTT_SKUS[o.sku]||T.neutral)}40`,borderRadius:3,padding:"2px 7px",fontSize:11,fontWeight:700}}>{o.sku}</span></td><td style={{padding:"9px 14px",color:T.gray900}}>{o.desc}</td><td style={{padding:"9px 14px",fontWeight:700,color:T.black}}>{o.units.toLocaleString()}</td><td style={{padding:"9px 14px",color:T.gray400}}>{o.target?o.target.toLocaleString():"-"}</td><td style={{padding:"9px 14px",fontWeight:700,color:volColor}}>{pct}%</td><td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{o.start}</td><td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{o.end}</td><td style={{padding:"9px 14px",color:T.gray900}}>{o.dc||"-"}</td><td style={{padding:"9px 14px"}}>{o.riskReason&&<div style={{fontSize:10,color:T.negative}}>{o.riskReason}</div>}</td></tr>);})}</tbody></table></div></div>
     </div>
   </div>);
 }
@@ -1121,14 +1120,14 @@ function ProductionScheduleView({onViewDashboardRec}){
 // ── SCENARIO SIMULATION CHAT ──────────────────────────────────────────────────
 function parseRec(text){
   if(!text.includes("---RECOMMENDATION---"))return null;
-  try{const block=text.split("---RECOMMENDATION---")[1].split("---END---")[0];const get=key=>{const m=block.match(new RegExp(`${key}:\\s*(.+)`));return m?m[1].trim():"";};const ls=get("LINES").split(",").map(l=>l.trim()).filter(Boolean);if(!ls.includes("All"))ls.push("All");const domain=get("DOMAIN")||"Production";const agents=get("AGENTS").split(",").map(a=>a.trim()).filter(a=>VALID_AGENTS.includes(a));let steps=[];if(text.includes("---STEPS---")){try{const stepsRaw=text.split("---STEPS---")[1].split("---ENDSTEPS---")[0].trim();const parsed=JSON.parse(stepsRaw);steps=parsed.map(s=>({agent:VALID_AGENTS.includes(s.agent)?s.agent:(agents[0]||"Supervisor & Operator Co-Pilot"),domain:s.domain||domain,action:s.action||"Review and execute recommended action.",status:"pending"}));}catch(e){steps=[];}}if(steps.length===0&&agents.length>0){steps=agents.map(agent=>({agent,domain,action:`Review recommendation and execute assigned action within ${domain} domain.`,status:"pending"}));}let approvers=[];if(text.includes("---APPROVERS---")){try{const appRaw=text.split("---APPROVERS---")[1].split("---ENDAPPROVERS---")[0].trim();const parsed=JSON.parse(appRaw);approvers=parsed.map(a=>VALID_APPROVERS[a.role]).filter(Boolean);}catch(e){approvers=[];}}if(approvers.length===0){const defaultRoles={Safety:["Plant Leader","Production Supervisor"],Quality:["Plant Leader","Quality Manager"],Production:["Plant Leader","Production Supervisor"],Maintenance:["Plant Leader","Maintenance Manager"],Planning:["Plant Leader","Scheduler"]};approvers=(defaultRoles[domain]||["Plant Leader"]).map(r=>VALID_APPROVERS[r]).filter(Boolean);}return{id:Date.now(),fromChat:true,title:get("TITLE"),priority:get("PRIORITY"),domain,icon:DOMAIN_ICONS[domain]||"🧠",lines:ls,agents,suggestedAction:get("ACTION"),summary:get("SUMMARY"),detail:{issue:get("SUMMARY"),action:get("ACTION"),steps,approvers}};}catch{return null;}}
+  try{const block=text.split("---RECOMMENDATION---")[1].split("---END---")[0];const get=key=>{const m=block.match(new RegExp(`${key}:\\s*(.+)`));return m?m[1].trim():"";};const ls=get("LINES").split(",").map(l=>l.trim()).filter(Boolean);if(!ls.includes("All"))ls.push("All");const domain=get("DOMAIN")||"Production";const agents=get("AGENTS").split(",").map(a=>a.trim()).filter(a=>VALID_AGENTS.includes(a));let steps=[];if(text.includes("---STEPS---")){try{const stepsRaw=text.split("---STEPS---")[1].split("---ENDSTEPS---")[0].trim();const parsed=JSON.parse(stepsRaw);steps=parsed.map(s=>({agent:VALID_AGENTS.includes(s.agent)?s.agent:(agents[0]||"Operator Co-Pilot"),domain:s.domain||domain,action:s.action||"Review and execute recommended action.",status:"pending"}));}catch(e){steps=[];}}if(steps.length===0&&agents.length>0){steps=agents.map(agent=>({agent,domain,action:`Review recommendation and execute assigned action within ${domain} domain.`,status:"pending"}));}let approvers=[];if(text.includes("---APPROVERS---")){try{const appRaw=text.split("---APPROVERS---")[1].split("---ENDAPPROVERS---")[0].trim();const parsed=JSON.parse(appRaw);approvers=parsed.map(a=>VALID_APPROVERS[a.role]).filter(Boolean);}catch(e){approvers=[];}}if(approvers.length===0){const defaultRoles={Safety:["Plant Leader","Production Supervisor"],Quality:["Plant Leader","Quality Manager"],Production:["Plant Leader","Production Supervisor"],Maintenance:["Plant Leader","Maintenance Manager"],Planning:["Plant Leader","Scheduler"]};approvers=(defaultRoles[domain]||["Plant Leader"]).map(r=>VALID_APPROVERS[r]).filter(Boolean);}return{id:Date.now(),fromChat:true,title:get("TITLE"),priority:get("PRIORITY"),domain,icon:DOMAIN_ICONS[domain]||"🧠",lines:ls,agents,suggestedAction:get("ACTION"),summary:get("SUMMARY"),detail:{issue:get("SUMMARY"),action:get("ACTION"),steps,approvers}};}catch{return null;}}
 const stripRec=text=>text.replace(/---RECOMMENDATION---[\s\S]*?---END---/,"").replace(/---STEPS---[\s\S]*?---ENDSTEPS---/,"").replace(/---APPROVERS---[\s\S]*?---ENDAPPROVERS---/,"").trim();
 
 const SCENARIO_SUGGESTIONS=["The Line 3 heat sealer has just failed completely and cannot be repaired until tomorrow morning. SKU 3801 requires the sealer. We have SKU 2204 which uses a crimped seal. What do I do with Line 3 for the rest of the day?","If I take Line 3 offline today, what's the impact on Friday's orders?","How should I prioritize the afternoon shift labor shortage?","What's the fastest path to resolving the sealer issue?"];
-const SCENARIO_LABELS=["🔧 Line 3 sealer failed — swap to SKU 2204?","📋 Take Line 3 offline — Friday order impact?","👷 How to handle afternoon labor shortage?","⚡ Fastest path to fix the sealer?"];
+const SCENARIO_LABELS=["Line 3 sealer failed — swap to SKU 2204?","Take Line 3 offline — Friday order impact?","How to handle afternoon labor shortage?","Fastest path to fix the sealer?"];
 
 function ScenarioChat({recs,onAddRec}){
-  const [msgs,setMsgs]=useState([{role:"assistant",content:"👋 I'm the Plant Orchestration Agent. I have full visibility across all domains.\n\nAsk me anything — scenario simulations, trade-off analysis, or what to prioritize. When I reach a clear recommendation, I'll ask if you want to add it to the dashboard."}]);
+  const [msgs,setMsgs]=useState([{role:"assistant",content:"I'm the Plant Orchestration Agent. I have full visibility across all domains.\n\nAsk me anything — scenario simulations, trade-off analysis, or what to prioritize. When I reach a clear recommendation, I'll ask if you want to add it to the dashboard."}]);
   const [input,setInput]=useState("");const [loading,setLoading]=useState(false);const [pendingRec,setPendingRec]=useState(null);
   const bottomRef=useRef();
   useEffect(()=>bottomRef.current?.scrollIntoView({behavior:"smooth"}),[msgs]);
@@ -1141,30 +1140,30 @@ function ScenarioChat({recs,onAddRec}){
       const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1500,system:sys,messages:history})});
       const data=await res.json();const raw=data.content?.[0]?.text||"No response.";const rec=parseRec(raw);
       setMsgs(prev=>[...prev,{role:"assistant",content:stripRec(raw)}]);if(rec)setPendingRec(rec);
-    }catch{setMsgs(prev=>[...prev,{role:"assistant",content:"⚠️ Connection error. Please try again."}]);}
+    }catch{setMsgs(prev=>[...prev,{role:"assistant",content:"Connection error. Please try again."}]);}
     setLoading(false);
   };
-  const confirmAdd=()=>{if(pendingRec){onAddRec(pendingRec);setPendingRec(null);setMsgs(prev=>[...prev,{role:"assistant",content:"✅ Recommendation added to the dashboard."}]);}};
+  const confirmAdd=()=>{if(pendingRec){onAddRec(pendingRec);setPendingRec(null);setMsgs(prev=>[...prev,{role:"assistant",content:"Recommendation added to the dashboard."}]);}};
   return(<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
-    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px"}}><div style={{fontSize:18,fontWeight:800,color:T.black}}>Scenario Simulation</div><div style={{fontSize:12,color:T.gray900,marginTop:2}}>Ask the Plant Orchestration Agent to model any scenario or trade-off</div></div>
+    <div style={{background:T.surface,borderBottom:`1px solid ${T.border}`,padding:"16px 24px"}}><div style={{fontSize:18,fontWeight:800,color:T.black}}>Scenario Simulation</div><div style={{fontSize:12,color:T.gray900,marginTop:2}}>Model any scenario or trade-off</div></div>
     <div style={{flex:1,padding:"20px 24px",display:"flex",flexDirection:"column",gap:16,background:T.gray100,overflow:"hidden"}}>
-      {msgs.length<=1&&<div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{SCENARIO_LABELS.map((label,i)=><button key={i} onClick={()=>send(SCENARIO_SUGGESTIONS[i])} style={{background:T.white,border:`1px solid ${T.border}`,borderRadius:4,padding:"7px 12px",fontSize:11,color:T.gray900,cursor:"pointer",fontWeight:600}}>{label}</button>)}</div>}
+      {msgs.length<=1&&<div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{SCENARIO_LABELS.map((label,i)=><button key={i} onClick={()=>send(SCENARIO_SUGGESTIONS[i])} style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:4,padding:"7px 12px",fontSize:11,color:T.gray900,cursor:"pointer",fontWeight:600}}>{label}</button>)}</div>}
       <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:12}}>
         {msgs.map((m,i)=>(<div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
           {m.role==="assistant"&&<div style={{width:28,height:28,borderRadius:"50%",background:T.primary,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:T.white,fontWeight:800,flexShrink:0,marginRight:8,marginTop:2}}>POA</div>}
-          <div style={{maxWidth:"75%",padding:"11px 15px",borderRadius:4,fontSize:13,lineHeight:1.65,whiteSpace:"pre-wrap",background:m.role==="user"?T.primary:T.white,color:m.role==="user"?T.white:T.black,boxShadow:"0 1px 3px rgba(0,0,0,0.08)",borderLeft:m.role==="assistant"?`3px solid ${T.primary}`:"none"}}>{m.content}</div>
+          <div style={{maxWidth:"75%",padding:"11px 15px",borderRadius:4,fontSize:13,lineHeight:1.65,whiteSpace:"pre-wrap",background:m.role==="user"?T.primary:T.white,color:m.role==="user"?T.white:T.black,boxShadow:"0 1px 3px rgba(0,0,0,0.5)",borderLeft:m.role==="assistant"?`3px solid ${T.primary}`:"none"}}>{m.content}</div>
         </div>))}
-        {loading&&<div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:28,height:28,borderRadius:"50%",background:T.primary,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:T.white,fontWeight:800,flexShrink:0}}>POA</div><div style={{background:T.white,borderRadius:4,padding:"11px 15px",fontSize:13,color:T.gray900,borderLeft:`3px solid ${T.primary}`,boxShadow:"0 1px 3px rgba(0,0,0,0.08)"}}>Modelling scenario across all domains...</div></div>}
-        {pendingRec&&!loading&&<div style={{background:T.white,border:`2px solid ${T.info}`,borderRadius:4,padding:"14px 16px"}}>
-          <div style={{fontSize:12,fontWeight:800,color:T.info,marginBottom:8}}>✦ Recommendation Ready — Add to Dashboard?</div>
+        {loading&&<div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:28,height:28,borderRadius:"50%",background:T.primary,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:T.white,fontWeight:800,flexShrink:0}}>POA</div><div style={{background:T.surface,borderRadius:4,padding:"11px 15px",fontSize:13,color:T.gray900,borderLeft:`3px solid ${T.primary}`,boxShadow:"0 1px 3px rgba(0,0,0,0.5)"}}>Modelling scenario across all domains...</div></div>}
+        {pendingRec&&!loading&&<div style={{background:T.surface,border:`2px solid ${T.info}`,borderRadius:4,padding:"14px 16px"}}>
+          <div style={{fontSize:12,fontWeight:800,color:T.info,marginBottom:8}}>Recommendation Ready — Add to Dashboard?</div>
           <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:6}}><Badge label={pendingRec.priority} color={PriorityColor(pendingRec.priority)}/><Badge label={pendingRec.domain} color={T.primary}/></div>
           <div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:4}}>{pendingRec.icon} {pendingRec.title}</div>
           <div style={{fontSize:12,color:T.gray900,marginBottom:10}}>{pendingRec.summary}</div>
-          <div style={{display:"flex",gap:8}}><button onClick={confirmAdd} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"8px 18px",fontSize:13,fontWeight:700,cursor:"pointer"}}>✦ Add to Dashboard</button><button onClick={()=>setPendingRec(null)} style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"8px 18px",fontSize:13,fontWeight:600,cursor:"pointer",color:T.gray900}}>Dismiss</button></div>
+          <div style={{display:"flex",gap:8}}><button onClick={confirmAdd} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"8px 18px",fontSize:13,fontWeight:700,cursor:"pointer"}}>Add to Dashboard</button><button onClick={()=>setPendingRec(null)} style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"8px 18px",fontSize:13,fontWeight:600,cursor:"pointer",color:T.gray900}}>Dismiss</button></div>
         </div>}
         <div ref={bottomRef}/>
       </div>
-      <div style={{display:"flex",gap:8,background:T.white,border:`1px solid ${T.border}`,borderRadius:4,padding:"8px 12px"}}>
+      <div style={{display:"flex",gap:8,background:T.surface,border:`1px solid ${T.border}`,borderRadius:4,padding:"8px 12px"}}>
         <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="Describe a scenario or ask a what-if question..." style={{flex:1,border:"none",outline:"none",fontSize:13,color:T.black,background:"transparent"}}/>
         <button onClick={()=>send()} disabled={loading||!input.trim()} style={{background:loading||!input.trim()?T.gray400:T.primary,color:T.white,border:"none",borderRadius:4,padding:"7px 16px",fontWeight:700,cursor:loading||!input.trim()?"not-allowed":"pointer",fontSize:13}}>Send</button>
       </div>
@@ -1174,10 +1173,10 @@ function ScenarioChat({recs,onAddRec}){
 
 // ── CO-PILOT CHAT ─────────────────────────────────────────────────────────────
 function CoPilotChat({activeTab}){
-  const contextLabel = activeTab==="maintenance"?"🔧 Technician Co-Pilot":activeTab==="lineperf"||activeTab==="dashboard"?"👷 Supervisor Co-Pilot":"🤖 Co-Pilot";
+  const contextLabel = activeTab==="maintenance"?"Technician Co-Pilot":activeTab==="lineperf"||activeTab==="dashboard"?"Supervisor Co-Pilot":"Co-Pilot";
   const introMsg = activeTab==="maintenance"
-    ? "👋 I'm your Technician Co-Pilot. I can walk you through SOPs, help with LOTO procedures, look up fault codes, give you tools and parts lists for your work orders, and troubleshoot equipment issues.\n\nTell me what you're working on and I'll help you get it done safely."
-    : "👋 I'm your Co-Pilot. Tell me what you're working on and I'll help.";
+    ? "I'm your Technician Co-Pilot. I can walk you through SOPs, help with LOTO procedures, look up fault codes, give you tools and parts lists for your work orders, and troubleshoot equipment issues.\n\nTell me what you're working on and I'll help you get it done safely."
+    : "I'm your Co-Pilot. Tell me what you're working on and I'll help.";
   const [msgs,setMsgs]=useState([{role:"assistant",content:introMsg}]);
   const [input,setInput]=useState("");const [loading,setLoading]=useState(false);
   const bottomRef=useRef();
@@ -1190,24 +1189,24 @@ function CoPilotChat({activeTab}){
       const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:COPILOT_SYSTEM_PROMPT,messages:history})});
       const data=await res.json();const raw=data.content?.[0]?.text||"No response.";
       setMsgs(prev=>[...prev,{role:"assistant",content:raw}]);
-    }catch{setMsgs(prev=>[...prev,{role:"assistant",content:"⚠️ Connection error. Please try again."}]);}
+    }catch{setMsgs(prev=>[...prev,{role:"assistant",content:"Connection error. Please try again."}]);}
     setLoading(false);
   };
   return(<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
-    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px"}}><div style={{fontSize:18,fontWeight:800,color:T.black}}>{contextLabel}</div><div style={{fontSize:12,color:T.gray900,marginTop:2}}>SOP guidance · LOTO procedures · Fault code lookup · Work order help · Parts lists</div></div>
+    <div style={{background:T.surface,borderBottom:`1px solid ${T.border}`,padding:"16px 24px"}}><div style={{fontSize:18,fontWeight:800,color:T.black}}>{contextLabel}</div><div style={{fontSize:12,color:T.gray900,marginTop:2}}>SOPs · LOTO · Fault codes · WO help · Parts</div></div>
     <div style={{flex:1,padding:"20px 24px",display:"flex",flexDirection:"column",gap:16,background:T.gray100,overflow:"hidden"}}>
-      {msgs.length<=1&&<div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{COPILOT_SUGGESTION_LABELS.map((label,i)=><button key={i} onClick={()=>send(COPILOT_SUGGESTIONS[i])} style={{background:T.white,border:`1px solid ${T.border}`,borderRadius:4,padding:"7px 12px",fontSize:11,color:T.gray900,cursor:"pointer",fontWeight:600}}>{label}</button>)}</div>}
+      {msgs.length<=1&&<div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{COPILOT_SUGGESTION_LABELS.map((label,i)=><button key={i} onClick={()=>send(COPILOT_SUGGESTIONS[i])} style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:4,padding:"7px 12px",fontSize:11,color:T.gray900,cursor:"pointer",fontWeight:600}}>{label}</button>)}</div>}
       <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:12}}>
         {msgs.map((m,i)=>(<div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
-          {m.role==="assistant"&&<div style={{width:28,height:28,borderRadius:"50%",background:"#673AB7",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:T.white,fontWeight:800,flexShrink:0,marginRight:8,marginTop:2}}>CP</div>}
-          <div style={{maxWidth:"75%",padding:"11px 15px",borderRadius:4,fontSize:13,lineHeight:1.65,whiteSpace:"pre-wrap",background:m.role==="user"?"#673AB7":T.white,color:m.role==="user"?T.white:T.black,boxShadow:"0 1px 3px rgba(0,0,0,0.08)",borderLeft:m.role==="assistant"?"3px solid #673AB7":"none"}}>{m.content}</div>
+          {m.role==="assistant"&&<div style={{width:28,height:28,borderRadius:"50%",background:"#A371F7",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:T.white,fontWeight:800,flexShrink:0,marginRight:8,marginTop:2}}>CP</div>}
+          <div style={{maxWidth:"75%",padding:"11px 15px",borderRadius:4,fontSize:13,lineHeight:1.65,whiteSpace:"pre-wrap",background:m.role==="user"?"#A371F7":T.white,color:m.role==="user"?T.white:T.black,boxShadow:"0 1px 3px rgba(0,0,0,0.5)",borderLeft:m.role==="assistant"?"3px solid #A371F7":"none"}}>{m.content}</div>
         </div>))}
-        {loading&&<div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:28,height:28,borderRadius:"50%",background:"#673AB7",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:T.white,fontWeight:800,flexShrink:0}}>CP</div><div style={{background:T.white,borderRadius:4,padding:"11px 15px",fontSize:13,color:T.gray900,borderLeft:"3px solid #673AB7",boxShadow:"0 1px 3px rgba(0,0,0,0.08)"}}>Looking up guidance...</div></div>}
+        {loading&&<div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:28,height:28,borderRadius:"50%",background:"#A371F7",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:T.white,fontWeight:800,flexShrink:0}}>CP</div><div style={{background:T.surface,borderRadius:4,padding:"11px 15px",fontSize:13,color:T.gray900,borderLeft:"3px solid #A371F7",boxShadow:"0 1px 3px rgba(0,0,0,0.5)"}}>Looking up guidance...</div></div>}
         <div ref={bottomRef}/>
       </div>
-      <div style={{display:"flex",gap:8,background:T.white,border:`1px solid ${T.border}`,borderRadius:4,padding:"8px 12px"}}>
+      <div style={{display:"flex",gap:8,background:T.surface,border:`1px solid ${T.border}`,borderRadius:4,padding:"8px 12px"}}>
         <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="Ask for guidance, SOP help, or troubleshooting..." style={{flex:1,border:"none",outline:"none",fontSize:13,color:T.black,background:"transparent"}}/>
-        <button onClick={()=>send()} disabled={loading||!input.trim()} style={{background:loading||!input.trim()?T.gray400:"#673AB7",color:T.white,border:"none",borderRadius:4,padding:"7px 16px",fontWeight:700,cursor:loading||!input.trim()?"not-allowed":"pointer",fontSize:13}}>Send</button>
+        <button onClick={()=>send()} disabled={loading||!input.trim()} style={{background:loading||!input.trim()?T.gray400:"#A371F7",color:T.white,border:"none",borderRadius:4,padding:"7px 16px",fontWeight:700,cursor:loading||!input.trim()?"not-allowed":"pointer",fontSize:13}}>Send</button>
       </div>
     </div>
   </div>);
@@ -1228,17 +1227,17 @@ const TECH_SUB_WOS = [
 const TECH_COPILOT_PROMPTS = {
   "WO-4421":{
     suggestions:["Walk me through the LOTO procedure for the Line 3 sealer","What does fault code E-14 mean on the sealer?","How do I measure element resistance correctly?","What do I do if the thermocouple connection looks damaged?"],
-    labels:["🔒 LOTO procedure for Line 3 sealer","⚠️ Fault code E-14 — what is it?","🔧 How to measure element resistance","❓ Damaged thermocouple — what next?"],
+    labels:["LOTO procedure for Line 3 sealer","Fault code E-14 — what is it?","How to measure element resistance","Damaged thermocouple — what next?"],
     context:"You are helping a technician with WO-4421 — Line 3 Heat Sealer inspection. The sealer has vibration index 8.4 (threshold 7.0) and fault code E-14 (thermocouple fault). Part #SE-441 is in transit. The technician has completed LOTO and cooling steps.",
   },
   "WO-4425":{
     suggestions:["What's the correct belt tension spec for Line 2?","How do I apply lubricant to the rollers?","What should I look for when checking belt tracking?","How do I know if the belt needs replacing?"],
-    labels:["📏 Belt tension spec for Line 2","🛢️ How to lubricate the rollers","👁️ Checking belt tracking — what to look for","🔄 Does the belt need replacing?"],
+    labels:["Belt tension spec for Line 2","️ How to lubricate the rollers","️ Checking belt tracking — what to look for","Does the belt need replacing?"],
     context:"You are helping a technician with WO-4425 — Line 2 Conveyor Belt routine PM inspection. The belt is in good condition with health score 81. This is a standard preventive inspection.",
   },
   "WO-4422":{
     suggestions:["Walk me through the LOTO procedure for the Line 2 heat tunnel","What are the correct temperature set points for the tunnel?","How do I check the safety interlock switches?","What should I note for the first-ever PM record?"],
-    labels:["🔒 LOTO procedure for Line 2 heat tunnel","🌡️ Correct temperature set points","⚡ How to check safety interlocks","📋 What to record for first PM"],
+    labels:["LOTO procedure for Line 2 heat tunnel","️ Correct temperature set points","How to check safety interlocks","What to record for first PM"],
     context:"You are helping a technician with WO-4422 — Line 2 Heat Tunnel first-ever PM inspection. There is no PM history on this asset. The technician needs to establish a baseline condition report.",
   },
 };
@@ -1312,7 +1311,7 @@ function TechnicianDashboard(){
   const totalHrsRemaining=wos.filter(w=>w.status!=="Complete").reduce((a,w)=>a+(w.estimatedHrs-(w.actualHrs||0)),0);
   const blockedParts=wos.filter(w=>(w.partsKitting||w.partsRequired||[]).some(p=>p.status==="Stock-Out")).length;
 
-  const schedTypeColor=t=>t==="meeting"?T.info:t==="work"?T.primary:t==="handover"?"#673AB7":T.gray400;
+  const schedTypeColor=t=>t==="meeting"?T.info:t==="work"?T.primary:t==="handover"?"#A371F7":T.gray400;
   const schedTypeLabel=t=>t==="meeting"?"Meeting":t==="work"?"Work Block":t==="handover"?"Handover":"Routine";
 
   const filteredAllWOs=woFilter==="All"?ALL_WOS:ALL_WOS.filter(w=>w.status===woFilter);
@@ -1328,18 +1327,18 @@ function TechnicianDashboard(){
   const TechTab=({tab})=>{
     const isActive=activeTab===tab.id;
     return(<button onClick={()=>setActiveTab(tab.id)} style={{display:"flex",alignItems:"center",gap:5,padding:"12px 16px",border:"none",borderBottom:isActive?`2px solid ${T.primary}`:"2px solid transparent",background:"transparent",cursor:"pointer",fontWeight:isActive?800:500,fontSize:12,color:isActive?T.primary:tab.built?T.gray900:T.gray400,whiteSpace:"nowrap"}}>
-      {!tab.built&&<span style={{fontSize:10,opacity:0.7}}>🔒</span>}
+      {!tab.built&&<span style={{fontSize:10,opacity:0.7}}></span>}
       <span>{tab.label}</span>
     </button>);
   };
 
   const ComingSoonPlaceholder=({title,desc,items})=>(
     <div style={{padding:"40px 24px",display:"flex",flexDirection:"column",alignItems:"center",gap:16,textAlign:"center"}}>
-      <div style={{fontSize:32}}>🔒</div>
+      <div style={{fontSize:32,color:T.gray400}}>—</div>
       <div style={{fontSize:16,fontWeight:800,color:T.black}}>{title}</div>
       <div style={{fontSize:13,color:T.gray900,maxWidth:500,lineHeight:1.6}}>{desc}</div>
       <div style={{display:"flex",flexDirection:"column",gap:8,width:"100%",maxWidth:500}}>
-        {items.map((item,i)=><div key={i} style={{background:T.white,borderRadius:4,padding:"12px 16px",textAlign:"left",border:`1px solid ${T.border}`}}>
+        {items.map((item,i)=><div key={i} style={{background:T.surface,borderRadius:4,padding:"12px 16px",textAlign:"left",border:`1px solid ${T.border}`}}>
           <div style={{fontSize:13,fontWeight:700,color:T.black,marginBottom:3}}>{item.title}</div>
           <div style={{fontSize:12,color:T.gray900}}>{item.desc}</div>
         </div>)}
@@ -1348,7 +1347,7 @@ function TechnicianDashboard(){
   );
 
   const WOCard=({wo,showPrep=true})=>(
-    <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",borderLeft:`4px solid ${priorityColor(wo.priority)}`,padding:"14px 18px"}}>
+    <div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)",borderLeft:`4px solid ${priorityColor(wo.priority)}`,padding:"14px 18px"}}>
       <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}>
         <span style={{fontSize:13,fontWeight:800,color:T.black}}>{wo.id}</span>
         <Badge label={wo.priority} color={priorityColor(wo.priority)}/>
@@ -1359,9 +1358,9 @@ function TechnicianDashboard(){
       <div style={{fontSize:12,color:T.gray900,marginBottom:6}}>{wo.location||wo.line} · Est: {wo.estimatedHrs}h{wo.actualHrs>0?` · Actual: ${wo.actualHrs}h`:""} · Due: {wo.dueDate}</div>
       <div style={{fontSize:12,color:T.gray900,marginBottom:wo.safetyFlags?.length>0||wo.agentNote?8:0}}>{wo.description}</div>
       {wo.safetyFlags?.length>0&&<div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:6}}>
-        {wo.safetyFlags.slice(0,2).map((f,i)=><span key={i} style={{fontSize:10,color:T.warning,background:T.warning+"15",border:`1px solid ${T.warning}30`,borderRadius:3,padding:"2px 8px"}}>⚠ {f}</span>)}
+        {wo.safetyFlags.slice(0,2).map((f,i)=><span key={i} style={{fontSize:10,color:T.warning,background:T.warning+"15",border:`1px solid ${T.warning}30`,borderRadius:3,padding:"2px 8px"}}>{f}</span>)}
       </div>}
-      {wo.partsRequired?.some(p=>p.status==="Stock-Out")||wo.partsKitting?.some(p=>p.status==="Stock-Out")?<div style={{background:"#FEF2F2",border:`1px solid ${T.negative}30`,borderRadius:3,padding:"4px 10px",fontSize:11,color:T.negative,fontWeight:700,marginBottom:6}}>⚠ Part stock-out — job may be blocked. Check WO Prep.</div>:null}
+      {wo.partsRequired?.some(p=>p.status==="Stock-Out")||wo.partsKitting?.some(p=>p.status==="Stock-Out")?<div style={{background:"#2D0F0F",border:`1px solid ${T.negative}30`,borderRadius:3,padding:"4px 10px",fontSize:11,color:T.negative,fontWeight:700,marginBottom:6}}>Part stock-out — job may be blocked. Check WO Prep.</div>:null}
       {wo.sopSteps?.length>0&&<div style={{marginBottom:8}}>
         <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:T.gray900,marginBottom:3}}>
           <span>SOP Progress</span>
@@ -1369,14 +1368,14 @@ function TechnicianDashboard(){
         </div>
         <div style={{height:5,background:T.border,borderRadius:3}}><div style={{height:5,width:`${(wo.sopSteps.filter(s=>s.done).length/wo.sopSteps.length)*100}%`,background:T.positive,borderRadius:3,transition:"width 0.3s"}}/></div>
       </div>}
-      {wo.agentNote&&<div style={{background:T.primary+"10",borderLeft:`3px solid ${T.primary}`,borderRadius:3,padding:"6px 10px",fontSize:11,color:T.primary,marginBottom:8}}>🧠 {wo.agentNote}</div>}
+      {wo.agentNote&&<div style={{background:T.primary+"10",borderLeft:`3px solid ${T.primary}`,borderRadius:3,padding:"6px 10px",fontSize:11,color:T.primary,marginBottom:8}}>{wo.agentNote}</div>}
       {showPrep&&<div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:4}}>
         <button onClick={()=>openWOPrep(wo)} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Open WO Prep →</button>
         {wo.status==="Not Started"&&<button onClick={()=>markStatus(wo.id,"Pre-Work")} style={{background:"none",border:`1px solid ${T.neutral}`,borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer",color:T.gray900}}>Begin Pre-Work</button>}
         {wo.status==="Pre-Work"&&<button onClick={()=>markStatus(wo.id,"In Execution")} style={{background:"none",border:`1px solid ${T.primary}`,borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer",color:T.primary}}>Start Execution</button>}
         {wo.status==="In Execution"&&<button onClick={()=>markStatus(wo.id,"Closing Out")} style={{background:"none",border:`1px solid ${T.warning}`,borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer",color:T.warning}}>Move to Closure</button>}
         {wo.status==="Closing Out"&&<button onClick={()=>markStatus(wo.id,"Complete")} style={{background:"none",border:`1px solid ${T.positive}`,borderRadius:4,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer",color:T.positive}}>Mark Complete</button>}
-        {completionSubmitted[wo.id]&&<Badge label="📷 Completion photo attached" color={T.positive}/>}
+        {completionSubmitted[wo.id]&&<Badge label="Completion photo attached" color={T.positive}/>}
         {!followUpSubmitted[wo.id]&&<button onClick={()=>{setSelectedWO(wo);setShowFollowUp(true);}} style={{background:"none",border:`1px dashed ${T.border}`,borderRadius:4,padding:"7px 12px",fontSize:12,cursor:"pointer",color:T.gray900}}>+ Follow-up WO</button>}
         {followUpSubmitted[wo.id]&&<Badge label="Follow-up WO raised" color={T.positive}/>}
       </div>}
@@ -1404,7 +1403,7 @@ function TechnicianDashboard(){
 
   return(<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
     {/* Header */}
-    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px 0",flexShrink:0}}>
+    <div style={{background:T.surface,borderBottom:`1px solid ${T.border}`,padding:"16px 24px 0",flexShrink:0}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12,flexWrap:"wrap",gap:8}}>
         <div>
           <div style={{fontSize:18,fontWeight:800,color:T.black}}>Technician Dashboard</div>
@@ -1430,13 +1429,13 @@ function TechnicianDashboard(){
       </div>
     </div>
 
-    <div style={{flex:1,overflowY:"auto",background:T.gray100}}>
+    <div style={{flex:1,overflowY:"auto",background:T.bg}}>
 
       {/* ── MY DAY ── */}
       {activeTab==="myday"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:20}}>
 
         {/* Daily Schedule */}
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+        <div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}>
           <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
             <div style={{fontSize:13,fontWeight:800,color:T.black}}>Today's Schedule</div>
             <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Day shift · 06:00 – 16:00 · Feb 28, 2026</div>
@@ -1480,7 +1479,7 @@ function TechnicianDashboard(){
       {/* ── WO PREP ── */}
       {activeTab==="woprep"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
         {/* WO selector */}
-        <div style={{background:T.white,borderRadius:4,padding:"12px 16px",boxShadow:"0 1px 3px rgba(0,0,0,0.07)",display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+        <div style={{background:T.surface,borderRadius:4,padding:"12px 16px",boxShadow:"0 1px 3px rgba(0,0,0,0.4)",display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
           <span style={{fontSize:12,fontWeight:700,color:T.gray900}}>Preparing:</span>
           {wos.filter(w=>w.status!=="Complete").map(w=>(
             <button key={w.id} onClick={()=>setSelectedWO(w)} style={{padding:"5px 12px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",border:`1px solid ${selectedWO?.id===w.id?T.primary:T.border}`,background:selectedWO?.id===w.id?T.primary:T.white,color:selectedWO?.id===w.id?T.white:T.gray900}}>{w.id} — {w.asset}</button>
@@ -1490,7 +1489,7 @@ function TechnicianDashboard(){
 
         {selectedWO&&<>
           {/* WO Header */}
-          <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",borderLeft:`4px solid ${priorityColor(selectedWO.priority)}`,padding:"16px 20px"}}>
+          <div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)",borderLeft:`4px solid ${priorityColor(selectedWO.priority)}`,padding:"16px 20px"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap",marginBottom:6}}>
               <div>
                 <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
@@ -1514,13 +1513,13 @@ function TechnicianDashboard(){
           </div>
 
           {/* Safety */}
-          {selectedWO.safetyFlags.length>0&&<div style={{background:"#FFFBEB",border:`1px solid ${T.warning}`,borderRadius:4,padding:"12px 16px"}}>
-            <div style={{fontSize:12,fontWeight:800,color:T.warning,marginBottom:8}}>⚠️ Safety Requirements — Complete Before Starting</div>
+          {selectedWO.safetyFlags.length>0&&<div style={{background:T.warning+"12",border:`1px solid ${T.warning}40`,borderRadius:4,padding:"12px 16px"}}>
+            <div style={{fontSize:12,fontWeight:800,color:T.warning,marginBottom:8}}>Safety Requirements — Complete Before Starting</div>
             {selectedWO.safetyFlags.map((f,i)=><div key={i} style={{fontSize:12,color:T.black,marginBottom:4}}>• {f}</div>)}
           </div>}
 
           {/* Defect Photo — only on WO-4421 */}
-          {selectedWO.id==="WO-4421"&&<div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",overflow:"hidden"}}>
+          {selectedWO.id==="WO-4421"&&<div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)",overflow:"hidden"}}>
             <div style={{padding:"12px 18px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <div style={{fontSize:13,fontWeight:800,color:T.black}}>Defect Photo — Original Issue</div>
               <span style={{fontSize:11,color:T.gray400}}>Reported by Line 3 Operator · Feb 14, 2026</span>
@@ -1570,7 +1569,7 @@ function TechnicianDashboard(){
           {/* SOP + Parts + History */}
           <div style={{display:"flex",gap:16,flexWrap:"wrap",alignItems:"flex-start"}}>
             {/* Phased SOP Checklist */}
-            <div style={{flex:"2 1 300px",background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+            <div style={{flex:"2 1 300px",background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}>
               <div style={{padding:"12px 18px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div style={{fontSize:13,fontWeight:800,color:T.black}}>SOP Checklist</div>
                 <span style={{fontSize:11,color:T.gray900,fontWeight:600}}>{selectedWO.sopSteps.filter(s=>s.done).length}/{selectedWO.sopSteps.length} complete</span>
@@ -1579,7 +1578,7 @@ function TechnicianDashboard(){
                 {["Pre-Execution","Execution","Post-Execution"].map(phase=>{
                   const phaseSteps=selectedWO.sopSteps.map((s,i)=>({...s,idx:i})).filter(s=>s.phase===phase);
                   if(phaseSteps.length===0)return null;
-                  const phaseColor=phase==="Pre-Execution"?T.warning:phase==="Execution"?T.primary:"#673AB7";
+                  const phaseColor=phase==="Pre-Execution"?T.warning:phase==="Execution"?T.primary:"#A371F7";
                   const phaseDone=phaseSteps.filter(s=>s.done).length;
                   return(
                     <div key={phase} style={{marginBottom:12}}>
@@ -1594,7 +1593,7 @@ function TechnicianDashboard(){
                         {phaseSteps.map((s)=>(
                           <div key={s.idx} onClick={()=>toggleStep(selectedWO.id,s.idx)} style={{display:"flex",gap:10,alignItems:"flex-start",padding:"8px 10px",borderRadius:4,background:s.done?T.positive+"10":T.gray100,cursor:"pointer",border:`1px solid ${s.done?T.positive+"30":T.border}`}}>
                             <div style={{width:18,height:18,borderRadius:3,border:`2px solid ${s.done?T.positive:T.gray400}`,background:s.done?T.positive:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>
-                              {s.done&&<span style={{fontSize:10,color:T.white,fontWeight:800}}>✓</span>}
+                              {s.done&&<span style={{fontSize:10,color:T.white,fontWeight:800}}></span>}
                             </div>
                             <span style={{fontSize:12,color:s.done?T.gray400:T.black,textDecoration:s.done?"line-through":"none",lineHeight:1.5}}>{s.step}</span>
                           </div>
@@ -1608,7 +1607,7 @@ function TechnicianDashboard(){
 
             <div style={{flex:"1 1 220px",display:"flex",flexDirection:"column",gap:12}}>
               {/* Parts Kitting */}
-              <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+              <div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}>
                 <div style={{padding:"12px 18px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>Parts Kitting</div></div>
                 <div style={{padding:"12px 18px",display:"flex",flexDirection:"column",gap:8}}>
                   {(selectedWO.partsKitting||selectedWO.partsRequired||[]).map((p,i)=>(
@@ -1625,7 +1624,7 @@ function TechnicianDashboard(){
               </div>
 
               {/* Tool Kitting */}
-              {selectedWO.toolKitting&&<div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+              {selectedWO.toolKitting&&<div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}>
                 <div style={{padding:"12px 18px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>Tool Kitting</div></div>
                 <div style={{padding:"12px 18px",display:"flex",flexDirection:"column",gap:6}}>
                   {selectedWO.toolKitting.map((t,i)=>(
@@ -1638,7 +1637,7 @@ function TechnicianDashboard(){
               </div>}
 
               {/* Asset History */}
-              <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+              <div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}>
                 <div style={{padding:"12px 18px",borderBottom:`1px solid ${T.border}`}}><div style={{fontSize:13,fontWeight:800,color:T.black}}>Asset History</div></div>
                 <div style={{padding:"12px 18px",display:"flex",flexDirection:"column",gap:6}}>
                   {[["Last PM",selectedWO.assetHistory.lastPM],["Last Failure",selectedWO.assetHistory.lastFailure],["Open Issues",selectedWO.assetHistory.openIssues],["Health Score",`${selectedWO.assetHistory.healthScore}/100`],["MTBF",selectedWO.assetHistory.mtbf]].map(([lbl,val])=>(
@@ -1653,12 +1652,12 @@ function TechnicianDashboard(){
           </div>
 
           {selectedWO.agentNote&&<div style={{background:T.primary+"10",border:`1px solid ${T.primary}30`,borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"12px 16px"}}>
-            <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>🧠 Maintenance Planning Agent — Pre-Job Note</div>
+            <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>Maintenance Planning Agent — Pre-Job Note</div>
             <div style={{fontSize:12,color:T.black}}>{selectedWO.agentNote}</div>
           </div>}
 
           {!followUpSubmitted[selectedWO.id]&&!showFollowUp&&<button onClick={()=>setShowFollowUp(true)} style={{background:"none",border:`1px dashed ${T.border}`,borderRadius:4,padding:"10px 16px",fontSize:12,fontWeight:600,color:T.gray900,cursor:"pointer",textAlign:"left"}}>+ Raise Follow-up Work Order</button>}
-          {showFollowUp&&!followUpSubmitted[selectedWO.id]&&<div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",padding:"16px 20px"}}>
+          {showFollowUp&&!followUpSubmitted[selectedWO.id]&&<div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)",padding:"16px 20px"}}>
             <div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:12}}>Raise Follow-up Work Order</div>
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
               <input value={followUpForm.asset} onChange={e=>setFollowUpForm(p=>({...p,asset:e.target.value}))} placeholder="Asset / description of work needed..." style={{border:`1px solid ${T.border}`,borderRadius:4,padding:"8px 10px",fontSize:12}}/>
@@ -1677,7 +1676,7 @@ function TechnicianDashboard(){
               </div>
             </div>
           </div>}
-          {followUpSubmitted[selectedWO.id]&&<div style={{background:"#F0FDF4",border:`1px solid ${T.positive}`,borderRadius:4,padding:"12px 16px"}}>
+          {followUpSubmitted[selectedWO.id]&&<div style={{background:"#0D2B1A",border:`1px solid ${T.positive}`,borderRadius:4,padding:"12px 16px"}}>
             <div style={{fontSize:12,fontWeight:800,color:T.positive,marginBottom:4}}>Follow-up WO Raised</div>
             <div style={{fontSize:12,color:T.black}}>{followUpSubmitted[selectedWO.id].asset} — {followUpSubmitted[selectedWO.id].description}</div>
           </div>}
@@ -1686,7 +1685,7 @@ function TechnicianDashboard(){
 
       {/* ── ALL WORK ORDERS ── */}
       {activeTab==="allwos"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+        <div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}>
           <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
             <div>
               <div style={{fontSize:13,fontWeight:800,color:T.black}}>All Work Orders</div>
@@ -1700,14 +1699,14 @@ function TechnicianDashboard(){
           </div>
           <div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-              <thead><tr style={{background:T.gray100}}>
-                {["WO","Asset","Line","Type","Priority","Status","Assigned","Est. Hrs","Actual Hrs","Due Date","Description",""].map(h=>(
+              <thead><tr style={{background:T.bg}}>
+                {["WO","Asset","Line","Type","Priority","Status","Assigned","Est. Hrs","Actual Hrs",""].map(h=>(
                   <th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>
                 ))}
               </tr></thead>
               <tbody>{filteredAllWOs.map((wo,i)=>{
                 const effRatio=wo.estHrs&&wo.actualHrs>0?wo.actualHrs/wo.estHrs:null;
-                return(<tr key={wo.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
+                return(<tr key={wo.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.surface:"#1C2128"+"88"}}>
                   <td style={{padding:"9px 14px",fontWeight:700,color:T.black,whiteSpace:"nowrap"}}>{wo.id}</td>
                   <td style={{padding:"9px 14px",fontWeight:600,color:T.black,whiteSpace:"nowrap"}}>{wo.asset}</td>
                   <td style={{padding:"9px 14px",color:T.gray900}}>{wo.line}</td>
@@ -1729,7 +1728,7 @@ function TechnicianDashboard(){
 
       {/* ── SUBCONTRACTOR WOs ── */}
       {activeTab==="subcontractor"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+        <div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}>
           <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
             <div style={{fontSize:13,fontWeight:800,color:T.black}}>Subcontractor Work Orders</div>
             <div style={{fontSize:11,color:T.gray900,marginTop:2}}>External contractor work on site — separate handling, permits, and sign-off required · {TECH_SUB_WOS.length} active</div>
@@ -1748,14 +1747,14 @@ function TechnicianDashboard(){
                     <div style={{fontSize:14,fontWeight:700,color:T.black,marginBottom:4}}>{wo.asset}</div>
                     <div style={{fontSize:12,color:T.gray900,marginBottom:6}}>{wo.description}</div>
                     <div style={{display:"flex",gap:16,flexWrap:"wrap",fontSize:12,color:T.gray900}}>
-                      <span>🏢 <strong>Contractor:</strong> {wo.contractor}</span>
-                      <span>📅 <strong>On-site:</strong> {wo.onSiteDate}</span>
-                      <span>👤 <strong>Supervisor:</strong> {wo.supervisor}</span>
-                      <span>📋 <strong>Permit:</strong> {wo.permitNo}</span>
+                      <span><strong>Contractor:</strong> {wo.contractor}</span>
+                      <span><strong>On-site:</strong> {wo.onSiteDate}</span>
+                      <span><strong>Supervisor:</strong> {wo.supervisor}</span>
+                      <span><strong>Permit:</strong> {wo.permitNo}</span>
                     </div>
                   </div>
                 </div>
-                <div style={{background:T.white,borderRadius:4,border:`1px solid ${T.border}`,padding:"10px 14px",marginBottom:10}}>
+                <div style={{background:T.surface,borderRadius:4,border:`1px solid ${T.border}`,padding:"10px 14px",marginBottom:10}}>
                   <div style={{fontSize:11,fontWeight:700,color:T.gray900,marginBottom:6,textTransform:"uppercase",letterSpacing:"0.04em"}}>Checklist</div>
                   <div style={{display:"flex",flexDirection:"column",gap:4}}>
                     {[
@@ -1767,7 +1766,7 @@ function TechnicianDashboard(){
                     ].map((item,i)=>(
                       <div key={i} style={{display:"flex",gap:8,alignItems:"center",fontSize:12}}>
                         <div style={{width:16,height:16,borderRadius:3,border:`2px solid ${item.done?T.positive:T.gray400}`,background:item.done?T.positive:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                          {item.done&&<span style={{fontSize:9,color:T.white,fontWeight:800}}>✓</span>}
+                          {item.done&&<span style={{fontSize:9,color:T.white,fontWeight:800}}></span>}
                         </div>
                         <span style={{color:item.done?T.gray400:T.black,textDecoration:item.done?"line-through":"none"}}>{item.label}</span>
                       </div>
@@ -1776,7 +1775,7 @@ function TechnicianDashboard(){
                 </div>
                 <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                   <button style={{background:"none",border:`1px solid #C7D2FE`,borderRadius:4,padding:"6px 12px",fontSize:11,fontWeight:700,color:"#4F46E5",cursor:"pointer"}}>Open in SAP PM →</button>
-                  {wo.status==="In Progress"&&<button style={{background:T.positive,color:T.white,border:"none",borderRadius:4,padding:"6px 12px",fontSize:11,fontWeight:700,cursor:"pointer"}}>Sign Off & Close WO</button>}
+                  {wo.status==="In Progress"&&<button style={{background:T.positive,color:T.white,border:"none",borderRadius:4,padding:"6px 12px",fontSize:11,fontWeight:700,cursor:"pointer"}}>Sign Off</button>}
                 </div>
               </div>
             ))}
@@ -1799,24 +1798,24 @@ function TechnicianDashboard(){
     </div>
 
     {/* ── COMPLETION MODAL ── */}
-    {showCompletionModal&&completionWO&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-      <div style={{background:T.white,borderRadius:6,width:"100%",maxWidth:520,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
+    {showCompletionModal&&completionWO&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+      <div style={{background:T.surface,borderRadius:6,width:"100%",maxWidth:520,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.8)"}}>
         <div style={{background:T.positive,padding:"14px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
-            <div style={{fontSize:11,fontWeight:700,color:"#ffffff99",marginBottom:2}}>MARK COMPLETE · {completionWO.id}</div>
+            <div style={{fontSize:11,fontWeight:700,color:"rgba(230,237,243,0.6)",marginBottom:2}}>MARK COMPLETE · {completionWO.id}</div>
             <div style={{fontSize:15,fontWeight:800,color:T.white}}>{completionWO.asset}</div>
           </div>
-          <button onClick={()=>setShowCompletionModal(false)} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:4,padding:"6px 12px",color:T.white,cursor:"pointer",fontWeight:700,fontSize:12}}>✕</button>
+          <button onClick={()=>setShowCompletionModal(false)} style={{background:T.gray100,border:`1px solid ${T.border}`,borderRadius:4,padding:"6px 12px",color:T.black,cursor:"pointer",fontWeight:700,fontSize:12}}>✕</button>
         </div>
         <div style={{padding:"20px",display:"flex",flexDirection:"column",gap:14}}>
           {/* Completion photo */}
           <div>
             <div style={{fontSize:12,fontWeight:700,color:T.black,marginBottom:8}}>Completion Photo</div>
             {!completionForm.photoAttached
-              ?<div onClick={()=>setCompletionForm(p=>({...p,photoAttached:true}))} style={{border:`2px dashed ${T.border}`,borderRadius:4,padding:"24px",textAlign:"center",cursor:"pointer",background:T.gray100}}>
-                <div style={{fontSize:28,marginBottom:6}}>📷</div>
+              ?<div onClick={()=>setCompletionForm(p=>({...p,photoAttached:true}))} style={{border:`2px dashed ${T.border}`,borderRadius:4,padding:"24px",textAlign:"center",cursor:"pointer",background:T.bg}}>
+                <div style={{fontSize:28,marginBottom:6}}></div>
                 <div style={{fontSize:12,fontWeight:700,color:T.gray900}}>Tap to attach completion photo</div>
-                <div style={{fontSize:11,color:T.gray400,marginTop:2}}>Shows proof of repair for operator and supervisor</div>
+                <div style={{fontSize:11,color:T.gray400,marginTop:2}}>Proof of repair for sign-off</div>
               </div>
               :<div style={{position:"relative",borderRadius:4,overflow:"hidden",border:`2px solid ${T.positive}`}}>
                 <svg width="100%" height="150" viewBox="0 0 480 150" xmlns="http://www.w3.org/2000/svg">
@@ -1830,9 +1829,9 @@ function TechnicianDashboard(){
                   <rect x="170" y="53" width="30" height="12" rx="2" fill="#6A9A6A"/>
                   <rect x="210" y="53" width="30" height="12" rx="2" fill="#6A9A6A"/>
                   <text x="20" y="14" fill="#6A9A6A" fontSize="9" fontFamily="monospace">LINE 3 HEAT SEALER · SN-4421-B · REPAIR COMPLETE</text>
-                  <text x="240" y="138" fill="#44BB44" fontSize="10" fontFamily="Arial" fontWeight="bold" textAnchor="middle">✓ Element 3 replaced — sealer restored, test seals passed QC</text>
+                  <text x="240" y="138" fill="#44BB44" fontSize="10" fontFamily="Arial" fontWeight="bold" textAnchor="middle">Element 3 replaced — sealer restored, test seals passed QC</text>
                 </svg>
-                <div style={{position:"absolute",top:8,right:8,background:T.positive,borderRadius:3,padding:"2px 8px",fontSize:10,fontWeight:800,color:T.white}}>✓ Photo attached</div>
+                <div style={{position:"absolute",top:8,right:8,background:T.positive,borderRadius:3,padding:"2px 8px",fontSize:10,fontWeight:800,color:T.white}}>Photo attached</div>
               </div>
             }
           </div>
@@ -1844,16 +1843,16 @@ function TechnicianDashboard(){
           {/* Notify operator */}
           <div onClick={()=>setCompletionForm(p=>({...p,notifyOperator:!p.notifyOperator}))} style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",padding:"10px 14px",background:completionForm.notifyOperator?T.positive+"12":T.gray100,border:`1px solid ${completionForm.notifyOperator?T.positive:T.border}`,borderRadius:4}}>
             <div style={{width:20,height:20,borderRadius:4,border:`2px solid ${completionForm.notifyOperator?T.positive:T.gray400}`,background:completionForm.notifyOperator?T.positive:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-              {completionForm.notifyOperator&&<span style={{fontSize:11,color:T.white,fontWeight:800}}>✓</span>}
+              {completionForm.notifyOperator&&<span style={{fontSize:11,color:T.white,fontWeight:800}}></span>}
             </div>
             <div>
               <div style={{fontSize:12,fontWeight:700,color:T.black}}>Notify Line Operator & Supervisor</div>
-              <div style={{fontSize:11,color:T.gray900}}>Sends completion summary and photo — closes the loop with the team</div>
+              <div style={{fontSize:11,color:T.gray900}}>Closes the loop with operator and supervisor</div>
             </div>
           </div>
           {/* Actions */}
           <div style={{display:"flex",gap:8}}>
-            <button onClick={submitCompletion} style={{flex:1,background:T.positive,color:T.white,border:"none",borderRadius:4,padding:"10px",fontSize:13,fontWeight:700,cursor:"pointer"}}>Mark Complete & Close WO</button>
+            <button onClick={submitCompletion} style={{flex:1,background:T.positive,color:T.white,border:"none",borderRadius:4,padding:"10px",fontSize:13,fontWeight:700,cursor:"pointer"}}>Mark Complete</button>
             <button onClick={()=>setShowCompletionModal(false)} style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"10px 16px",fontSize:12,cursor:"pointer",color:T.gray900}}>Cancel</button>
           </div>
         </div>
@@ -1885,7 +1884,7 @@ const SHUTDOWN_JOBS = [
   {id:"SJ-001",title:"Heat Sealer — Element Replacement & Jaw Rebuild",type:"Corrective",priority:"Critical",assignedTo:"Carlos Rivera",contractor:null,estDays:0.5,minHrs:4,maxHrs:4,certainty:"High",status:"Ready",partsReady:true,toolsReady:true,prereqs:[],blockedBy:[],day:1,startHr:8,color:"#D64454",note:"Triggered by Feb 28 degradation signal. Parts confirmed in stock."},
   {id:"SJ-002",title:"Conveyor Drivetrain Overhaul",type:"Preventive",priority:"High",assignedTo:"Marcus Webb",contractor:null,estDays:1,minHrs:7,maxHrs:9,certainty:"Medium",status:"Ready",partsReady:true,toolsReady:true,prereqs:["SJ-001"],blockedBy:[],day:1,startHr:13,color:"#1565C0",note:"Can begin once sealer work complete. Belt tension tools confirmed."},
   {id:"SJ-003",title:"Filler Head Replacement — 5-Year Lifecycle",type:"Preventive",priority:"High",assignedTo:"Priya Singh",contractor:null,estDays:0.75,minHrs:5,maxHrs:6,certainty:"High",status:"Ready",partsReady:true,toolsReady:false,prereqs:[],blockedBy:["SJ-004"],day:1,startHr:8,color:"#1565C0",note:"Filler head confirmed in stock. Awaiting calibration tools from supplier."},
-  {id:"SJ-004",title:"Electrical Panel Rewire — Zone B",type:"Corrective",priority:"High",assignedTo:null,contractor:"PowerGrid Services",estDays:1,minHrs:8,maxHrs:10,certainty:"Medium",status:"Contractor Pending",partsReady:true,toolsReady:true,prereqs:[],blockedBy:[],day:1,startHr:8,color:"#673AB7",note:"PowerGrid Services confirmed on-site Mar 14. 10-hr minimum shift. LOTO coordination required with internal team."},
+  {id:"SJ-004",title:"Electrical Panel Rewire — Zone B",type:"Corrective",priority:"High",assignedTo:null,contractor:"PowerGrid Services",estDays:1,minHrs:8,maxHrs:10,certainty:"Medium",status:"Contractor Pending",partsReady:true,toolsReady:true,prereqs:[],blockedBy:[],day:1,startHr:8,color:"#A371F7",note:"PowerGrid Services confirmed on-site Mar 14. 10-hr minimum shift. LOTO coordination required with internal team."},
   {id:"SJ-005",title:"Structural Weld Inspection & Repair",type:"Inspection",priority:"Medium",assignedTo:null,contractor:"SteelWeld Specialists",estDays:null,minHrs:4,maxHrs:16,certainty:"Low",status:"Scope Uncertain",partsReady:false,toolsReady:true,prereqs:["SJ-004"],blockedBy:[],day:2,startHr:8,color:"#E65100",note:"Cannot diagnose until line is open. Best case: 4hrs (welds clean). Worst case: 16hrs (cracks found, full re-weld required). Schedule holds buffer."},
   {id:"SJ-006",title:"Cooling System Recharge — Apex Refrigeration",type:"Preventive",priority:"Medium",assignedTo:null,contractor:"Apex Refrigeration",estDays:0.25,minHrs:2,maxHrs:2,certainty:"High",status:"Ready",partsReady:true,toolsReady:true,prereqs:[],blockedBy:[],day:3,startHr:8,color:"#197A56",note:"Apex on-site from subcontractor WO. 2hr job, can run in parallel with closure activities."},
 ];
@@ -1966,7 +1965,7 @@ function ShutdownDashboard(){
 
   return(<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
     {/* Header */}
-    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px 0",flexShrink:0}}>
+    <div style={{background:T.surface,borderBottom:`1px solid ${T.border}`,padding:"16px 24px 0",flexShrink:0}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12,flexWrap:"wrap",gap:8}}>
         <div>
           <div style={{fontSize:18,fontWeight:800,color:T.black}}>Shutdown Management</div>
@@ -1998,12 +1997,12 @@ function ShutdownDashboard(){
       </div>
     </div>
 
-    <div style={{flex:1,overflowY:"auto",background:T.gray100}}>
+    <div style={{flex:1,overflowY:"auto",background:T.bg}}>
       {!lineHasData?(<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"60vh",gap:12}}>
         <div style={{fontSize:32}}>◈</div>
         <div style={{fontSize:15,fontWeight:800,color:T.black}}>{selectedLine} - No Active Shutdown Scheduled</div>
         <div style={{fontSize:13,color:T.gray900}}>No shutdown is currently planned for {selectedLine}. Select Line 3 to view the active shutdown.</div>
-        <div style={{background:T.primary+"12",border:`1px solid ${T.primary}30`,borderRadius:4,padding:"10px 20px",fontSize:12,color:T.primary,fontWeight:600}}>Line 3 Annual Shutdown - Mar 14-16, 2026 - 14 days out</div>
+        <div style={{background:T.primary+"18",border:`1px solid ${T.primary}40`,borderRadius:4,padding:"10px 20px",fontSize:12,color:T.primary,fontWeight:600}}>Line 3 Annual Shutdown - Mar 14-16, 2026 - 14 days out</div>
       </div>):(<>
 
       {/* ── PLANNING & PREP ── */}
@@ -2011,37 +2010,37 @@ function ShutdownDashboard(){
 
         {/* Agent banner */}
         <div style={{background:T.primary+"10",border:`1px solid ${T.primary}30`,borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"12px 16px"}}>
-          <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>🧠 Shutdown Planning Agent — {SHUTDOWN.daysOut} Days to Shutdown</div>
-          <div style={{fontSize:12,color:T.black,marginBottom:8}}>3 of 6 jobs are fully ready. 2 items require action before Mar 10: Filler Calibration Kit delivery confirmation and Apex Refrigeration on-site confirmation. SJ-005 scope remains uncertain until Day 2 diagnosis — schedule holds 16-hr buffer.</div>
+          <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>Shutdown Planning Agent — {SHUTDOWN.daysOut} Days to Shutdown</div>
+          <div style={{fontSize:12,color:T.black,marginBottom:8}}>3 of 6 jobs ready. Action needed: Apex confirmation (Mar 10) and Filler Calibration Kit (Mar 7). SJ-005 scope uncertain until Day 2.</div>
           <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-            <Badge label="⚠ Apex confirmation needed by Mar 10" color={T.warning}/>
-            <Badge label="⚠ Filler Calibration Kit ETA Mar 7" color={T.warning}/>
-            <Badge label="⚠ SJ-005 scope uncertain" color={T.warning}/>
+            <Badge label="Apex confirmation needed by Mar 10" color={T.warning}/>
+            <Badge label="Calibration kit ETA Mar 7" color={T.warning}/>
+            <Badge label="SJ-005 scope uncertain" color={T.warning}/>
           </div>
         </div>
 
         {/* Jobs readiness */}
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+        <div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}>
           <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
             <div style={{fontSize:13,fontWeight:800,color:T.black}}>Shutdown Scope — Job Readiness</div>
-            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>6 jobs · {SHUTDOWN.duration} · Parts and tools status per job</div>
+            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>{SHUTDOWN.duration} · Parts and tools per job</div>
           </div>
           <div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-              <thead><tr style={{background:T.gray100}}>
+              <thead><tr style={{background:T.bg}}>
                 {["Job","Title","Assigned To","Est. Duration","Certainty","Parts","Tools","Status","Pre-Reqs"].map(h=>(
                   <th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>
                 ))}
               </tr></thead>
               <tbody>{SHUTDOWN_JOBS.map((j,i)=>(
-                <tr key={j.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
+                <tr key={j.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.surface:"#1C2128"+"88"}}>
                   <td style={{padding:"9px 14px",fontWeight:800,color:T.black,whiteSpace:"nowrap"}}><span style={{color:j.color}}>●</span> {j.id}</td>
                   <td style={{padding:"9px 14px",fontWeight:600,color:T.black,maxWidth:220}}>{j.title}</td>
                   <td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{j.assignedTo||<span style={{color:T.warning,fontWeight:700}}>{j.contractor}</span>}</td>
                   <td style={{padding:"9px 14px",whiteSpace:"nowrap",color:T.gray900}}>{j.minHrs===j.maxHrs?`${j.minHrs}h`:`${j.minHrs}–${j.maxHrs}h`}</td>
                   <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}><Badge label={j.certainty} color={certaintyColor(j.certainty)}/></td>
-                  <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}>{j.partsReady?<span style={{color:T.positive,fontWeight:700}}>✓ Ready</span>:<span style={{color:T.warning,fontWeight:700}}>⚠ Pending</span>}</td>
-                  <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}>{j.toolsReady?<span style={{color:T.positive,fontWeight:700}}>✓ Ready</span>:<span style={{color:T.warning,fontWeight:700}}>⚠ Pending</span>}</td>
+                  <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}>{j.partsReady?<span style={{color:T.positive,fontWeight:700}}>Ready</span>:<span style={{color:T.warning,fontWeight:700}}>Pending</span>}</td>
+                  <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}>{j.toolsReady?<span style={{color:T.positive,fontWeight:700}}>Ready</span>:<span style={{color:T.warning,fontWeight:700}}>Pending</span>}</td>
                   <td style={{padding:"9px 14px",whiteSpace:"nowrap"}}><Badge label={j.status} color={jobStatusColor(j.status)}/></td>
                   <td style={{padding:"9px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{j.prereqs.length>0?j.prereqs.join(", "):"—"}</td>
                 </tr>
@@ -2051,20 +2050,20 @@ function ShutdownDashboard(){
         </div>
 
         {/* Parts tracker */}
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+        <div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}>
           <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
             <div style={{fontSize:13,fontWeight:800,color:T.black}}>Parts Kitting — Long Lead Tracker</div>
-            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>All parts required across 6 jobs · {SHUTDOWN_PARTS.filter(p=>p.status==="In Stock").length} of {SHUTDOWN_PARTS.length} confirmed in stock</div>
+            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>{SHUTDOWN_PARTS.filter(p=>p.status==="In Stock").length}/{SHUTDOWN_PARTS.length} confirmed in stock</div>
           </div>
           <div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-              <thead><tr style={{background:T.gray100}}>
-                {["Part","Part No.","Job","Qty","Lead Time","Status","Supplier","Cost","ETA / Notes"].map(h=>(
+              <thead><tr style={{background:T.bg}}>
+                {["Part","Part #","Job","Qty","Lead","Status","Supplier","Cost","ETA / Notes"].map(h=>(
                   <th key={h} style={{padding:"8px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>
                 ))}
               </tr></thead>
               <tbody>{SHUTDOWN_PARTS.map((p,i)=>(
-                <tr key={p.partNo} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
+                <tr key={p.partNo} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.surface:"#1C2128"+"88"}}>
                   <td style={{padding:"8px 14px",fontWeight:600,color:T.black}}>{p.part}</td>
                   <td style={{padding:"8px 14px",color:T.gray900,whiteSpace:"nowrap"}}>{p.partNo}</td>
                   <td style={{padding:"8px 14px",whiteSpace:"nowrap"}}><span style={{fontWeight:700,color:SHUTDOWN_JOBS.find(j=>j.id===p.job)?.color}}>{p.job}</span></td>
@@ -2085,18 +2084,18 @@ function ShutdownDashboard(){
       {activeTab==="schedule"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
 
         {/* Optimizer banner */}
-        <div style={{background:"#FFF8E1",border:`1px solid ${T.warning}`,borderLeft:`3px solid ${T.warning}`,borderRadius:4,padding:"12px 16px"}}>
-          <div style={{fontSize:11,fontWeight:700,color:T.warning,marginBottom:4}}>🧠 Shutdown Schedule Optimizer — Probabilistic View Active</div>
-          <div style={{fontSize:12,color:T.black,marginBottom:8}}>SJ-005 (Structural Weld Inspection) has uncertain scope — cannot diagnose until Day 2. Toggle between optimistic (4hr) and pessimistic (16hr) scenarios to see downstream impact. If worst case, Day 3 runs 4hrs over — Apex Refrigeration shift must be extended or rescheduled.</div>
+        <div style={{background:"#2D2200",border:`1px solid ${T.warning}`,borderLeft:`3px solid ${T.warning}`,borderRadius:4,padding:"12px 16px"}}>
+          <div style={{fontSize:11,fontWeight:700,color:T.warning,marginBottom:4}}>Shutdown Schedule Optimizer — Probabilistic View Active</div>
+          <div style={{fontSize:12,color:T.black,marginBottom:8}}>SJ-005 scope unknown until Day 2 diagnosis. Pessimistic scenario shows Day 3 overrun — Apex shift would need to extend.</div>
           <div style={{display:"flex",gap:6}}>
-            <button onClick={()=>setScheduleView("optimistic")} style={{padding:"5px 14px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",border:`1px solid ${scheduleView==="optimistic"?T.positive:T.border}`,background:scheduleView==="optimistic"?T.positive:T.white,color:scheduleView==="optimistic"?T.white:T.gray900}}>Optimistic (4hr welds clean)</button>
-            <button onClick={()=>setScheduleView("pessimistic")} style={{padding:"5px 14px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",border:`1px solid ${scheduleView==="pessimistic"?T.negative:T.border}`,background:scheduleView==="pessimistic"?T.negative:T.white,color:scheduleView==="pessimistic"?T.white:T.gray900}}>Pessimistic (16hr cracks found)</button>
-            {scheduleView==="pessimistic"&&<Badge label="⚠ Day 3 overrun — Apex shift extension required" color={T.negative}/>}
+            <button onClick={()=>setScheduleView("optimistic")} style={{padding:"5px 14px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",border:`1px solid ${scheduleView==="optimistic"?T.positive:T.border}`,background:scheduleView==="optimistic"?T.positive:T.white,color:scheduleView==="optimistic"?T.white:T.gray900}}>Optimistic</button>
+            <button onClick={()=>setScheduleView("pessimistic")} style={{padding:"5px 14px",borderRadius:4,fontSize:11,fontWeight:700,cursor:"pointer",border:`1px solid ${scheduleView==="pessimistic"?T.negative:T.border}`,background:scheduleView==="pessimistic"?T.negative:T.white,color:scheduleView==="pessimistic"?T.white:T.gray900}}>Pessimistic</button>
+            {scheduleView==="pessimistic"&&<Badge label="Day 3 overrun — Apex shift extension required" color={T.negative}/>}
           </div>
         </div>
 
         {/* Gantt */}
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+        <div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}>
           <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
             <div style={{fontSize:13,fontWeight:800,color:T.black}}>Shutdown Schedule — Gantt View</div>
             <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Mar 14–16 · 08:00–18:00 each day · {scheduleView==="optimistic"?"Optimistic scenario":"Pessimistic scenario — worst case"}</div>
@@ -2143,7 +2142,7 @@ function ShutdownDashboard(){
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
           <div style={{fontSize:12,fontWeight:800,color:T.black}}>Job Details & Dependencies</div>
           {SHUTDOWN_JOBS.map(j=>(
-            <div key={j.id} style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",borderLeft:`4px solid ${j.color}`,padding:"12px 16px"}}>
+            <div key={j.id} style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)",borderLeft:`4px solid ${j.color}`,padding:"12px 16px"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
                 <div style={{flex:1}}>
                   <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
@@ -2155,7 +2154,7 @@ function ShutdownDashboard(){
                   </div>
                   <div style={{fontSize:13,fontWeight:700,color:T.black,marginBottom:2}}>{j.title}</div>
                   <div style={{fontSize:11,color:T.gray900,marginBottom:j.note?6:0}}>{j.assignedTo?"Internal: "+j.assignedTo:"Contractor: "+j.contractor} · Day {j.day} · {j.minHrs===j.maxHrs?`${j.minHrs}h`:`${j.minHrs}–${j.maxHrs}h`}</div>
-                  {j.note&&<div style={{fontSize:11,color:T.primary}}>🧠 {j.note}</div>}
+                  {j.note&&<div style={{fontSize:11,color:T.primary}}>{j.note}</div>}
                 </div>
               </div>
             </div>
@@ -2167,15 +2166,15 @@ function ShutdownDashboard(){
       {activeTab==="workforce"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
 
         <div style={{background:T.primary+"10",border:`1px solid ${T.primary}30`,borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"12px 16px"}}>
-          <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>🧠 Workforce & Contractor Orchestrator</div>
-          <div style={{fontSize:12,color:T.black}}>3 internal technicians across 3 jobs. 3 contractors covering specialist scope. PowerGrid Services has a 10-hr minimum shift — agent has confirmed SJ-004 fits within that constraint. SteelWeld scope is variable — contractor briefed on best/worst case. Apex confirmation still pending.</div>
+          <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>Workforce & Contractor Orchestrator</div>
+          <div style={{fontSize:12,color:T.black}}>3 internal techs, 3 contractors. PowerGrid 10-hr minimum confirmed fit for SJ-004. SteelWeld briefed on variable scope. Apex pending.</div>
         </div>
 
         {/* Internal team */}
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+        <div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}>
           <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
             <div style={{fontSize:13,fontWeight:800,color:T.black}}>Internal Workforce</div>
-            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>{SHUTDOWN_INTERNAL.length} technicians allocated · Skills verified against job requirements</div>
+            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>{SHUTDOWN_INTERNAL.length} technicians allocated</div>
           </div>
           <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:12}}>
             {SHUTDOWN_INTERNAL.map(t=>(
@@ -2186,7 +2185,7 @@ function ShutdownDashboard(){
                     <div><div style={{fontSize:13,fontWeight:800,color:T.black}}>{t.name}</div><div style={{fontSize:11,color:T.gray900}}>{t.role}</div></div>
                   </div>
                   <div style={{display:"flex",gap:10}}>
-                    <div style={{textAlign:"center",padding:"4px 10px",background:T.white,borderRadius:4}}>
+                    <div style={{textAlign:"center",padding:"4px 10px",background:T.surface,borderRadius:4}}>
                       <div style={{fontSize:14,fontWeight:800,color:T.black}}>{t.hoursAllocated}h</div>
                       <div style={{fontSize:10,color:T.gray400}}>Allocated</div>
                     </div>
@@ -2202,10 +2201,10 @@ function ShutdownDashboard(){
         </div>
 
         {/* Contractors */}
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+        <div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}>
           <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
             <div style={{fontSize:13,fontWeight:800,color:T.black}}>Contractors</div>
-            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>{SHUTDOWN_CONTRACTORS.length} contractors · {SHUTDOWN_CONTRACTORS.filter(c=>c.status==="Confirmed").length} confirmed · {SHUTDOWN_CONTRACTORS.filter(c=>c.status==="Pending Confirmation").length} pending</div>
+            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>{SHUTDOWN_CONTRACTORS.filter(c=>c.status==="Confirmed").length}/{SHUTDOWN_CONTRACTORS.length} confirmed</div>
           </div>
           <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:12}}>
             {SHUTDOWN_CONTRACTORS.map(c=>{
@@ -2226,20 +2225,20 @@ function ShutdownDashboard(){
                     </div>
                   </div>
                 </div>
-                <div style={{background:T.white,borderRadius:3,padding:"8px 12px",fontSize:11,color:T.gray900,borderLeft:`2px solid ${T.primary}`}}>🧠 {c.notes}</div>
+                <div style={{background:T.surface,borderRadius:3,padding:"8px 12px",fontSize:11,color:T.gray900,borderLeft:`2px solid ${T.primary}`}}>{c.notes}</div>
               </div>);
             })}
           </div>
         </div>
 
         {/* Shift plan */}
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+        <div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}>
           <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
             <div style={{fontSize:13,fontWeight:800,color:T.black}}>Shift Plan — Who's On When</div>
           </div>
           <div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-              <thead><tr style={{background:T.gray100}}>
+              <thead><tr style={{background:T.bg}}>
                 {["Person","Type","Day 1 (Mar 14)","Day 2 (Mar 15)","Day 3 (Mar 16)","Notes"].map(h=>(
                   <th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:700,color:T.gray900,fontSize:11,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap"}}>{h}</th>
                 ))}
@@ -2253,7 +2252,7 @@ function ShutdownDashboard(){
                   {name:"SteelWeld Specialists",type:"Contractor",d1:"—",d2:"SJ-005 (4–16h)",d3:"Overflow if worst case",notes:"Scope TBD Day 2 AM"},
                   {name:"Apex Refrigeration",type:"Contractor",d1:"—",d2:"—",d3:"SJ-006 (2h)",notes:"Pending confirmation"},
                 ].map((r,i)=>(
-                  <tr key={r.name} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.white:T.gray100+"88"}}>
+                  <tr key={r.name} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.surface:"#1C2128"+"88"}}>
                     <td style={{padding:"9px 14px",fontWeight:700,color:T.black,whiteSpace:"nowrap"}}>{r.name}</td>
                     <td style={{padding:"9px 14px"}}><Badge label={r.type} color={r.type==="Internal"?T.primary:T.neutral}/></td>
                     <td style={{padding:"9px 14px",color:r.d1==="—"?T.gray400:T.black,fontWeight:r.d1==="—"?400:600}}>{r.d1}</td>
@@ -2271,16 +2270,16 @@ function ShutdownDashboard(){
       {/* ── EXECUTION ── */}
       {activeTab==="execution"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:16}}>
 
-        <div style={{background:"#FEF2F2",border:`1px solid ${T.negative}30`,borderRadius:4,padding:"12px 16px",display:"flex",alignItems:"center",gap:10}}>
+        <div style={{background:"#2D0F0F",border:`1px solid ${T.negative}30`,borderRadius:4,padding:"12px 16px",display:"flex",alignItems:"center",gap:10}}>
           <div style={{width:10,height:10,borderRadius:"50%",background:T.gray400,flexShrink:0}}/>
-          <div><span style={{fontSize:12,fontWeight:800,color:T.gray900}}>Shutdown not yet active — </span><span style={{fontSize:12,color:T.gray900}}>Execution view goes live on Mar 14 at 08:00. Live job tracking, time on tool, budget actuals, and real-time schedule reoptimisation will appear here once the shutdown commences.</span></div>
+          <div><span style={{fontSize:12,fontWeight:800,color:T.gray900}}>Not yet active — </span><span style={{fontSize:12,color:T.gray900}}>Live job tracking, time on tool, budget actuals, and real-time reoptimisation start here on Mar 14.</span></div>
         </div>
 
         {/* Preview of what execution will look like */}
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+        <div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}>
           <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`}}>
             <div style={{fontSize:13,fontWeight:800,color:T.black}}>Execution Dashboard — Preview</div>
-            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>This is what the live execution view will show once the shutdown begins</div>
+            <div style={{fontSize:11,color:T.gray900,marginTop:2}}>Goes live Mar 14 at 08:00</div>
           </div>
           <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:12}}>
             {/* Mock KPI strip */}
@@ -2315,8 +2314,8 @@ function ShutdownDashboard(){
               </div>
             ))}
             <div style={{background:T.primary+"10",border:`1px solid ${T.primary}30`,borderRadius:4,padding:"12px 16px"}}>
-              <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>🧠 What the Schedule Optimizer will do on Day 2</div>
-              <div style={{fontSize:12,color:T.black}}>When SJ-005 opens and the diagnostic finding comes in, the agent will immediately re-model the remaining schedule. If cracks are found and SJ-005 extends to 16hrs, it will: flag the Day 3 overrun, recommend extending the SteelWeld shift, notify Apex Refrigeration of a delayed start, and recalculate budget actuals. All in real time, before the supervisor has had a chance to react.</div>
+              <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>Day 2 — Schedule Optimizer</div>
+              <div style={{fontSize:12,color:T.black}}>When the SJ-005 diagnostic comes in on Day 2, the agent immediately remodels the schedule — flags overruns, recommends shift extensions, notifies contractors, and recalculates budget. All before the supervisor reacts.</div>
             </div>
           </div>
         </div>
@@ -2352,7 +2351,7 @@ const SP_EQUIPMENT = [
      {name:"Dwell Time",unit:"min",setpoint:2.8,actual:2.79,min:1.5,max:5.0,status:"ok",tag:"fryer@dwell"},
      {name:"Oil Level",unit:"%",setpoint:85,actual:82,min:75,max:95,status:"warning",tag:"fryer@oil_level"},
    ],
-   agentNote:"⚠ Oil temp running 3.4°C above setpoint — primary driver of sealer degradation (WO-4421). High oil temp increases chip moisture variance, stressing the heat sealer. Recommend reducing oil temp to 175°C and monitoring seal quality."},
+   agentNote:"Oil temp running 3.4°C above setpoint — primary driver of sealer degradation (WO-4421). High oil temp increases chip moisture variance, stressing the heat sealer. Recommend reducing oil temp to 175°C and monitoring seal quality."},
   {id:"deoiler",label:"De-oiler",short:"DO",x:480,y:140,w:70,h:50,
    params:[
      {name:"Vibration Freq",unit:"Hz",setpoint:18,actual:18.1,min:15,max:22,status:"ok",tag:"deoiler@freq"},
@@ -2378,7 +2377,7 @@ const SP_EQUIPMENT = [
      {name:"Dwell Time",unit:"ms",setpoint:600,actual:612,min:500,max:700,status:"ok",tag:"sealer@dwell"},
      {name:"Seal Pressure",unit:"bar",setpoint:4.2,actual:4.1,min:3.5,max:5.0,status:"ok",tag:"sealer@pressure"},
    ],
-   agentNote:"⚠ CRITICAL — Seal temp 6.2°C above setpoint and drifting. Root cause: fryer oil temp running high → chips arrive at sealer with higher moisture variance → sealer compensating with higher temp → element degradation (WO-4421). Fix the fryer first."},
+   agentNote:"Seal temp 6.2°C above setpoint and drifting. Root cause: fryer oil temp running high → chips arrive at sealer with higher moisture variance → sealer compensating with higher temp → element degradation (WO-4421). Fix the fryer first."},
   {id:"packager",label:"Packager",short:"PK",x:1000,y:140,w:70,h:50,
    params:[
      {name:"Nitrogen Fill",unit:"%",setpoint:92,actual:91.8,min:88,max:96,status:"ok",tag:"packager@n2"},
@@ -2462,19 +2461,19 @@ function SetpointDashboard(){
   };
 
   const noDataView=(<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"60vh",gap:12}}>
-    <div style={{fontSize:32}}>📊</div>
+    
     <div style={{fontSize:15,fontWeight:800,color:T.black}}>{selectedLine} — No Data Available</div>
     <div style={{fontSize:13,color:T.gray900}}>Process data for {selectedLine} is not yet connected to the Setpoint & Recipe Optimization Agent.</div>
-    <div style={{background:T.primary+"12",border:`1px solid ${T.primary}30`,borderRadius:4,padding:"10px 20px",fontSize:12,color:T.primary,fontWeight:600}}>Line 3 is the active demo line — select Line 3 to view live data</div>
+    <div style={{background:T.primary+"18",border:`1px solid ${T.primary}40`,borderRadius:4,padding:"10px 20px",fontSize:12,color:T.primary,fontWeight:600}}>Line 3 is the active demo line — select Line 3 to view live data</div>
   </div>);
 
   return(<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
     {/* Header */}
-    <div style={{background:T.white,borderBottom:`1px solid ${T.border}`,padding:"16px 24px 0",flexShrink:0}}>
+    <div style={{background:T.surface,borderBottom:`1px solid ${T.border}`,padding:"16px 24px 0",flexShrink:0}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12,flexWrap:"wrap",gap:8}}>
         <div>
           <div style={{fontSize:18,fontWeight:800,color:T.black}}>Setpoint & Recipe Optimization</div>
-          <div style={{fontSize:12,color:T.gray900,marginTop:2}}>Process Engineering · Real-time setpoint monitoring & AI-driven optimization</div>
+          <div style={{fontSize:12,color:T.gray900,marginTop:2}}>Process Engineering · Live setpoints & AI optimization</div>
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
           {/* Line filter */}
@@ -2490,7 +2489,7 @@ function SetpointDashboard(){
       </div>
     </div>
 
-    <div style={{flex:1,overflowY:"auto",background:T.gray100}}>
+    <div style={{flex:1,overflowY:"auto",background:T.bg}}>
       {!lineHasData ? noDataView : (<>
 
       {/* ── PROCESS OVERVIEW ── */}
@@ -2498,8 +2497,8 @@ function SetpointDashboard(){
 
         {/* Agent banner */}
         <div style={{background:T.primary+"10",border:`1px solid ${T.primary}30`,borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"12px 16px"}}>
-          <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>🧠 Setpoint & Recipe Optimization Agent — {selectedLine} · SKU 3801 (BBQ Chips) · Feb 28, 2026 07:00</div>
-          <div style={{fontSize:12,color:T.black,marginBottom:6}}>Root cause identified: fryer oil temperature running 3.4°C above setpoint for 3 days, creating a cascade of downstream issues — elevated chip moisture variance, sealer overcompensation, seasoning over-application, and packaging seal integrity decline. Applying SR-001 (reduce fryer to 175°C) is expected to resolve 4 of 5 active anomalies within 2–3 production cycles.</div>
+          <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>Setpoint & Recipe Optimization Agent — {selectedLine} · SKU 3801 (BBQ Chips) · Feb 28, 2026 07:00</div>
+          <div style={{fontSize:12,color:T.black,marginBottom:6}}>Root cause: fryer oil temp +3.4°C above setpoint for 3 days. Cascade: moisture variance → sealer overcompensation → seasoning over-application → seal integrity decline. SR-001 expected to resolve 4 of 5 anomalies.</div>
           <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
             <Badge label="1 Critical anomaly" color={T.negative}/>
             <Badge label="2 High warnings" color={T.warning}/>
@@ -2509,7 +2508,7 @@ function SetpointDashboard(){
         </div>
 
         {/* Process flow diagram */}
-        <div style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+        <div style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}>
           <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
             <div>
               <div style={{fontSize:13,fontWeight:800,color:T.black}}>Process Flow — {selectedLine} · Live Setpoints</div>
@@ -2527,20 +2526,20 @@ function SetpointDashboard(){
               {/* Flow arrows between equipment */}
               {[[125,165,190,165],[260,165,330,165],[420,165,480,165],[550,165,610,165],[680,165,740,165],[810,165,870,165],[940,165,1000,165]].map(([x1,y1,x2,y2],i)=>(
                 <g key={i}>
-                  <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#94A3B8" strokeWidth="2" markerEnd="url(#arrow)"/>
+                  <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#8B949E" strokeWidth="2" markerEnd="url(#arrow)"/>
                 </g>
               ))}
               <defs>
                 <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-                  <path d="M0,0 L8,3 L0,6 Z" fill="#94A3B8"/>
+                  <path d="M0,0 L8,3 L0,6 Z" fill="#8B949E"/>
                 </marker>
               </defs>
 
               {/* Raw material input */}
               <rect x="10" y="148" width="50" height="34" rx="4" fill="#F1F5F9" stroke="#CBD5E1" strokeWidth="1.5"/>
-              <text x="35" y="161" textAnchor="middle" fontSize="8" fontWeight="700" fill="#64748B">RAW</text>
-              <text x="35" y="173" textAnchor="middle" fontSize="8" fontWeight="700" fill="#64748B">INPUT</text>
-              <line x1="60" y1="165" x2="55" y2="165" stroke="#94A3B8" strokeWidth="2"/>
+              <text x="35" y="161" textAnchor="middle" fontSize="8" fontWeight="700" fill="#8B949E">RAW</text>
+              <text x="35" y="173" textAnchor="middle" fontSize="8" fontWeight="700" fill="#8B949E">INPUT</text>
+              <line x1="60" y1="165" x2="55" y2="165" stroke="#8B949E" strokeWidth="2"/>
 
               {/* Equipment nodes */}
               {SP_EQUIPMENT.map(eq=>{
@@ -2554,23 +2553,23 @@ function SetpointDashboard(){
                 return(<g key={eq.id} onClick={()=>setSelectedEquip(isSelected?null:eq.id)} style={{cursor:"pointer"}}>
                   {/* Equipment box */}
                   <rect x={eq.x} y={eq.y} width={eq.w} height={eq.h} rx="5"
-                    fill={isSelected?"#EFF6FF":T.white}
+                    fill={isSelected?"#1C2128":T.surface}
                     stroke={isSelected?T.primary:borderCol}
                     strokeWidth={isSelected?2.5:1.5}/>
                   {/* Status dot */}
                   <circle cx={eq.x+eq.w-8} cy={eq.y+8} r="5" fill={borderCol}/>
                   {/* Equipment label */}
-                  <text x={eq.x+eq.w/2} y={eq.y+16} textAnchor="middle" fontSize="8" fontWeight="800" fill="#1E293B">{eq.short}</text>
+                  <text x={eq.x+eq.w/2} y={eq.y+16} textAnchor="middle" fontSize="8" fontWeight="800" fill="#E6EDF3">{eq.short}</text>
                   {/* Equipment name */}
                   {eq.label.split(" ").map((word,wi)=>(
-                    <text key={wi} x={eq.x+eq.w/2} y={eq.y+eq.h+12+(wi*10)} textAnchor="middle" fontSize="8" fill="#64748B">{word}</text>
+                    <text key={wi} x={eq.x+eq.w/2} y={eq.y+eq.h+12+(wi*10)} textAnchor="middle" fontSize="8" fill="#8B949E">{word}</text>
                   ))}
                   {/* Main param value */}
                   <text x={eq.x+eq.w/2} y={eq.y+30} textAnchor="middle" fontSize="9" fontWeight="700" fill={borderCol}>{mainParam.actual}{mainParam.unit}</text>
                   {/* Mini gauge */}
-                  <rect x={eq.x+8} y={eq.y+38} width={eq.w-16} height="5" rx="2" fill="#E2E8F0"/>
+                  <rect x={eq.x+8} y={eq.y+38} width={eq.w-16} height="5" rx="2" fill="#21262D"/>
                   <rect x={eq.x+8} y={eq.y+38} width={Math.max(0,Math.min(eq.w-16,(pctActual/100)*(eq.w-16)))} height="5" rx="2" fill={borderCol}/>
-                  <rect x={eq.x+8+(pctSP/100)*(eq.w-16)-1} y={eq.y+36} width="2" height="9" rx="1" fill="#1E293B"/>
+                  <rect x={eq.x+8+(pctSP/100)*(eq.w-16)-1} y={eq.y+36} width="2" height="9" rx="1" fill="#E6EDF3"/>
                 </g>);
               })}
 
@@ -2582,7 +2581,7 @@ function SetpointDashboard(){
               {/* Root cause callout arrow for fryer */}
               <path d="M375,115 L375,100 L375,85" stroke={T.negative} strokeWidth="1.5" strokeDasharray="3 2" fill="none"/>
               <rect x="290" y="60" width="170" height="24" rx="4" fill={T.negative+"18"} stroke={T.negative} strokeWidth="1"/>
-              <text x="375" y="75" textAnchor="middle" fontSize="8" fontWeight="800" fill={T.negative}>⚠ ROOT CAUSE — Fix First</text>
+              <text x="375" y="75" textAnchor="middle" fontSize="8" fontWeight="800" fill={T.negative}>ROOT CAUSE — Fix First</text>
             </svg>
           </div>
         </div>
@@ -2590,7 +2589,7 @@ function SetpointDashboard(){
         {/* Selected equipment detail */}
         {selectedEquip&&SP_EQUIPMENT.filter(e=>e.id===selectedEquip).map(eq=>{
           const worstStatus=eq.params.reduce((w,p)=>p.status==="critical"?"critical":p.status==="warning"&&w!=="critical"?"warning":w,"ok");
-          return(<div key={eq.id} style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",borderTop:`3px solid ${statusColor(worstStatus)}`}}>
+          return(<div key={eq.id} style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)",borderTop:`3px solid ${statusColor(worstStatus)}`}}>
             <div style={{padding:"14px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <div style={{fontSize:13,fontWeight:800,color:T.black}}>{eq.label} — All Parameters</div>
               <button onClick={()=>setSelectedEquip(null)} style={{background:"none",border:"none",cursor:"pointer",color:T.gray400,fontSize:16}}>✕</button>
@@ -2615,7 +2614,7 @@ function SetpointDashboard(){
                 ))}
               </div>
               <div style={{flex:"1 1 200px",background:T.primary+"08",borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"12px 14px"}}>
-                <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:6}}>🧠 Agent Note</div>
+                <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:6}}>Agent Note</div>
                 <div style={{fontSize:12,color:T.black,lineHeight:1.6}}>{eq.agentNote}</div>
               </div>
             </div>
@@ -2627,11 +2626,11 @@ function SetpointDashboard(){
           {SP_EQUIPMENT.map(eq=>{
             const worstStatus=eq.params.reduce((w,p)=>p.status==="critical"?"critical":p.status==="warning"&&w!=="critical"?"warning":w,"ok");
             const mp=eq.params[0];
-            return(<div key={eq.id} onClick={()=>setSelectedEquip(selectedEquip===eq.id?null:eq.id)} style={{flex:"1 1 120px",background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",padding:"10px 14px",cursor:"pointer",borderTop:`3px solid ${statusColor(worstStatus)}`,border:selectedEquip===eq.id?`2px solid ${T.primary}`:undefined}}>
+            return(<div key={eq.id} onClick={()=>setSelectedEquip(selectedEquip===eq.id?null:eq.id)} style={{flex:"1 1 120px",background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)",padding:"10px 14px",cursor:"pointer",borderTop:`3px solid ${statusColor(worstStatus)}`,border:selectedEquip===eq.id?`2px solid ${T.primary}`:undefined}}>
               <div style={{fontSize:11,fontWeight:800,color:T.black,marginBottom:2}}>{eq.label}</div>
               <div style={{fontSize:14,fontWeight:800,color:statusColor(worstStatus)}}>{mp.actual}{mp.unit}</div>
               <div style={{fontSize:10,color:T.gray400}}>SP: {mp.setpoint}{mp.unit}</div>
-              <div style={{fontSize:10,color:statusColor(worstStatus),fontWeight:700,marginTop:2}}>{worstStatus==="critical"?"⚠ Critical":worstStatus==="warning"?"⚠ Warning":"✓ On Spec"}</div>
+              <div style={{fontSize:10,color:statusColor(worstStatus),fontWeight:700,marginTop:2}}>{worstStatus==="critical"?"Critical":worstStatus==="warning"?"Warning":"On Spec"}</div>
             </div>);
           })}
         </div>
@@ -2639,19 +2638,19 @@ function SetpointDashboard(){
 
       {/* ── OPTIMIZATION RECOMMENDATIONS ── */}
       {activeTab==="recommendations"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:12}}>
-        <div style={{background:T.white,borderRadius:4,padding:"12px 16px",boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}}>
+        <div style={{background:T.surface,borderRadius:4,padding:"12px 16px",boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}>
           <div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:4}}>Setpoint Optimization Recommendations — {selectedLine}</div>
-          <div style={{fontSize:12,color:T.gray900}}>Agent-generated recommendations ranked by impact. Apply to send setpoint change to operator co-pilot and notify line supervisor.</div>
+          <div style={{fontSize:12,color:T.gray900}}>Ranked by impact. Apply to notify operator and line supervisor.</div>
         </div>
         {recs.map(r=>(
-          <div key={r.id} style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",borderLeft:`4px solid ${r.applied?T.positive:priorityColor(r.priority)}`,overflow:"hidden",opacity:r.applied?0.75:1}}>
+          <div key={r.id} style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)",borderLeft:`4px solid ${r.applied?T.positive:priorityColor(r.priority)}`,overflow:"hidden",opacity:r.applied?0.75:1}}>
             <div style={{padding:"14px 18px"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap",marginBottom:8}}>
                 <div style={{flex:1}}>
                   <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
                     <Badge label={r.priority} color={r.applied?T.positive:priorityColor(r.priority)}/>
                     <Badge label={r.equipment} color={T.primary}/>
-                    {r.applied&&<Badge label="✓ Applied" color={T.positive}/>}
+                    {r.applied&&<Badge label="Applied" color={T.positive}/>}
                   </div>
                   <div style={{fontSize:14,fontWeight:800,color:T.black,marginBottom:4}}>{r.title}</div>
                   <div style={{display:"flex",gap:20,flexWrap:"wrap",marginBottom:8}}>
@@ -2669,9 +2668,9 @@ function SetpointDashboard(){
                       <div style={{fontSize:16,fontWeight:800,color:r.delta<0?T.info:T.warning}}>{r.delta>0?"+":""}{r.delta}{r.unit}</div>
                     </div>
                   </div>
-                  <div style={{fontSize:12,color:T.gray900,marginBottom:8}}>{r.rationale}</div>
+                  <div style={{fontSize:12,color:T.gray900,marginBottom:8}}>{r.rationale.split(".")[0]}.</div>
                   <div style={{background:T.primary+"08",borderLeft:`2px solid ${T.primary}`,borderRadius:3,padding:"8px 12px",marginBottom:8}}>
-                    <div style={{fontSize:10,fontWeight:700,color:T.primary,marginBottom:3}}>CROSS-DOMAIN IMPACT</div>
+                    <div style={{fontSize:10,fontWeight:600,color:T.gray400,marginBottom:3,textTransform:"uppercase",letterSpacing:"0.05em"}}>Cross-domain impact</div>
                     <div style={{fontSize:11,color:T.black}}>{r.crossDomain}</div>
                   </div>
                   <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
@@ -2682,10 +2681,10 @@ function SetpointDashboard(){
                 </div>
               </div>
               {!r.applied&&<div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                <button onClick={()=>applyRec(r.id)} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"7px 16px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Apply & Notify Operator →</button>
+                <button onClick={()=>applyRec(r.id)} style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"7px 16px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Apply →</button>
                 <button style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"7px 14px",fontSize:12,cursor:"pointer",color:T.gray900}}>Add to Dashboard</button>
               </div>}
-              {r.applied&&<div style={{background:"#F0FDF4",border:`1px solid ${T.positive}`,borderRadius:4,padding:"8px 12px",fontSize:12,color:T.positive,fontWeight:700}}>✅ Applied — Operator notified. Monitoring outcome over next 2–3 production cycles.</div>}
+              {r.applied&&<div style={{background:"#0D2B1A",border:`1px solid ${T.positive}`,borderRadius:4,padding:"8px 12px",fontSize:12,color:T.positive,fontWeight:700}}>Applied — Operator notified. Monitoring outcome over next 2–3 production cycles.</div>}
             </div>
           </div>
         ))}
@@ -2694,13 +2693,13 @@ function SetpointDashboard(){
       {/* ── ANOMALY DETECTION ── */}
       {activeTab==="anomalies"&&<div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:12}}>
         <div style={{background:T.primary+"10",border:`1px solid ${T.primary}30`,borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"12px 16px"}}>
-          <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>🧠 Setpoint & Recipe Optimization Agent — Anomaly Feed · {selectedLine}</div>
-          <div style={{fontSize:12,color:T.black}}>The agent continuously monitors all process parameters against recipe standards and historical baselines. Anomalies are things already outside acceptable range — they need a decision. Each one has a recommended action: apply a setpoint fix, raise or view a work order, escalate, or mark as monitoring.</div>
+          <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>Setpoint & Recipe Optimization Agent — Anomaly Feed · {selectedLine}</div>
+          <div style={{fontSize:12,color:T.black}}>Parameters outside acceptable range that need a decision. Each anomaly has a recommended action — apply a fix, raise a WO, escalate, or monitor.</div>
         </div>
         {SP_ANOMALIES.map(a=>{
-          const actColor=a.actionType==="wo"?"#4F46E5":a.actionType==="setpoint"?T.primary:a.actionType==="escalate"?T.negative:T.neutral;
-          const actBg=a.actionType==="wo"?"#EEF2FF":a.actionType==="setpoint"?T.primary+"10":a.actionType==="escalate"?T.negative+"10":T.gray100;
-          return(<div key={a.id} style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",borderLeft:`4px solid ${severityColor(a.severity)}`}}>
+          const actColor=a.actionType==="wo"?"#818CF8":a.actionType==="setpoint"?T.primary:a.actionType==="escalate"?T.negative:T.neutral;
+          const actBg=a.actionType==="wo"?"#1A1F3A":a.actionType==="setpoint"?T.primary+"18":a.actionType==="escalate"?T.negative+"18":"#1C2128";
+          return(<div key={a.id} style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)",borderLeft:`4px solid ${severityColor(a.severity)}`}}>
             <div style={{padding:"14px 18px"}}>
               {/* Header row */}
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap",marginBottom:8}}>
@@ -2727,22 +2726,22 @@ function SetpointDashboard(){
                 </div>
               </div>
               {/* Description */}
-              <div style={{fontSize:12,color:T.gray900,marginBottom:10,lineHeight:1.6}}>{a.description}</div>
+              <div style={{fontSize:12,color:T.gray900,marginBottom:10}}>{a.description.split(".")[0]}.</div>
               {/* Action section */}
               <div style={{background:actBg,border:`1px solid ${actColor}30`,borderRadius:4,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,flexWrap:"wrap"}}>
                 <div style={{flex:1}}>
                   <div style={{fontSize:10,fontWeight:700,color:actColor,marginBottom:3,textTransform:"uppercase",letterSpacing:"0.04em"}}>
-                    {a.actionType==="wo"?"🔧 Maintenance Action":a.actionType==="setpoint"?"⚙ Setpoint Fix Available":a.actionType==="escalate"?"🚨 Escalation Recommended":"👁 Monitoring"}
+                    {a.actionType==="wo"?"Maintenance":a.actionType==="setpoint"?"Setpoint Fix":a.actionType==="escalate"?"Escalate":"Monitoring"}
                   </div>
                   <div style={{fontSize:11,color:T.black}}>{a.actionNote}</div>
                 </div>
                 {!anomalyActioned[a.id]
                   ?<button onClick={()=>setAnomalyActioned(prev=>({...prev,[a.id]:a.actionType}))} style={{background:actColor,color:T.white,border:"none",borderRadius:4,padding:"7px 14px",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>{a.actionLabel}</button>
-                  :<span style={{fontSize:11,fontWeight:700,color:T.positive,whiteSpace:"nowrap",flexShrink:0}}>✓ {a.actionType==="wo"?"Opened in SAP PM":a.actionType==="setpoint"?"Fix Applied — Operator Notified":a.actionType==="escalate"?"Escalated to Plant Leader":"Marked as Monitoring"}</span>
+                  :<span style={{fontSize:11,fontWeight:700,color:T.positive,whiteSpace:"nowrap",flexShrink:0}}>{a.actionType==="wo"?"Opened in SAP PM":a.actionType==="setpoint"?"Fix Applied — Operator Notified":a.actionType==="escalate"?"Escalated to Plant Leader":"Marked as Monitoring"}</span>
                 }
               </div>
-              {anomalyActioned[a.id]&&<div style={{marginTop:8,background:"#F0FDF4",border:`1px solid ${T.positive}`,borderRadius:4,padding:"8px 12px",fontSize:11,color:T.positive,fontWeight:600}}>
-                ✅ {a.actionType==="wo"?"WO-4421 opened in SAP PM. Carlos Rivera notified.":a.actionType==="setpoint"?`Setpoint fix applied. Operator notified. Monitoring next 2–3 production cycles.`:a.actionType==="escalate"?"Escalated to Plant Leader — added to dashboard recommendations.":"Anomaly flagged as monitoring. Agent will alert if it worsens."}
+              {anomalyActioned[a.id]&&<div style={{marginTop:8,background:"#0D2B1A",border:`1px solid ${T.positive}`,borderRadius:4,padding:"8px 12px",fontSize:11,color:T.positive,fontWeight:600}}>
+                {a.actionType==="wo"?"WO-4421 opened in SAP PM. Carlos Rivera notified.":a.actionType==="setpoint"?`Setpoint fix applied. Operator notified. Monitoring next 2–3 production cycles.`:a.actionType==="escalate"?"Escalated to Plant Leader — added to dashboard recommendations.":"Anomaly flagged as monitoring. Agent will alert if it worsens."}
               </div>}
             </div>
           </div>);
@@ -2754,21 +2753,21 @@ function SetpointDashboard(){
 
         {/* Agent banner */}
         <div style={{background:T.primary+"10",border:`1px solid ${T.primary}30`,borderLeft:`3px solid ${T.primary}`,borderRadius:4,padding:"12px 16px"}}>
-          <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>🧠 Recipe Optimization Agent — {selectedLine}</div>
-          <div style={{fontSize:12,color:T.black}}>Agent continuously monitors production performance against recipe standards. When actual conditions drift from standard for more than 24hrs, or when FPY falls below target, the agent recommends recipe updates for process engineering review. Updates require process engineer approval before taking effect.</div>
+          <div style={{fontSize:11,fontWeight:700,color:T.primary,marginBottom:4}}>Recipe Optimization Agent — {selectedLine}</div>
+          <div style={{fontSize:12,color:T.black}}>Agent flags recipe drift when conditions deviate for 24hrs+ or FPY falls below target. Updates require process engineer approval.</div>
         </div>
 
         {/* Recipes with agent recs */}
         {SP_RECIPES.map(r=>{
           const statusColor=r.status==="Active"?T.positive:r.status==="On Hold"?T.warning:T.neutral;
-          return(<div key={r.sku} style={{background:T.white,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.07)",overflow:"hidden",borderLeft:`4px solid ${r.agentRec.hasRec?T.warning:statusColor}`}}>
+          return(<div key={r.sku} style={{background:T.surface,borderRadius:4,boxShadow:"0 1px 3px rgba(0,0,0,0.4)",overflow:"hidden",borderLeft:`4px solid ${r.agentRec.hasRec?T.warning:statusColor}`}}>
             <div style={{padding:"14px 18px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
               <div style={{flex:1}}>
                 <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
                   <span style={{fontSize:13,fontWeight:800,color:T.black}}>{r.sku}</span>
                   <span style={{fontSize:13,color:T.gray900}}>{r.name}</span>
                   <Badge label={r.status} color={statusColor}/>
-                  {r.agentRec.hasRec&&<Badge label="🧠 Recipe update recommended" color={T.warning}/>}
+                  {r.agentRec.hasRec&&<Badge label="Recipe update recommended" color={T.warning}/>}
                 </div>
                 <div style={{display:"flex",gap:16,flexWrap:"wrap",fontSize:11,color:T.gray900,marginBottom:r.agentRec.hasRec?8:0}}>
                   <span>Fryer: <strong>{r.frierTemp}°C</strong></span>
@@ -2783,11 +2782,11 @@ function SetpointDashboard(){
 
             {/* Agent recommendation */}
             {r.agentRec.hasRec&&<div style={{borderTop:`1px solid ${T.border}`,padding:"12px 18px",background:T.warning+"06"}}>
-              <div style={{fontSize:11,fontWeight:700,color:T.warning,marginBottom:6}}>🧠 Recommended Recipe Changes — Review & Approve</div>
+              <div style={{fontSize:11,fontWeight:700,color:T.warning,marginBottom:6}}>Recommended Recipe Changes — Review & Approve</div>
               <div style={{fontSize:12,color:T.black,marginBottom:10}}>{r.agentRec.reason}</div>
               <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:10}}>
                 {r.agentRec.changes.map((c,i)=>(
-                  <div key={i} style={{background:T.white,border:`1px solid ${T.border}`,borderRadius:4,padding:"10px 14px",flex:"1 1 200px"}}>
+                  <div key={i} style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:4,padding:"10px 14px",flex:"1 1 200px"}}>
                     <div style={{fontSize:11,fontWeight:700,color:T.black,marginBottom:4}}>{c.param}</div>
                     <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:4}}>
                       <span style={{fontSize:12,color:T.gray400}}>{c.current}{c.unit}</span>
@@ -2799,7 +2798,7 @@ function SetpointDashboard(){
                 ))}
               </div>
               <div style={{display:"flex",gap:8}}>
-                <button style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"7px 16px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Approve & Update Recipe</button>
+                <button style={{background:T.primary,color:T.white,border:"none",borderRadius:4,padding:"7px 16px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Approve →</button>
                 <button style={{background:"none",border:`1px solid ${T.border}`,borderRadius:4,padding:"7px 14px",fontSize:12,cursor:"pointer",color:T.gray900}}>Dismiss</button>
               </div>
             </div>}
@@ -2813,27 +2812,27 @@ function SetpointDashboard(){
 }
 
 // ── DISRUPTION MODAL ──────────────────────────────────────────────────────────
-const DISRUPTION_RECS={A:{title:"SKU 4412 \u2192 SKU 3802 Swap Executed \u2014 Line 1",priority:"High",domain:"Production",icon:"\u2699\uFE0F",lines:["All","Line 1"],agents:["Scheduling Agent","Inbound Materials Agent","Quality Monitoring Agent","Supervisor & Operator Co-Pilot"],suggestedAction:"Monitor Line 1 changeover to SKU 3802, confirm quality checks pass.",summary:"Line 1 switched from SKU 4412 to SKU 3802 following inbound materials failure. 35-min changeover underway.",detail:{issue:"Inbound seasoning blend Lot #SB-2291 for SKU 4412 was rejected at intake — sodium content 14% above spec.",action:"Monitor changeover progress, confirm quality sign-off on SKU 3802 first run.",steps:[{agent:"Inbound Materials Agent",domain:"Quality",action:"Quarantine Lot #SB-2291 and raise supplier deviation report.",status:"complete"},{agent:"Scheduling Agent",domain:"Planning",action:"Update Line 1 production schedule — replace SKU 4412 run with SKU 3802.",status:"complete"},{agent:"Quality Monitoring Agent",domain:"Quality",action:"Monitor first-pass yield on SKU 3802 run.",status:"pending"},{agent:"Supervisor & Operator Co-Pilot",domain:"Production",action:"Guide Line 1 operator through SKU 3802 changeover SOP.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"}]}},B:{title:"Emergency SKU 4412 Batch Sourcing \u2014 Line 1 On Hold",priority:"Critical",domain:"Production",icon:"\uD83D\uDCE6",lines:["All","Line 1"],agents:["Inbound Materials Agent","Planning Agent","Scheduling Agent"],suggestedAction:"Track emergency batch delivery ETA, hold Line 1.",summary:"Emergency replacement batch ordered. Line 1 on hold pending delivery.",detail:{issue:"SKU 4412 inbound materials rejected. Emergency batch ordered — 60% confidence on timing.",action:"Monitor delivery ETA. If batch arrives by 11am, proceed. If delayed, activate SKU 3802 contingency.",steps:[{agent:"Inbound Materials Agent",domain:"Quality",action:"Raise emergency PO with approved seasoning supplier.",status:"complete"},{agent:"Planning Agent",domain:"Planning",action:"Place Line 1 on hold. Prepare SKU 3802 contingency.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"}]}},C:{title:"Line 1 Held \u2014 SKU 4412 Rescheduled to Tomorrow",priority:"High",domain:"Planning",icon:"\uD83D\uDCCB",lines:["All","Line 1"],agents:["Planning Agent","Scheduling Agent"],suggestedAction:"Confirm Line 1 hold and reschedule SKU 4412 to tomorrow.",summary:"Line 1 Day shift held. SKU 4412 rescheduled to tomorrow pending fresh batch.",detail:{issue:"SKU 4412 cannot run today. Full Day shift volume on Line 1 lost.",action:"Reschedule SKU 4412 to tomorrow's Day shift. Notify DC-West.",steps:[{agent:"Scheduling Agent",domain:"Planning",action:"Reschedule SKU 4412 Line 1 run to tomorrow Day shift.",status:"complete"},{agent:"Planning Agent",domain:"Planning",action:"Notify DC-West of one-day delay.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Priya Nair",role:"Scheduler",avatar:"SC"}]}}};
+const DISRUPTION_RECS={A:{title:"SKU 4412 \u2192 SKU 3802 Swap Executed \u2014 Line 1",priority:"High",domain:"Production",icon:"\u2699\uFE0F",lines:["All","Line 1"],agents:["Scheduling Agent","Inbound Materials Agent","Quality Agent","Operator Co-Pilot"],suggestedAction:"Monitor Line 1 changeover to SKU 3802, confirm quality checks pass.",summary:"Line 1 switched from SKU 4412 to SKU 3802 following inbound materials failure. 35-min changeover underway.",detail:{issue:"Inbound seasoning blend Lot #SB-2291 for SKU 4412 was rejected at intake — sodium content 14% above spec.",action:"Monitor changeover progress, confirm quality sign-off on SKU 3802 first run.",steps:[{agent:"Inbound Materials Agent",domain:"Quality",action:"Quarantine Lot #SB-2291 and raise supplier deviation report.",status:"complete"},{agent:"Scheduling Agent",domain:"Planning",action:"Update Line 1 production schedule — replace SKU 4412 run with SKU 3802.",status:"complete"},{agent:"Quality Agent",domain:"Quality",action:"Monitor first-pass yield on SKU 3802 run.",status:"pending"},{agent:"Operator Co-Pilot",domain:"Production",action:"Guide Line 1 operator through SKU 3802 changeover SOP.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"}]}},B:{title:"Emergency SKU 4412 Batch Sourcing \u2014 Line 1 On Hold",priority:"Critical",domain:"Production",icon:"\uD83D\uDCE6",lines:["All","Line 1"],agents:["Inbound Materials Agent","Planning Agent","Scheduling Agent"],suggestedAction:"Track emergency batch delivery ETA, hold Line 1.",summary:"Emergency replacement batch ordered. Line 1 on hold pending delivery.",detail:{issue:"SKU 4412 inbound materials rejected. Emergency batch ordered — 60% confidence on timing.",action:"Monitor delivery ETA. If batch arrives by 11am, proceed. If delayed, activate SKU 3802 contingency.",steps:[{agent:"Inbound Materials Agent",domain:"Quality",action:"Raise emergency PO with approved seasoning supplier.",status:"complete"},{agent:"Planning Agent",domain:"Planning",action:"Place Line 1 on hold. Prepare SKU 3802 contingency.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Tom Kowalski",role:"Production Supervisor",avatar:"PS"}]}},C:{title:"Line 1 Held \u2014 SKU 4412 Rescheduled to Tomorrow",priority:"High",domain:"Planning",icon:"\uD83D\uDCCB",lines:["All","Line 1"],agents:["Planning Agent","Scheduling Agent"],suggestedAction:"Confirm Line 1 hold and reschedule SKU 4412 to tomorrow.",summary:"Line 1 Day shift held. SKU 4412 rescheduled to tomorrow pending fresh batch.",detail:{issue:"SKU 4412 cannot run today. Full Day shift volume on Line 1 lost.",action:"Reschedule SKU 4412 to tomorrow's Day shift. Notify DC-West.",steps:[{agent:"Scheduling Agent",domain:"Planning",action:"Reschedule SKU 4412 Line 1 run to tomorrow Day shift.",status:"complete"},{agent:"Planning Agent",domain:"Planning",action:"Notify DC-West of one-day delay.",status:"pending"}],approvers:[{name:"Sarah Mitchell",role:"Plant Leader",avatar:"PL"},{name:"Priya Nair",role:"Scheduler",avatar:"SC"}]}}};
 
 function DisruptionModal({onClose,onAddRec}){
   const [selected,setSelected]=useState(null);const [dispatched,setDispatched]=useState(false);const [dispatching,setDispatching]=useState(false);
   const dispatch=()=>{if(!selected)return;setDispatching(true);setTimeout(()=>{setDispatching(false);setDispatched(true);const recTemplate=DISRUPTION_RECS[selected];if(recTemplate&&onAddRec){onAddRec({...recTemplate,id:Date.now(),fromDisruption:true});}},1800);};
-  return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-    <div style={{background:T.white,borderRadius:6,width:"100%",maxWidth:680,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
+  return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+    <div style={{background:T.surface,borderRadius:6,width:"100%",maxWidth:680,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.8)"}}>
       <div style={{background:T.negative,padding:"14px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <div><div style={{fontSize:11,fontWeight:700,color:"#ffffff99",marginBottom:2}}>🚨 REAL-TIME DISRUPTION · {disruptionAlert.time}</div><div style={{fontSize:15,fontWeight:800,color:T.white}}>{disruptionAlert.title}</div></div>
-        <button onClick={onClose} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:4,padding:"6px 12px",color:T.white,cursor:"pointer",fontWeight:700,fontSize:12}}>✕ Close</button>
+        <div><div style={{fontSize:11,fontWeight:700,color:"rgba(230,237,243,0.6)",marginBottom:2}}>REAL-TIME DISRUPTION · {disruptionAlert.time}</div><div style={{fontSize:15,fontWeight:800,color:T.white}}>{disruptionAlert.title}</div></div>
+        <button onClick={onClose} style={{background:T.gray100,border:`1px solid ${T.border}`,borderRadius:4,padding:"6px 12px",color:T.black,cursor:"pointer",fontWeight:700,fontSize:12}}>✕ Close</button>
       </div>
       <div style={{padding:"20px",display:"flex",flexDirection:"column",gap:16}}>
-        {dispatched&&<div style={{background:"#F0FDF4",border:`2px solid ${T.positive}`,borderRadius:4,padding:"12px 16px"}}><div style={{fontSize:13,fontWeight:800,color:T.positive}}>✅ Response Dispatched</div><div style={{fontSize:12,color:T.black,marginTop:3}}>{disruptionAlert.notifyList.join(", ")} notified. Recommendation added to dashboard.</div></div>}
+        {dispatched&&<div style={{background:"#0D2B1A",border:`2px solid ${T.positive}`,borderRadius:4,padding:"12px 16px"}}><div style={{fontSize:13,fontWeight:800,color:T.positive}}>Response Dispatched</div><div style={{fontSize:12,color:T.black,marginTop:3}}>{disruptionAlert.notifyList.join(", ")} notified. Recommendation added to dashboard.</div></div>}
         <div style={{fontSize:12,color:T.black,lineHeight:1.6}}>{disruptionAlert.description}</div>
-        <div style={{background:"#FEF2F2",borderRadius:4,padding:"12px 16px",borderLeft:`3px solid ${T.negative}`}}><div style={{fontSize:11,fontWeight:700,color:T.negative,marginBottom:6}}>IMMEDIATE IMPACTS</div>{disruptionAlert.impacts.map((imp,i)=><div key={i} style={{fontSize:12,color:T.black,marginBottom:3}}>• {imp}</div>)}</div>
+        <div style={{background:"#2D0F0F",borderRadius:4,padding:"12px 16px",borderLeft:`3px solid ${T.negative}`}}><div style={{fontSize:11,fontWeight:700,color:T.negative,marginBottom:6}}>IMMEDIATE IMPACTS</div>{disruptionAlert.impacts.map((imp,i)=><div key={i} style={{fontSize:12,color:T.black,marginBottom:3}}>• {imp}</div>)}</div>
         <div><div style={{fontSize:13,fontWeight:800,color:T.black,marginBottom:10}}>Select Response Option</div><div style={{display:"flex",flexDirection:"column",gap:8}}>{disruptionAlert.options.map(opt=>(<div key={opt.id} onClick={()=>!dispatched&&setSelected(opt.id)} style={{padding:"12px 16px",borderRadius:4,border:`2px solid ${selected===opt.id?T.primary:T.border}`,background:selected===opt.id?T.primary+"08":T.white,cursor:dispatched?"default":"pointer"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4,gap:8,flexWrap:"wrap"}}><div style={{display:"flex",gap:6,alignItems:"center"}}><span style={{fontSize:13,fontWeight:800,color:T.black}}>Option {opt.id}: {opt.label}</span>{opt.recommended&&<Badge label="✓ Recommended" color={T.positive}/>}</div><Badge label={`Impact: ${opt.impact}`} color={opt.impact==="Low"?T.positive:opt.impact==="Medium"?T.warning:T.negative}/></div>
           <div style={{fontSize:12,color:T.gray900}}>{opt.description}</div>
         </div>))}</div></div>
         <div style={{background:T.gray100,borderRadius:4,padding:"10px 14px"}}><div style={{fontSize:11,fontWeight:700,color:T.gray900,marginBottom:4}}>WILL NOTIFY</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{disruptionAlert.notifyList.map(n=><Badge key={n} label={n} color={T.primary}/>)}</div></div>
-        <button onClick={dispatch} disabled={!selected||dispatched||dispatching} style={{width:"100%",padding:"12px",background:selected&&!dispatched?T.negative:T.gray400,color:T.white,border:"none",borderRadius:4,fontSize:14,fontWeight:800,cursor:selected&&!dispatched?"pointer":"not-allowed"}}>{dispatching?"⏳ Dispatching response...":dispatched?"✅ Response Dispatched":selected?`🚨 Execute Option ${selected} & Notify Team`:"Select a response option above"}</button>
+        <button onClick={dispatch} disabled={!selected||dispatched||dispatching} style={{width:"100%",padding:"12px",background:selected&&!dispatched?T.negative:T.gray400,color:T.white,border:"none",borderRadius:4,fontSize:14,fontWeight:800,cursor:selected&&!dispatched?"pointer":"not-allowed"}}>{dispatching?"⏳ Dispatching response...":dispatched?"Response Dispatched":selected?` Execute Option ${selected} & Notify Team`:"Select a response option above"}</button>
       </div>
     </div>
   </div>);
@@ -2862,39 +2861,39 @@ export default function App(){
 
   const handleTabClick=(id)=>{setTab(id);setSelectedRec(null);setChatMode(null);};
 
-  return(<div style={{background:T.gray100,minHeight:"100vh",fontFamily:"'Inter',system-ui,sans-serif",display:"flex",flexDirection:"column"}}>
+  return(<div style={{background:T.bg,minHeight:"100vh",fontFamily:"'Inter',system-ui,sans-serif",display:"flex",flexDirection:"column"}}>
     {/* Top bar */}
-    <div style={{background:T.primary,padding:"0 20px",display:"flex",alignItems:"center",justifyContent:"space-between",height:48,flexShrink:0,gap:8}}>
-      <div style={{display:"flex",alignItems:"center",gap:10}}><span style={{color:T.white,fontWeight:800,fontSize:15}}>🏭 Plant Orchestration Agent</span><span style={{color:"#ffffff60",fontSize:12}}>Austin Plant · Snack Chips</span></div>
+    <div style={{background:T.navbg,borderBottom:`1px solid ${T.border}`,padding:"0 20px",display:"flex",alignItems:"center",justifyContent:"space-between",height:48,flexShrink:0,gap:8}}>
+      <div style={{display:"flex",alignItems:"center",gap:10}}><span style={{color:T.primary,fontWeight:800,fontSize:15}}>🏭 Plant Orchestration Agent</span><span style={{color:T.gray400,fontSize:12}}>Austin Plant · Snack Chips</span></div>
       <div style={{display:"flex",gap:8,alignItems:"center"}}>
-        {recs.some(r=>r.fromChat)&&<span style={{background:T.info,borderRadius:4,padding:"3px 10px",fontSize:11,color:T.white,fontWeight:700}}>✦ {recs.filter(r=>r.fromChat).length} new from chat</span>}
-        {disruptionActive&&persona==="plant_leader"&&<button onClick={()=>setShowDisruption(true)} style={{background:T.negative,border:"none",borderRadius:4,padding:"5px 12px",color:T.white,fontWeight:700,fontSize:11,cursor:"pointer"}}>🚨 Live Disruption</button>}
+        {recs.some(r=>r.fromChat)&&<span style={{background:T.info+"22",border:`1px solid ${T.info}40`,borderRadius:4,padding:"3px 10px",fontSize:11,color:T.info,fontWeight:700}}>{recs.filter(r=>r.fromChat).length} new from chat</span>}
+        {disruptionActive&&persona==="plant_leader"&&<button onClick={()=>setShowDisruption(true)} style={{background:T.negative+"22",border:`1px solid ${T.negative}`,borderRadius:4,padding:"5px 12px",color:T.negative,fontWeight:700,fontSize:11,cursor:"pointer"}}>Live Disruption</button>}
 
         {/* Scenario Simulation button */}
         <button onClick={()=>{setChatMode(chatMode==="scenario"?null:"scenario");setSelectedRec(null);}}
-          style={{background:chatMode==="scenario"?"rgba(255,255,255,0.25)":"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.3)",borderRadius:4,padding:"6px 14px",color:T.white,fontWeight:700,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
-          💬 Scenario Simulation
+          style={{background:chatMode==="scenario"?T.primary+"33":T.gray100,border:`1px solid ${T.border}`,borderRadius:4,padding:"6px 14px",color:T.black,fontWeight:700,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+          Scenario Simulation
         </button>
 
         {/* Co-Pilot button */}
         <button onClick={()=>{setChatMode(chatMode==="copilot"?null:"copilot");setSelectedRec(null);}}
-          style={{background:chatMode==="copilot"?"rgba(255,255,255,0.25)":"rgba(255,255,255,0.12)",border:`1px solid ${chatMode==="copilot"?"rgba(255,255,255,0.6)":"rgba(255,255,255,0.3)"}`,borderRadius:4,padding:"6px 14px",color:T.white,fontWeight:700,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
-          🤖 Co-Pilot
+          style={{background:chatMode==="copilot"?T.primary+"33":T.gray100,border:`1px solid ${chatMode==="copilot"?T.primary:T.border}`,borderRadius:4,padding:"6px 14px",color:T.black,fontWeight:700,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+          Co-Pilot
         </button>
 
         {/* Persona switcher */}
         <div ref={personaRef} style={{position:"relative"}}>
-          <button onClick={()=>setPersonaOpen(o=>!o)} style={{display:"flex",alignItems:"center",gap:8,background:"rgba(255,255,255,0.15)",border:"1px solid rgba(255,255,255,0.3)",borderRadius:4,padding:"5px 10px",cursor:"pointer",color:T.white}}>
-            <div style={{width:24,height:24,borderRadius:"50%",background:"rgba(255,255,255,0.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800}}>{personas.find(p=>p.id===persona)?.avatar}</div>
+          <button onClick={()=>setPersonaOpen(o=>!o)} style={{display:"flex",alignItems:"center",gap:8,background:T.gray100,border:`1px solid ${T.border}`,borderRadius:4,padding:"5px 10px",cursor:"pointer",color:T.black}}>
+            <div style={{width:24,height:24,borderRadius:"50%",background:T.primary,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800}}>{personas.find(p=>p.id===persona)?.avatar}</div>
             <span style={{fontSize:12,fontWeight:700}}>{personas.find(p=>p.id===persona)?.label}</span>
             <span style={{fontSize:9}}>▼</span>
           </button>
-          {personaOpen&&<div style={{position:"absolute",right:0,top:"110%",background:T.white,border:`1px solid ${T.border}`,borderRadius:4,boxShadow:"0 4px 16px rgba(0,0,0,0.15)",zIndex:200,minWidth:200,overflow:"hidden"}}>
+          {personaOpen&&<div style={{position:"absolute",right:0,top:"110%",background:T.surface,border:`1px solid ${T.border}`,borderRadius:4,boxShadow:"0 4px 16px rgba(0,0,0,0.15)",zIndex:200,minWidth:200,overflow:"hidden"}}>
             <div style={{padding:"8px 14px 6px",fontSize:10,fontWeight:800,color:T.gray400,textTransform:"uppercase",letterSpacing:"0.06em"}}>Switch Persona</div>
             {personas.map(p=>(<button key={p.id} onClick={()=>{setPersona(p.id);setPersonaOpen(false);setTab(p.id==="technician"?"technician":p.id==="process_eng"?"setpoint":"dashboard");setSelectedRec(null);setChatMode(null);}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"9px 14px",border:"none",cursor:"pointer",textAlign:"left",fontSize:13,background:persona===p.id?T.primary+"10":"transparent",fontWeight:persona===p.id?800:400,color:persona===p.id?T.primary:T.black}}>
               <div style={{width:28,height:28,borderRadius:"50%",background:persona===p.id?T.primary:T.gray100,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:persona===p.id?T.white:T.gray900,flexShrink:0}}>{p.avatar}</div>
               <span>{p.label}</span>
-              {persona===p.id&&<span style={{marginLeft:"auto",fontSize:11,color:T.primary}}>✓</span>}
+              {persona===p.id&&<span style={{marginLeft:"auto",fontSize:11,color:T.primary}}></span>}
             </button>))}
           </div>}
         </div>
@@ -2904,7 +2903,7 @@ export default function App(){
     {/* Body */}
     <div style={{display:"flex",flex:1,overflow:"hidden"}}>
       {/* Left nav */}
-      <div style={{width:52,background:T.white,borderRight:`1px solid ${T.border}`,display:"flex",flexDirection:"column",alignItems:"center",paddingTop:8,flexShrink:0}}>
+      <div style={{width:52,background:T.navbg,borderRight:`1px solid ${T.border}`,display:"flex",flexDirection:"column",alignItems:"center",paddingTop:8,flexShrink:0}}>
         {allNavItems.map(item=>{const isActive=tab===item.id&&!chatMode;const isEnabled=activeNavIds.includes(item.id);return(<div key={item.id} style={{position:"relative",width:"100%"}} title={`${item.label}${!isEnabled?" (not available for your role)":""}`}>
           <button onClick={()=>{if(isEnabled)handleTabClick(item.id);}} style={{width:"100%",height:44,border:"none",cursor:isEnabled?"pointer":"default",background:isActive?T.primary+"18":"transparent",borderLeft:isActive?`3px solid ${T.primary}`:"3px solid transparent",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:600,color:isActive?T.primary:isEnabled?T.gray900:T.gray400,opacity:isEnabled?1:0.3}}>
             {item.icon}
@@ -2939,7 +2938,7 @@ export default function App(){
             <div style={{fontSize:40}}>{allNavItems.find(n=>n.id===tab)?.icon}</div>
             <div style={{fontSize:16,fontWeight:800,color:T.black}}>{allNavItems.find(n=>n.id===tab)?.label}</div>
             <div style={{fontSize:13,color:T.gray900}}>This view is part of the full vision — coming in a future build.</div>
-            <div style={{background:T.primary+"12",border:`1px solid ${T.primary}30`,borderRadius:4,padding:"10px 20px",fontSize:12,color:T.primary,fontWeight:600}}>💬 Use Scenario Simulation to ask questions about this domain</div>
+            <div style={{background:T.primary+"18",border:`1px solid ${T.primary}40`,borderRadius:4,padding:"10px 20px",fontSize:12,color:T.primary,fontWeight:600}}>Use Scenario Simulation to ask questions about this domain</div>
           </div>)}
         </>)}
       </div>
